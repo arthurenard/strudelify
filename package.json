@@ -1,0 +1,27 @@
+{
+  "name": "strudelify-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -ws --if-present",
+    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "data": "npm run build -w @strudelify/data && node packages/data/dist/build.js",
+    "dev:web": "npm run dev -w @strudelify/web"
+  },
+  "devDependencies": {
+    "@strudel/core": "^1.2.6",
+    "@strudel/mini": "^1.2.6",
+    "@strudel/tonal": "^1.2.6",
+    "@strudel/transpiler": "^1.2.6",
+    "@types/node": "^26.4.1",
+    "esbuild": "^0.28.2",
+    "puppeteer-core": "^25.10.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

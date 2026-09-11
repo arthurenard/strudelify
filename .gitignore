@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.tsbuildinfo
+packages/data/raw/
+packages/data/public/db/
+packages/web/public/db/
+tools/library-report.json
+.claude/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+.DS_Store

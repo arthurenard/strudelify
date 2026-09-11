@@ -1,0 +1,14 @@
+{
+  "name": "@strudelify/data",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -b",
+    "download": "node dist/download.js",
+    "index": "node dist/build.js"
+  },
+  "dependencies": {
+    "@strudelify/core": "*"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "strudelify",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "strudelify": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@strudelify/core": "*",
+    "commander": "^14.0.0"
+  }
+}

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Strudelify</title>
+    <meta name="description" content="Type a song name, get Strudel live-coding code that plays it. Compiled from open transcriptions, instrumental only, no AI." />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0a0c10" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0c10'/%3E%3Cpath d='M18 44V22l9 6v16zM29 44V16l9 6v22zM40 44V26l9 6v12z' fill='%2331d97c'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="top">
+      <a class="brand" href="/" aria-label="Strudelify home">
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="currentColor" opacity=".12"/><path d="M18 44V22l9 6v16zM29 44V16l9 6v22zM40 44V26l9 6v12z" fill="currentColor"/></svg>
+        <span class="brand-name">Strudelify</span>
+      </a>
+
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="q" type="text" role="combobox" aria-label="Search songs and artists" aria-expanded="false" aria-controls="results" aria-autocomplete="list" aria-haspopup="listbox"
+               placeholder="Search a song or artist" spellcheck="false" autocomplete="off" autocapitalize="off" enterkeyhint="search" />
+        <button id="q-clear" class="search-clear" type="button" aria-label="Clear search" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <kbd class="search-kbd" aria-hidden="true">/</kbd>
+        <div id="results-panel" class="results-panel" hidden>
+          <ul id="results" class="results" role="listbox" aria-label="Search results"></ul>
+          <div id="results-foot" class="results-foot" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <span id="status" class="status" role="status" aria-live="polite"></span>
+    </header>
+
+    <main id="main" class="main">
+      <div id="banner" class="banner" role="alert" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span id="banner-text"></span>
+        <button id="banner-retry" class="btn sm" type="button" hidden>Retry</button>
+        <button id="banner-close" class="banner-close" type="button" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <section id="song" class="song" hidden aria-label="Song">
+        <div class="hero-bg" aria-hidden="true"></div>
+
+        <div class="hero">
+          <div class="art">
+            <img id="art" alt="" hidden decoding="async" />
+            <div id="art-fallback" class="art-fallback" aria-hidden="true"></div>
+          </div>
+          <div class="hero-text">
+            <p class="eyebrow" id="album"></p>
+            <h1 id="title" class="title"></h1>
+            <p class="artist" id="artist"></p>
+          </div>
+          <div class="chips" id="chips"></div>
+        </div>
+
+        <section class="player" aria-label="Player">
+          <div class="transport">
+            <div class="transport-main">
+              <button id="rewind" class="tbtn" type="button" aria-label="Back to start" title="Back to start (Home)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM19 5.5v13a.75.75 0 0 1-1.16.63L9 13.4V10.6l8.84-5.73A.75.75 0 0 1 19 5.5z" fill="currentColor"/></svg>
+              </button>
+              <button id="play" class="play" type="button" aria-label="Play" title="Play (Space)">
+                <svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.52.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z" fill="currentColor"/></svg>
+                <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4.5v16H6zM13.5 4H18v16h-4.5z" fill="currentColor"/></svg>
+              </button>
+              <div class="position" aria-live="off">
+                <span class="times"><span id="pos-time" class="num">0:00</span><span class="sep">/</span><span id="total-time" class="num">0:00</span></span>
+                <span class="bar-count"><span id="pos-bar" class="num"></span><span id="pos-chord" class="pos-chord"></span><span id="pos-src" class="pos-src" hidden>MIDI chords</span><span id="pos-sec" class="pos-sec"></span></span>
+              </div>
+            </div>
+
+            <div class="opts" role="group" aria-label="Options">
+              <label class="switch" id="opt-melody">
+                <input type="checkbox" id="melody" checked />
+                <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+                <span class="switch-label" id="melody-label">Melody</span>
+              </label>
+              <label class="field" id="opt-lead">
+                <span class="field-label">Lead</span>
+                <span class="select-wrap">
+                  <select id="melodySound" aria-label="Lead sound">
+                    <option value="gm_lead_2_sawtooth">Saw lead</option>
+                    <option value="gm_lead_1_square">Square lead</option>
+                    <option value="gm_lead_6_voice">Synth voice</option>
+                    <option value="gm_flute">Flute</option>
+                    <option value="gm_piano">Piano</option>
+                    <option value="gm_electric_guitar_clean">Clean guitar</option>
+                    <option value="triangle">Triangle</option>
+                  </select>
+                  <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+              </label>
+              <label class="field" id="opt-bars" title="How much of the song to render: the whole song, or only its first bars">
+                <span class="select-wrap">
+                  <select id="maxBars" aria-label="Length to render">
+                    <option value="1000000" selected>All bars</option>
+                  </select>
+                  <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+              </label>
+              <span class="chip note" id="opt-note" tabindex="0" hidden><i aria-hidden="true"></i><span id="opt-note-text"></span></span>
+            </div>
+            <div class="opts-skel" id="opts-skel" aria-hidden="true" hidden><i></i><i></i></div>
+          </div>
+
+          <div class="timeline" id="timeline">
+            <div class="tl-scroll" id="tl-scroll">
+              <div class="tl-inner" id="tl-inner">
+                <div class="lane ruler" id="lane-ruler" aria-hidden="true"></div>
+                <div class="lane sections" id="lane-sections" aria-label="Sections"></div>
+                <div class="lane chords" id="lane-chords" aria-label="Chords"></div>
+                <div class="track" id="track" role="slider" tabindex="0" aria-label="Position" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="bar 1">
+                  <div class="track-bar"><div class="fill" id="fill"></div></div>
+                  <div class="knob" id="knob"></div>
+                </div>
+                <div class="playhead" id="playhead" aria-hidden="true"></div>
+              </div>
+            </div>
+            <div class="hover" id="hover" hidden aria-hidden="true"></div>
+            <div class="overview" id="tl-overview" hidden tabindex="0" role="scrollbar" aria-label="Timeline overview: drag to pan the lanes" aria-orientation="horizontal" aria-controls="tl-scroll" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div class="ov-lanes" id="ov-lanes" aria-hidden="true"></div>
+              <div class="ov-win" id="ov-win" aria-hidden="true"></div>
+              <div class="ov-pos" id="ov-pos" aria-hidden="true"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="code" aria-label="Strudel code">
+          <div class="code-bar">
+            <div class="code-head">
+              <button id="code-toggle" class="code-toggle" type="button" aria-expanded="true" aria-controls="code-body">
+                <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Strudel code</span>
+                <span id="code-lines" class="code-lines"></span>
+              </button>
+              <button id="wrap" class="btn ghost sm" type="button" aria-pressed="false" title="Wrap long lines">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h11a3 3 0 0 1 0 6h-3m0 0l2-2m-2 2l2 2M4 18h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Wrap</span>
+              </button>
+            </div>
+            <div class="actions">
+              <button id="copy" class="btn" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                <span>Copy</span>
+              </button>
+              <a id="download" class="btn" download>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Download</span>
+              </a>
+              <a id="open" class="btn primary" target="_blank" rel="noopener">
+                <span>Open in strudel.cc</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v5H5V6h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </a>
+            </div>
+          </div>
+          <div id="code-body" class="code-body">
+            <div class="code-skel" aria-hidden="true"><i style="--w:38%"></i><i style="--w:54%"></i><i style="--w:44%"></i><i style="--w:12%"></i><i style="--w:0"></i><i style="--w:70%"></i><i style="--w:88%"></i><i style="--w:60%"></i></div>
+            <div class="editor"><strudel-editor id="editor"></strudel-editor>
+              <div class="hbar" id="hbar" hidden>
+                <div class="hbar-track" id="hbar-track" role="scrollbar" tabindex="0" aria-label="Scroll the code sideways" aria-orientation="horizontal" aria-controls="editor" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="hbar-thumb" id="hbar-thumb"></div></div>
+              </div>
+            </div>
+            <div class="code-more" id="code-more" hidden>
+              <button id="code-expand" class="btn sm" type="button" aria-expanded="false">
+                <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span id="code-expand-label">Show all lines</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="notfound" class="notfound" hidden aria-label="Song not found">
+        <div class="nf-tile" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5M8.5 11h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <p class="kicker">Not in the database</p>
+        <h1>That song isn't here.</h1>
+        <p class="lede">Nothing in the database matches this link. It may have been renamed, or the address was mistyped.<span id="nf-lede-more"> The closest songs to <em id="nf-id"></em>:</span></p>
+        <div class="examples nf-matches" id="nf-matches" aria-label="Closest matches"></div>
+        <div class="cta-row">
+          <button id="nf-search" class="btn primary lg" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span>Search songs</span>
+          </button>
+          <a class="btn lg" href="/">Back home</a>
+        </div>
+      </section>
+
+      <section id="empty" class="empty" aria-label="Introduction">
+        <div class="empty-glow" aria-hidden="true"></div>
+        <p class="kicker">Real transcriptions · No AI · Instrumental</p>
+        <h1>Type a song.<br /><span class="grad">Get Strudel code.</span></h1>
+        <p class="lede">Chords, structure, melody, bass and drums compiled from open transcriptions into <a href="https://strudel.cc" target="_blank" rel="noopener">Strudel</a> live-coding patterns. Play it here, scrub through the bars, then open it in strudel.cc and start hacking.</p>
+        <div class="cta-row">
+          <button id="cta-search" class="btn primary lg" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span id="cta-label">Browse songs</span>
+          </button>
+        </div>
+
+        <div class="examples" id="examples" aria-label="Try one">
+          <a class="ex" href="#nirvana--smells-like-teen-spirit"><span class="ex-tile" aria-hidden="true">S</span><span class="ex-text"><span class="ex-t">Smells Like Teen Spirit</span><span class="ex-a">Nirvana</span></span></a>
+          <a class="ex" href="#steve-miller-band--the-joker"><span class="ex-tile" aria-hidden="true">T</span><span class="ex-text"><span class="ex-t">The Joker</span><span class="ex-a">Steve Miller Band</span></span></a>
+          <a class="ex" href="#the-beatles--love-me-do"><span class="ex-tile" aria-hidden="true">L</span><span class="ex-text"><span class="ex-t">Love Me Do</span><span class="ex-a">The Beatles</span></span></a>
+          <a class="ex" href="#james-brown--i-don-t-mind"><span class="ex-tile" aria-hidden="true">I</span><span class="ex-text"><span class="ex-t">I Don't Mind</span><span class="ex-a">James Brown</span></span></a>
+        </div>
+
+        <ul class="features">
+          <li><strong>Real transcriptions</strong><span>McGill Billboard chord annotations and the Lakh MIDI clean subset. The library includes alternate transcriptions of some songs.</span></li>
+          <li><strong>One bar, one cycle</strong><span>Every layer is a <code>&lt;bar bar …&gt;</code> sequence, so the timeline, the code and the sound stay aligned.</span></li>
+          <li><strong>Instrumental by design</strong><span>The vocal line is a synth you can switch off. No voices, no lyrics, ever.</span></li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="foot-inner">
+        <span class="foot-brand">Strudelify</span>
+        <span class="foot-links">
+          Chords: <a href="https://ddmal.music.mcgill.ca/research/billboard" target="_blank" rel="noopener">McGill Billboard</a>
+          · Notes: <a href="https://colinraffel.com/projects/lmd/" target="_blank" rel="noopener">Lakh MIDI</a> (CC-BY)
+          · Art: <a href="https://performance-partners.apple.com/search-api" target="_blank" rel="noopener">iTunes</a>, <a href="https://developers.deezer.com" target="_blank" rel="noopener">Deezer</a>, <a href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a> &amp; <a href="https://coverartarchive.org" target="_blank" rel="noopener">Cover Art Archive</a>
+          · Player: <a href="https://strudel.cc" target="_blank" rel="noopener">Strudel</a> (AGPL-3.0)
+        </span>
+      </div>
+    </footer>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

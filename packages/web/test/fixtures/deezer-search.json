@@ -1,0 +1,2697 @@
+{
+ "queen--bohemian-rhapsody": {
+  "data": [
+   {
+    "id": 4091937401,
+    "title": "Bohemian Rhapsody",
+    "link": "https://www.deezer.com/track/4091937401",
+    "rank": 958949,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007321681,
+     "title": "A Night At The Opera",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/0b56f4eee05fa1ea753c5654b2cdb70c/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092342471,
+    "title": "Bohemian Rhapsody (Live At Wembley Stadium / July 1986)",
+    "link": "https://www.deezer.com/track/4092342471",
+    "rank": 572345,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007460301,
+     "title": "Live at Wembley Stadium",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bffe9bbf3a5270200d59f9537c5581ed/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4091936771,
+    "title": "Bohemian Rhapsody (Live Aid)",
+    "link": "https://www.deezer.com/track/4091936771",
+    "rank": 590497,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007321401,
+     "title": "Bohemian Rhapsody (The Original Soundtrack)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/5bbfab8ae2def08b9d58932b5e6121a4/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092314011,
+    "title": "Bohemian Rhapsody (Live At Milton Keynes Bowl / June 1982)",
+    "link": "https://www.deezer.com/track/4092314011",
+    "rank": 406296,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007451941,
+     "title": "On Fire: Live At The Bowl",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/365fa3f10e91934609df4b97d66e765a/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092340211,
+    "title": "Bohemian Rhapsody (Live, European Tour / 1979)",
+    "link": "https://www.deezer.com/track/4092340211",
+    "rank": 201527,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007459621,
+     "title": "Live Killers",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/43f44e680dbe28480fda2f8c0666c834/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 5055001,
+    "title": "Bohemian Rhapsody",
+    "link": "https://www.deezer.com/track/5055001",
+    "rank": 357137,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 463031,
+     "title": "Bohemian Rhapsody",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/6bfb24a6d8f37ba563284d311586f2be/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092345051,
+    "title": "Bohemian Rhapsody (Live)",
+    "link": "https://www.deezer.com/track/4092345051",
+    "rank": 341354,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007461201,
+     "title": "Hungarian Rhapsody (Live In Budapest / 1986)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/9a09ec1415ae5fb8f46fe458da8e123e/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1140885422,
+    "title": "Bohemian Rhapsody (Live At Fire Fight Australia, ANZ Stadium, Sydney, Australia, 2020)",
+    "link": "https://www.deezer.com/track/1140885422",
+    "rank": 264622,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 186080352,
+     "title": "Live At Fire Fight Australia",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/914621defeacd37a071bcdae31d8c778/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1306700592,
+    "title": "Bohemian Rhapsody / Radio Ga Ga (Live at Wembley Stadium, 13th July 1985)",
+    "link": "https://www.deezer.com/track/1306700592",
+    "rank": 463893,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 219784782,
+     "title": "Queen at Live Aid (Live at Wembley Stadium, 13th July 1985)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/2b567395f755ddda32ddae1eea5796ef/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4091938561,
+    "title": "Bohemian Rhapsody (Reprise / Live At The Hammersmith Odeon, London / 1975)",
+    "link": "https://www.deezer.com/track/4091938561",
+    "rank": 121489,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007322181,
+     "title": "A Night At The Odeon",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/74d1c3a8e3495c8726eca19016907616/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4091941651,
+    "title": "Bohemian Rhapsody (Operatic Section / 2011 A Cappella Mix)",
+    "link": "https://www.deezer.com/track/4091941651",
+    "rank": 165904,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007323081,
+     "title": "A Night At The Opera (Deluxe Edition)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/0b56f4eee05fa1ea753c5654b2cdb70c/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092335271,
+    "title": "Bohemian Rhapsody (Live)",
+    "link": "https://www.deezer.com/track/4092335271",
+    "rank": 390308,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007458461,
+     "title": "Queen Rock Montreal",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/3af5b7c86864d78664a2fb03f304e70c/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1155696212,
+    "title": "Bohemian Rhapsody (Live)",
+    "link": "https://www.deezer.com/track/1155696212",
+    "rank": 102108,
+    "artist": {
+     "id": 422620,
+     "name": "God Save the Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/ee99c190469332d0c17b0eb64dbe5a5e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 189024872,
+     "title": "Bohemian Rhapsody (Live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/98694fa9b53ca34f3e807e5e597f8588/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2089464,
+    "title": "Karaoke - Bohemian Rhapsody",
+    "link": "https://www.deezer.com/track/2089464",
+    "rank": 15763,
+    "artist": {
+     "id": 1547012,
+     "name": "Karaoke - Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 210006,
+     "title": "Karaoke - Classic Rock - Vol.4",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/df68e645807e86ad2a23622f5218fafb/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2516935871,
+    "title": "Bohemian Rhapsody (Live in Skanderborg ’23)",
+    "link": "https://www.deezer.com/track/2516935871",
+    "rank": 7712,
+    "artist": {
+     "id": 3921031,
+     "name": "Queen Machine",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/985802a0373e8388c8a3d261b368794f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 505488791,
+     "title": "A Show in the Woods: Live in Skanderborg ’23",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/7b66d02b84a9c9fb19da8122ee80b367/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3091420,
+    "title": "Bohemian Rhapsody",
+    "link": "https://www.deezer.com/track/3091420",
+    "rank": 154370,
+    "artist": {
+     "id": 317609541,
+     "name": "Galiléo",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/667ec974c04c05791ed8189987c8fa10/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 299339,
+     "title": "We Will Rock You: Cast Album",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8e8decdde60690c0ff2251c35887a59c/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3294788691,
+    "title": "Bohemian Rhapsody (Live)",
+    "link": "https://www.deezer.com/track/3294788691",
+    "rank": 40740,
+    "artist": {
+     "id": 422620,
+     "name": "God Save the Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/ee99c190469332d0c17b0eb64dbe5a5e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 732840761,
+     "title": "Live at Luna Park Stadium",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/ee99c190469332d0c17b0eb64dbe5a5e/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3411576891,
+    "title": "Bohemian Rhapsody (Live in Skanderborg ’24)",
+    "link": "https://www.deezer.com/track/3411576891",
+    "rank": 88891,
+    "artist": {
+     "id": 3921031,
+     "name": "Queen Machine",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/985802a0373e8388c8a3d261b368794f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 771521921,
+     "title": "Smukfest Killers: Live in Skanderborg ’24",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/074e92a211c61f6da85372fcf8a2b72f/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3430403301,
+    "title": "Bohemian Rhapsody",
+    "link": "https://www.deezer.com/track/3430403301",
+    "rank": 34982,
+    "artist": {
+     "id": 9516434,
+     "name": "Unrisen Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/7d368c25b20a0d928fe416f1f113a7dc/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 778024391,
+     "title": "Unrisen Queen",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/cf28cd876107bf2785a6085cec922bc0/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3434337581,
+    "title": "Bohemian Rhapsody",
+    "link": "https://www.deezer.com/track/3434337581",
+    "rank": 101270,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 779333341,
+     "title": "Rock In Rio",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/7a61a3efe2108aa3ee50c1ff5e6d7b36/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3463739621,
+    "title": "Bohemian Rhapsody",
+    "link": "https://www.deezer.com/track/3463739621",
+    "rank": 7770,
+    "artist": {
+     "id": 1103722,
+     "name": "Queen Esther",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/ea5ae13f97320f59b76af896abc47f95/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 789177991,
+     "title": "Bohemian Rhapsody",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8a5d518efbb8bda619ed92e082328ae4/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3488602911,
+    "title": "Bohemian Rhapsody (live)",
+    "link": "https://www.deezer.com/track/3488602911",
+    "rank": 98383,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 798069821,
+     "title": "Live at Rock in Rio 1985 (live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/f57b31a206cb83cf7344f72dcf890893/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3550183711,
+    "title": "Bohemian Rhapsody",
+    "link": "https://www.deezer.com/track/3550183711",
+    "rank": 30480,
+    "artist": {
+     "id": 268175652,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/19d1dc3142c56816ce52a799c7e5a866/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 819267571,
+     "title": "Bohemian Rhapsody",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/19d1dc3142c56816ce52a799c7e5a866/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3554794701,
+    "title": "Bohemian Rhapsody (Live With the Danish Chamber Orchestra ‘24)",
+    "link": "https://www.deezer.com/track/3554794701",
+    "rank": 52199,
+    "artist": {
+     "id": 3921031,
+     "name": "Queen Machine",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/985802a0373e8388c8a3d261b368794f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 820936911,
+     "title": "Live in Denmark",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b51172fda8dc23608cf1da5479469f45/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3569841351,
+    "title": "Bohemian Rhapsody",
+    "link": "https://www.deezer.com/track/3569841351",
+    "rank": 52954,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 826374141,
+     "title": "Sun City 1984",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/84afef1159ceaaaad076556a9200267c/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 34
+ },
+ "queen--we-are-the-champions": {
+  "data": [
+   {
+    "id": 4092339021,
+    "title": "We Are The Champions",
+    "link": "https://www.deezer.com/track/4092339021",
+    "rank": 788332,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007459321,
+     "title": "Greatest Hits",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/3856be3ba91c7009c6e469d9e57c7ea9/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4091936811,
+    "title": "We Are The Champions (Live Aid)",
+    "link": "https://www.deezer.com/track/4091936811",
+    "rank": 601210,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007321401,
+     "title": "Bohemian Rhapsody (The Original Soundtrack)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/5bbfab8ae2def08b9d58932b5e6121a4/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092342551,
+    "title": "We Are The Champions (Live At Wembley Stadium / July 1986)",
+    "link": "https://www.deezer.com/track/4092342551",
+    "rank": 407916,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007460301,
+     "title": "Live at Wembley Stadium",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bffe9bbf3a5270200d59f9537c5581ed/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3434337621,
+    "title": "We Are The Champions",
+    "link": "https://www.deezer.com/track/3434337621",
+    "rank": 98630,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 779333341,
+     "title": "Rock In Rio",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/7a61a3efe2108aa3ee50c1ff5e6d7b36/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092294741,
+    "title": "We Are The Champions (Raw Sessions Version)",
+    "link": "https://www.deezer.com/track/4092294741",
+    "rank": 271208,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007447291,
+     "title": "We Are The Champions (Raw Sessions Version)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/0c17d19979223f5d2ba06161cc852405/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1306700632,
+    "title": "We Are the Champions (Live at Wembley Stadium, 13th July 1985)",
+    "link": "https://www.deezer.com/track/1306700632",
+    "rank": 378177,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 219784782,
+     "title": "Queen at Live Aid (Live at Wembley Stadium, 13th July 1985)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/2b567395f755ddda32ddae1eea5796ef/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1140885482,
+    "title": "We Are The Champions (Live At Fire Fight Australia, ANZ Stadium, Sydney, Australia, 2020)",
+    "link": "https://www.deezer.com/track/1140885482",
+    "rank": 248652,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 186080352,
+     "title": "Live At Fire Fight Australia",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/914621defeacd37a071bcdae31d8c778/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092335321,
+    "title": "We Are The Champions (Live)",
+    "link": "https://www.deezer.com/track/4092335321",
+    "rank": 281318,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007458461,
+     "title": "Queen Rock Montreal",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/3af5b7c86864d78664a2fb03f304e70c/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092314061,
+    "title": "We Are The Champions (Live At Milton Keynes Bowl / June 1982)",
+    "link": "https://www.deezer.com/track/4092314061",
+    "rank": 311084,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007451941,
+     "title": "On Fire: Live At The Bowl",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/365fa3f10e91934609df4b97d66e765a/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092345211,
+    "title": "We Are The Champions (Live)",
+    "link": "https://www.deezer.com/track/4092345211",
+    "rank": 265122,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007461201,
+     "title": "Hungarian Rhapsody (Live In Budapest / 1986)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/9a09ec1415ae5fb8f46fe458da8e123e/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 103959700,
+    "title": "We Are the Champions",
+    "link": "https://www.deezer.com/track/103959700",
+    "rank": 33098,
+    "artist": {
+     "id": 2484121,
+     "name": "Queen Mania",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 10814310,
+     "title": "The best of 70's - 110 Hits: Disco Inferno, Y.M.C.A., I Will Survive, Hot Stuff",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/a74de0c66e2ba8e0478d3e436e44b6ac/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4092340251,
+    "title": "We Are The Champions (Live, European Tour / 1979)",
+    "link": "https://www.deezer.com/track/4092340251",
+    "rank": 152917,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1007459621,
+     "title": "Live Killers",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/43f44e680dbe28480fda2f8c0666c834/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1484694,
+    "title": "We are the Champions",
+    "link": "https://www.deezer.com/track/1484694",
+    "rank": 30230,
+    "artist": {
+     "id": 105804,
+     "name": "Queen - Karaoke",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/97e119fee44c4601d35fe7d28cd85759/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 150597,
+     "title": "Karaoke Queen: We are the Champions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/97e119fee44c4601d35fe7d28cd85759/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1564718112,
+    "title": "We Are the Champions",
+    "link": "https://www.deezer.com/track/1564718112",
+    "rank": 31435,
+    "artist": {
+     "id": 55752,
+     "name": "Varios",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 275123502,
+     "title": "70s Classic Hits Collection",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/ff402b7278ee472219b37ec8f2772c37/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2516935901,
+    "title": "We Are the Champions (Live in Skanderborg ’23)",
+    "link": "https://www.deezer.com/track/2516935901",
+    "rank": 102514,
+    "artist": {
+     "id": 3921031,
+     "name": "Queen Machine",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/985802a0373e8388c8a3d261b368794f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 505488791,
+     "title": "A Show in the Woods: Live in Skanderborg ’23",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/7b66d02b84a9c9fb19da8122ee80b367/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3294788721,
+    "title": "We Are the Champions (Live)",
+    "link": "https://www.deezer.com/track/3294788721",
+    "rank": 15711,
+    "artist": {
+     "id": 422620,
+     "name": "God Save the Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/ee99c190469332d0c17b0eb64dbe5a5e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 732840761,
+     "title": "Live at Luna Park Stadium",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/ee99c190469332d0c17b0eb64dbe5a5e/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3411576901,
+    "title": "We Are the Champions (Live in Skanderborg ’24)",
+    "link": "https://www.deezer.com/track/3411576901",
+    "rank": 37015,
+    "artist": {
+     "id": 3921031,
+     "name": "Queen Machine",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/985802a0373e8388c8a3d261b368794f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 771521921,
+     "title": "Smukfest Killers: Live in Skanderborg ’24",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/074e92a211c61f6da85372fcf8a2b72f/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3430403321,
+    "title": "We Are the Champions",
+    "link": "https://www.deezer.com/track/3430403321",
+    "rank": 31174,
+    "artist": {
+     "id": 9516434,
+     "name": "Unrisen Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/7d368c25b20a0d928fe416f1f113a7dc/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 778024391,
+     "title": "Unrisen Queen",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/cf28cd876107bf2785a6085cec922bc0/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3488602951,
+    "title": "We Are the Champions (live)",
+    "link": "https://www.deezer.com/track/3488602951",
+    "rank": 52579,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 798069821,
+     "title": "Live at Rock in Rio 1985 (live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/f57b31a206cb83cf7344f72dcf890893/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3554794721,
+    "title": "We Are the Champions (Live With the Danish Chamber Orchestra ‘24)",
+    "link": "https://www.deezer.com/track/3554794721",
+    "rank": 73269,
+    "artist": {
+     "id": 3921031,
+     "name": "Queen Machine",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/985802a0373e8388c8a3d261b368794f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 820936911,
+     "title": "Live in Denmark",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b51172fda8dc23608cf1da5479469f45/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3569841401,
+    "title": "We Are The Champions",
+    "link": "https://www.deezer.com/track/3569841401",
+    "rank": 38473,
+    "artist": {
+     "id": 412,
+     "name": "Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/71eeb9e2eeb375df35a3c0654a5a01ab/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 826374141,
+     "title": "Sun City 1984",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/84afef1159ceaaaad076556a9200267c/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3667727032,
+    "title": "We Are the Champions (Live at The Royal Danish Opera)",
+    "link": "https://www.deezer.com/track/3667727032",
+    "rank": 31923,
+    "artist": {
+     "id": 3921031,
+     "name": "Queen Machine",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/985802a0373e8388c8a3d261b368794f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 860252022,
+     "title": "Our Night at the Opera",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/19344fb93542112006fb71a04ade830d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4204475102,
+    "title": "We Are The Champions (feat. God Save The Queen & Guillermo Freijido) (Live)",
+    "link": "https://www.deezer.com/track/4204475102",
+    "rank": 22059,
+    "artist": {
+     "id": 11875051,
+     "name": "Fermata Music",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/2dd6064e2de4dc47186d47f4d42ef0b2/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1046684392,
+     "title": "75th Anniversary Celebration: Symphonic & Choral Tribute (Live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/e6b195fd979337cadd7317f18c196d58/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 443596582,
+    "title": "We Are The Champions",
+    "link": "https://www.deezer.com/track/443596582",
+    "rank": 26260,
+    "artist": {
+     "id": 1267010,
+     "name": "Dream Queen",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/3004eec23e009d3b704c077fda41c216/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 53876342,
+     "title": "Killer Queen- Tribute To Queen",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/1b42ae236b8b773968bf857a1032a926/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 593039492,
+    "title": "We Are the Champions (Live Rytmehans 2012)",
+    "link": "https://www.deezer.com/track/593039492",
+    "rank": 65278,
+    "artist": {
+     "id": 3921031,
+     "name": "Queen Machine",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/985802a0373e8388c8a3d261b368794f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 79779822,
+     "title": "Smukfest 2012",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b5e1727ede1197f68b9e36fd4ba6ab3c/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 29
+ },
+ "pink-floyd--part-2--strict": {
+  "data": [
+   {
+    "id": 1122138222,
+    "title": "Another Brick In the Wall, Part 2 (2019 remix Live)",
+    "link": "https://www.deezer.com/track/1122138222",
+    "rank": 305288,
+    "artist": {
+     "id": 860,
+     "name": "Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d62a818a5de6455f17b6a992cf22b32f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 182318122,
+     "title": "Delicate Sound of Thunder (2019 Remix) (Live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/2a00a906933603d09959ec1f2472ae76/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 77252645,
+    "title": "Another Brick in the Wall (Part 2)",
+    "link": "https://www.deezer.com/track/77252645",
+    "rank": 190915,
+    "artist": {
+     "id": 5768737,
+     "name": "Celtic Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/4e39803694370edce73fa6d49e0243f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 7673227,
+     "title": "Celtic Pink Floyd",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/4e39803694370edce73fa6d49e0243f5/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 2
+ },
+ "pink-floyd--part-2--plain": {
+  "data": [
+   {
+    "id": 1122138222,
+    "title": "Another Brick In the Wall, Part 2 (2019 remix Live)",
+    "link": "https://www.deezer.com/track/1122138222",
+    "rank": 305288,
+    "artist": {
+     "id": 860,
+     "name": "Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d62a818a5de6455f17b6a992cf22b32f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 182318122,
+     "title": "Delicate Sound of Thunder (2019 Remix) (Live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/2a00a906933603d09959ec1f2472ae76/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 15144993,
+    "title": "Another Brick in the Wall Part 1 - The Happiest Days of Our Lives - Another Brick in the Wall Part 2",
+    "link": "https://www.deezer.com/track/15144993",
+    "rank": 115737,
+    "artist": {
+     "id": 80068,
+     "name": "David Palmer",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/6bc949911e2be4c9af277d449c3561b8/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1396199,
+     "title": "The Royal Philharmonic Orchestra Plays Pink Floyd/One Of These Days",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b4efc15a83a07293973dbec02965cd40/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1948220,
+    "title": "Another Brick In The Wall (Part 2)",
+    "link": "https://www.deezer.com/track/1948220",
+    "rank": 98118,
+    "artist": {
+     "id": 124878,
+     "name": "Holly Wilson",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/174f0041c89311443f0cf1efa43ac85e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 198268,
+     "title": "Pink Floyd En Bossa Nova",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/26b4c94a79a0b1ef71bdb425ac057a2e/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 77252645,
+    "title": "Another Brick in the Wall (Part 2)",
+    "link": "https://www.deezer.com/track/77252645",
+    "rank": 190915,
+    "artist": {
+     "id": 5768737,
+     "name": "Celtic Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/4e39803694370edce73fa6d49e0243f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 7673227,
+     "title": "Celtic Pink Floyd",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/4e39803694370edce73fa6d49e0243f5/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 12036483,
+    "title": "Another Brick in the Wall Part 2",
+    "link": "https://www.deezer.com/track/12036483",
+    "rank": 21683,
+    "artist": {
+     "id": 275309,
+     "name": "Vitamin String Quartet",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/ff715b52786244d0cbecbc6e305f5e89/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1104095,
+     "title": "VSQ Performs Pink Floyd's The Wall: More Bricks",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/e35b2f4389e498647b8ef4d823625442/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1675075,
+    "title": "Another Brick In The Wall (Part 2)",
+    "link": "https://www.deezer.com/track/1675075",
+    "rank": 50881,
+    "artist": {
+     "id": 4126144,
+     "name": "Fee Waybill (The Tubes)",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 171063,
+     "title": "Pink Box: Songs Of Pink Floyd",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/a07dd9e05a56198e4a3f802843d38baa/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 62143173,
+    "title": "pop-splits - Pink Floyd - Another Brick In The Wall - Part II",
+    "link": "https://www.deezer.com/track/62143173",
+    "rank": 25777,
+    "artist": {
+     "id": 1775891,
+     "name": "Michael Pan",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/f5a225bb676f4632e612b7bc870f5f32/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 6093859,
+     "title": "Pop-Splits - Unforgettable - 21 Geschichten Zu All Time Favourites Vol. 2",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/25e13bac7b9cbdf4c273fb3847908eaf/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2760820311,
+    "title": "Another Brick In The Wall (Part 2) (By Pink Floyd) (Melody Karaoke Version)",
+    "link": "https://www.deezer.com/track/2760820311",
+    "rank": 100000,
+    "artist": {
+     "id": 248387262,
+     "name": "ZZang KARAOKE",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/9f1d3c5c60ea6aa785a93a5ed78fd75e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 576491001,
+     "title": "ZZang KARAOKE 2024 Old POP Vol.45",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/27882751a63b3eefa14b32e296d34f1e/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 66998573,
+    "title": "Another Brick in the Wall (Part 2) [In the Style of Pink Floyd] [Karaoke Version]",
+    "link": "https://www.deezer.com/track/66998573",
+    "rank": 1345,
+    "artist": {
+     "id": 1698087,
+     "name": "Ameritz Karaoke Entertainment",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/2cca8bfb14e7dc82dc2bee5b134f4bbd/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 6552956,
+     "title": "Another Brick in the Wall (Part 2) [In the Style of Pink Floyd] [Karaoke Version] - Single",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/f1958b5304dddd0e623d2f59820ab987/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 15975138,
+    "title": "Another Brick In The Wall - Part 2 (Karaoke Version) (Originally Performed By Pink Floyd)",
+    "link": "https://www.deezer.com/track/15975138",
+    "rank": 11476,
+    "artist": {
+     "id": 1528045,
+     "name": "Amazing Karaoke",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/ba610d90284c8ba1e8ab7b6f547bedf3/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1481208,
+     "title": "Best of Rock Mix, Vol. 8 (Karaoke Version)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/3e59bf39148f4c47c8972af5f2f1c414/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 5555025,
+    "title": "Another Brick In The Wall, Part 2",
+    "link": "https://www.deezer.com/track/5555025",
+    "rank": 7628,
+    "artist": {
+     "id": 365289,
+     "name": "Feeling Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/43384c403b56d1827d91c7ae073c1f51/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 507753,
+     "title": "Chilled Pink - A Chill Out Salute To Pink Floyd",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/43384c403b56d1827d91c7ae073c1f51/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 5072661,
+    "title": "Another Brick In The Wall Part 2",
+    "link": "https://www.deezer.com/track/5072661",
+    "rank": 26263,
+    "artist": {
+     "id": 63528,
+     "name": "Controlled Bleeding",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/b9038831e5dc129c426bcbf71ae7436c/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 465186,
+     "title": "The Other Side Of Pink - A Tribute To Pink Floyd",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/0cb6f243a281b43616e1a046454b447c/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1620999,
+    "title": "Another Brick In The Wall Part 2 (Radio Remix) (Cover Version)",
+    "link": "https://www.deezer.com/track/1620999",
+    "rank": 21534,
+    "artist": {
+     "id": 4130639,
+     "name": "Fee Waybill (of The Tubes)",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 166700,
+     "title": "Re-Building The Wall - A Tribute To Pink Floyd",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b0aa98450d365db49c7a98cbd15907cb/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1621004,
+    "title": "Another Brick In The Wall Part 2 (Dub Remix) (Cover Version)",
+    "link": "https://www.deezer.com/track/1621004",
+    "rank": 2582,
+    "artist": {
+     "id": 4130639,
+     "name": "Fee Waybill (of The Tubes)",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 166700,
+     "title": "Re-Building The Wall - A Tribute To Pink Floyd",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b0aa98450d365db49c7a98cbd15907cb/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 14
+ },
+ "pink-floyd--part-2--pt": {
+  "data": [
+   {
+    "id": 116914094,
+    "title": "Another Brick in the Wall, Pt. 2",
+    "link": "https://www.deezer.com/track/116914094",
+    "rank": 925417,
+    "artist": {
+     "id": 860,
+     "name": "Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d62a818a5de6455f17b6a992cf22b32f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 12114248,
+     "title": "The Wall",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/2bea643b92a8fc6b19a23756f718cbd4/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1520204672,
+    "title": "Another Brick in the Wall, (Pt. 2) (Live)",
+    "link": "https://www.deezer.com/track/1520204672",
+    "rank": 584925,
+    "artist": {
+     "id": 860,
+     "name": "Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d62a818a5de6455f17b6a992cf22b32f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 265182102,
+     "title": "Pulse (Live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/a1a2b945b4ed8d9f84eda7974696d66c/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4051822001,
+    "title": "Another Brick in the Wall, Pt. 2",
+    "link": "https://www.deezer.com/track/4051822001",
+    "rank": 452341,
+    "artist": {
+     "id": 860,
+     "name": "Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d62a818a5de6455f17b6a992cf22b32f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 993721011,
+     "title": "8-Tracks",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/f868a3931618ce5e7ee9d2e74740fe6f/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 116914070,
+    "title": "Another Brick in the Wall, Pt. 2 (Live)",
+    "link": "https://www.deezer.com/track/116914070",
+    "rank": 360912,
+    "artist": {
+     "id": 860,
+     "name": "Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d62a818a5de6455f17b6a992cf22b32f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 12114244,
+     "title": "Delicate Sound of Thunder (Live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/cb33edf058cce918bb9a47e8d1bd32df/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 116926568,
+    "title": "Another Brick in the Wall, Pt. 2",
+    "link": "https://www.deezer.com/track/116926568",
+    "rank": 343336,
+    "artist": {
+     "id": 860,
+     "name": "Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d62a818a5de6455f17b6a992cf22b32f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 12115746,
+     "title": "A Collection Of Great Dance Songs",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/d3ebb7a527e005226100c4d906dfcc21/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 144508988,
+    "title": "Another Brick in the Wall Pt. 2",
+    "link": "https://www.deezer.com/track/144508988",
+    "rank": 91411,
+    "artist": {
+     "id": 5768737,
+     "name": "Celtic Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/4e39803694370edce73fa6d49e0243f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 15676198,
+     "title": "In Studio",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/ddcceaf770886d6294dd2166e5700d03/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3666454952,
+    "title": "Another Brick in the Wall, Pt. 2 (Live 5.25.25)",
+    "link": "https://www.deezer.com/track/3666454952",
+    "rank": 93425,
+    "artist": {
+     "id": 391530,
+     "name": "The Machine Performs Pink Floyd",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/690d9071090c5374d0371386deb1e606/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 859989272,
+     "title": "Live 5.25.25",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/fd1f75ee9c2037bb7c14e4ef6e9b0c93/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 593039942,
+    "title": "Another Brick in the Wall, Pt. 2 (Live Jelling Musikfestival 2012)",
+    "link": "https://www.deezer.com/track/593039942",
+    "rank": 69565,
+    "artist": {
+     "id": 4344110,
+     "name": "Pink Floyd Project",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/5b317349c2f6b51a2b1fba4e0913fa20/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 79779882,
+     "title": "Jelling Musikfestival 2012",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b19ba9eada8d8a52b7727f68f02a18a6/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 8
+ },
+ "bread--if": {
+  "data": [
+   {
+    "id": 675110,
+    "title": "If",
+    "link": "https://www.deezer.com/track/675110",
+    "rank": 562434,
+    "artist": {
+     "id": 7449,
+     "name": "Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/0be2cc7a5d2989034442d9f9ac17deb4/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 81653,
+     "title": "The Best of Bread",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/05849e7461a584ea845918a8c90313ea/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2490954011,
+    "title": "Rolling 200 Deep",
+    "link": "https://www.deezer.com/track/2490954011",
+    "rank": 191025,
+    "artist": {
+     "id": 13702,
+     "name": "DJ Kay Slay",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/aade7f86995030e8249068f1d2ab137d/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 498058591,
+     "title": "Rolling 200 Deep",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/ad58f2ec5249108827083f22bba66e4a/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2180975607,
+    "title": "If",
+    "link": "https://www.deezer.com/track/2180975607",
+    "rank": 189838,
+    "artist": {
+     "id": 7449,
+     "name": "Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/0be2cc7a5d2989034442d9f9ac17deb4/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 415106927,
+     "title": "Guitar Man",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/29dbe2df3e0e4c287b8806ac7b3b015b/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1284685512,
+    "title": "If That's Alright",
+    "link": "https://www.deezer.com/track/1284685512",
+    "rank": 100000,
+    "artist": {
+     "id": 13799041,
+     "name": "King Lowkey Tha Bread Winner",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/65f702af2fb7fd238876647e215679ad/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 217116852,
+     "title": "Real Recognize Real But I Peep The Fake Too",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/15ea05f072780bd75a7d4c0f98352f77/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1284685522,
+    "title": "If You Don't MInd",
+    "link": "https://www.deezer.com/track/1284685522",
+    "rank": 22390,
+    "artist": {
+     "id": 13799041,
+     "name": "King Lowkey Tha Bread Winner",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/65f702af2fb7fd238876647e215679ad/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 217116852,
+     "title": "Real Recognize Real But I Peep The Fake Too",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/15ea05f072780bd75a7d4c0f98352f77/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 139542573,
+    "title": "If I Be Lifted Up",
+    "link": "https://www.deezer.com/track/139542573",
+    "rank": 25136,
+    "artist": {
+     "id": 891593,
+     "name": "Bread And Butter",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/3c08516d5bec84285a766c80434d6c5e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 15006127,
+     "title": "For Dinner",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8525f43687f262140582101ab968bd7d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2180975477,
+    "title": "If / Diary / Make It with You / Sweet Surrender",
+    "link": "https://www.deezer.com/track/2180975477",
+    "rank": 92775,
+    "artist": {
+     "id": 7449,
+     "name": "Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/0be2cc7a5d2989034442d9f9ac17deb4/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 415106927,
+     "title": "Guitar Man",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/29dbe2df3e0e4c287b8806ac7b3b015b/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2215540437,
+    "title": "If You Want To",
+    "link": "https://www.deezer.com/track/2215540437",
+    "rank": 100000,
+    "artist": {
+     "id": 121550772,
+     "name": "Bread Bruthaz",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/20ba4866c8f6d23d09fd347798b4ceb1/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 423592887,
+     "title": "All or Nothin'",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/20ba4866c8f6d23d09fd347798b4ceb1/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2250104717,
+    "title": "If I'm Still Around Tomorrow",
+    "link": "https://www.deezer.com/track/2250104717",
+    "rank": 7149,
+    "artist": {
+     "id": 69538542,
+     "name": "Liquid Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/e70d8ce407bf43e8c7f7f4ca220aa450/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 432886477,
+     "title": "Say What You Mean",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/dc06b19e365e93b36e184b3a58f3d6d8/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2332435725,
+    "title": "If I Fall In Love (feat. Chimeka)",
+    "link": "https://www.deezer.com/track/2332435725",
+    "rank": 100000,
+    "artist": {
+     "id": 10726699,
+     "name": "Bread Doe",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/740d17a051a38c9b4eae394522b37a14/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 454737915,
+     "title": "If I Fall In Love (feat. Chimeka)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/148b4d35bb8d39e87b8f7b96bf0a76a9/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2388120925,
+    "title": "IF",
+    "link": "https://www.deezer.com/track/2388120925",
+    "rank": 100000,
+    "artist": {
+     "id": 154554942,
+     "name": "liquorpool",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/4aa6e61fe380b8eccd91cddf60adcc33/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 470131695,
+     "title": "A Place to Call Home",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/58af0457d95b5518302f99d7979b6841/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3129149561,
+    "title": "If I Had a Boat",
+    "link": "https://www.deezer.com/track/3129149561",
+    "rank": 100000,
+    "artist": {
+     "id": 292725431,
+     "name": "Daniel the Banana Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 680187621,
+     "title": "Daniel the Banana Bread",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/21c32f84dbafe34d702b3707ca157002/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3154440011,
+    "title": "if you don't mind (feat. Hatsune Miku)",
+    "link": "https://www.deezer.com/track/3154440011",
+    "rank": 4311,
+    "artist": {
+     "id": 412102232,
+     "name": "unreal bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/4c9ae171bee230ad5360a992688b911d/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 687274601,
+     "title": "if you don't mind (feat. Hatsune Miku)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/26056ddff3858220ed03542eff690d4f/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3246111101,
+    "title": "If We Being Real",
+    "link": "https://www.deezer.com/track/3246111101",
+    "rank": 22449,
+    "artist": {
+     "id": 125451312,
+     "name": "Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/9c65178e7d6d9334f174894320c4d575/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 717151581,
+     "title": "J.B 1",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/731d75bc28a069a385c06fb83c48b37a/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3390543331,
+    "title": "If Its Bout That Money (feat. RTB Bread, Stretch & Mg Cp)",
+    "link": "https://www.deezer.com/track/3390543331",
+    "rank": 16024,
+    "artist": {
+     "id": 322426321,
+     "name": "Baby Micro",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/95a4410a7bc5ed3474c5fdff84e8f4bf/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 764449061,
+     "title": "If Its Bout That Money (feat. RTB Bread, Stretch & Mg Cp)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/95a4410a7bc5ed3474c5fdff84e8f4bf/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3451855701,
+    "title": "Try Me If You Want",
+    "link": "https://www.deezer.com/track/3451855701",
+    "rank": 100000,
+    "artist": {
+     "id": 66632662,
+     "name": "Dj Rye Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/2da3cdd8306e0e3690d935f971f94245/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 785345931,
+     "title": "Try Me If You Want",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/4245bc48ccb884a9cbf31b543ac6d22b/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3518936111,
+    "title": "If only",
+    "link": "https://www.deezer.com/track/3518936111",
+    "rank": 100000,
+    "artist": {
+     "id": 302061181,
+     "name": "Bread Spitt",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/981a02edb0023906f11d9cb9e35893e2/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 808509301,
+     "title": "If only",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b6153db00f61415bbffdb1898bde84e3/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3535086841,
+    "title": "If Only (feat. Yung Senju)",
+    "link": "https://www.deezer.com/track/3535086841",
+    "rank": 100000,
+    "artist": {
+     "id": 343907961,
+     "name": "Bread For Sale",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 813992061,
+     "title": "Off The Clock",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/c252b6ee751fa62a08656d5beddc69ba/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3587318651,
+    "title": "If You Had Faith... (Based on Lk 17:5-10)",
+    "link": "https://www.deezer.com/track/3587318651",
+    "rank": 100000,
+    "artist": {
+     "id": 344499981,
+     "name": "Angels Daily Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/baf0aa20b777eab595005e4cb1fb1d0e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 832684361,
+     "title": "If You Had Faith... (Based on Lk 17:5-10)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/50fb3bc6cfa0319f753a689c022bb7ec/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3610695982,
+    "title": "If Your Soul is Called... (Based on Luke 12:13-21)",
+    "link": "https://www.deezer.com/track/3610695982",
+    "rank": 100000,
+    "artist": {
+     "id": 344499981,
+     "name": "Angels Daily Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/baf0aa20b777eab595005e4cb1fb1d0e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 841027622,
+     "title": "If Your Soul is Called... (Based on Luke 12:13-21)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/0531d195a315e5835bf11b62074872c8/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3646695742,
+    "title": "If My Brother Sins... (Based on Lk 17:1-6)",
+    "link": "https://www.deezer.com/track/3646695742",
+    "rank": 100000,
+    "artist": {
+     "id": 344499981,
+     "name": "Angels Daily Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/baf0aa20b777eab595005e4cb1fb1d0e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 853305422,
+     "title": "If My Brother Sins... (Based on Lk 17:1-6)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/7537805c0927059065bf4dcb73e3c5b8/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3667253802,
+    "title": "If Only You... (Based on Lk 19:41-44)",
+    "link": "https://www.deezer.com/track/3667253802",
+    "rank": 100000,
+    "artist": {
+     "id": 344499981,
+     "name": "Angels Daily Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/baf0aa20b777eab595005e4cb1fb1d0e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 860150572,
+     "title": "If Only You... (Based on Lk 19:41-44)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/5e5573596d481e42e6dc616aac0daee4/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3685938042,
+    "title": "If I Pray",
+    "link": "https://www.deezer.com/track/3685938042",
+    "rank": 100000,
+    "artist": {
+     "id": 65061682,
+     "name": "Sliced Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/7d1eeeb6796685d3db0b28e1657ffe1b/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 866600882,
+     "title": "Bread for The Broken",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/d5115626748b2a8bcfc1556cb09e5a34/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3703809182,
+    "title": "If You Had 100 Sheep... (Based on Mt 18:12-14)",
+    "link": "https://www.deezer.com/track/3703809182",
+    "rank": 100000,
+    "artist": {
+     "id": 344499981,
+     "name": "Angels Daily Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/baf0aa20b777eab595005e4cb1fb1d0e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 873216512,
+     "title": "If You Had 100 Sheep... (Based on Mt 18:12-14)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/453a1bdebfd03abb9af8557cc3f56933/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3804669692,
+    "title": "If A Kingdom is Divided (Based on Mk 3:22-30)",
+    "link": "https://www.deezer.com/track/3804669692",
+    "rank": 100000,
+    "artist": {
+     "id": 344499981,
+     "name": "Angels Daily Bread",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/baf0aa20b777eab595005e4cb1fb1d0e/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 905664582,
+     "title": "If A Kingdom is Divided (Based on Mk 3:22-30)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/862fe3b9b2aab0ad1bbba5170d4bf850/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 31
+ },
+ "bangles--eternal-flame": {
+  "data": [
+   {
+    "id": 3254274,
+    "title": "Eternal Flame (Acoustic Version)",
+    "link": "https://www.deezer.com/track/3254274",
+    "rank": 526613,
+    "artist": {
+     "id": 994,
+     "name": "The Bangles",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/8cd2e8e4eb075be1a1bdf067892057ac/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 310414,
+     "title": "Something That You Said",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/7106ba3da8c0f04d6d04f41c5f53d282/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1065645,
+    "title": "Eternal Flame",
+    "link": "https://www.deezer.com/track/1065645",
+    "rank": 216785,
+    "artist": {
+     "id": 166810,
+     "name": "Bangles",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/dfd6f777c088ec7042f9eefd44210ab6/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 115453,
+     "title": "Everything",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8c37576fd06ae848444b8412e431cb4f/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 2
+ },
+ "bruce-hornsby--the-way-it-is": {
+  "data": [
+   {
+    "id": 628518,
+    "title": "The Way It Is (Remastered)",
+    "link": "https://www.deezer.com/track/628518",
+    "rank": 767674,
+    "artist": {
+     "id": 13078,
+     "name": "Bruce Hornsby & The Range",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/01544d4347f40833968c56cc84b5554f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 78639,
+     "title": "Greatest Radio Hits",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b40b037ab4f5263b112083f537d558f4/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 82944632,
+    "title": "The Way It Is",
+    "link": "https://www.deezer.com/track/82944632",
+    "rank": 496212,
+    "artist": {
+     "id": 13078,
+     "name": "Bruce Hornsby & The Range",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/01544d4347f40833968c56cc84b5554f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 8329752,
+     "title": "Pure... American Anthems",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/f73194dae784a545908e08520f26facf/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3001600651,
+    "title": "The Way It Is",
+    "link": "https://www.deezer.com/track/3001600651",
+    "rank": 441220,
+    "artist": {
+     "id": 12736,
+     "name": "Bruce Hornsby",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c3df637846f65670d8e9f8cceda279f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 645242321,
+     "title": "The Very Best of Entertainment II",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/6b65ff43bcfad636e99725133e910ae3/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 101982643,
+    "title": "The Way It Is (Remastered) (Live)",
+    "link": "https://www.deezer.com/track/101982643",
+    "rank": 256424,
+    "artist": {
+     "id": 12736,
+     "name": "Bruce Hornsby",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c3df637846f65670d8e9f8cceda279f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 10589275,
+     "title": "Live At The Ritz, New York, 2Nd Feb '87 (Remastered) (Live FM Radio Broadcast Concert In Superb Fidelity)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/e11f2e6ff2cb79868d3364ac963db359/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 126848381,
+    "title": "The Way It Is (Live at the Ritz, NYC, NY - February 1987)",
+    "link": "https://www.deezer.com/track/126848381",
+    "rank": 252370,
+    "artist": {
+     "id": 13078,
+     "name": "Bruce Hornsby & The Range",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/01544d4347f40833968c56cc84b5554f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 13367015,
+     "title": "Live: The Way It Is Tour 1986-87",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/7131c88e0938db56d3ce6e198d1cdad9/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 960791,
+    "title": "The Way It Is (Live - 1998/99)",
+    "link": "https://www.deezer.com/track/960791",
+    "rank": 209699,
+    "artist": {
+     "id": 12736,
+     "name": "Bruce Hornsby",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c3df637846f65670d8e9f8cceda279f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 107716,
+     "title": "Here Come the Noise Makers",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/448bc00173dc633c320b9d5e99d7df74/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1169152212,
+    "title": "The Way It Is",
+    "link": "https://www.deezer.com/track/1169152212",
+    "rank": 40531,
+    "artist": {
+     "id": 12736,
+     "name": "Bruce Hornsby",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c3df637846f65670d8e9f8cceda279f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 191662182,
+     "title": "Marian McPartland's Piano Jazz Radio Broadcast With Bruce Hornsby",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/df59e2fd348303eaf45b5f146ffbf572/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1202877522,
+    "title": "The Way It Is",
+    "link": "https://www.deezer.com/track/1202877522",
+    "rank": 23518,
+    "artist": {
+     "id": 1293742,
+     "name": "Bruce Hornsby with the Fairfield Four",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 198753902,
+     "title": "Moneyland",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/4ca6c71a0b32d3d8774200dca40c526e/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1238923302,
+    "title": "The Way It Is: The Way It Is / Chasing Love",
+    "link": "https://www.deezer.com/track/1238923302",
+    "rank": 21656,
+    "artist": {
+     "id": 122944962,
+     "name": "Red Hot Chilli Pipers and Bruce Hornsby and Jeanette Willis",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 206534982,
+     "title": "Octane",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/a6e9488228964de03d728977686f3bc2/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 126848375,
+    "title": "The Way It Is (Piano Intro) (Live at the Ritz, NYC, NY - February 1987)",
+    "link": "https://www.deezer.com/track/126848375",
+    "rank": 116948,
+    "artist": {
+     "id": 13078,
+     "name": "Bruce Hornsby & The Range",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/01544d4347f40833968c56cc84b5554f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 13367015,
+     "title": "Live: The Way It Is Tour 1986-87",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/7131c88e0938db56d3ce6e198d1cdad9/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 134584767,
+    "title": "The Way It Is (Live)",
+    "link": "https://www.deezer.com/track/134584767",
+    "rank": 25996,
+    "artist": {
+     "id": 12736,
+     "name": "Bruce Hornsby",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c3df637846f65670d8e9f8cceda279f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 14351671,
+     "title": "At The Bottom Line, Ny, Sept '86 (Live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/5116f2e229feb62c10023367663b7b82/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1371496822,
+    "title": "The Way It is (Live)",
+    "link": "https://www.deezer.com/track/1371496822",
+    "rank": 21784,
+    "artist": {
+     "id": 12736,
+     "name": "Bruce Hornsby",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c3df637846f65670d8e9f8cceda279f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 229951392,
+     "title": "Welcome To The 1980s (Live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/e69851a19c6c107fb3b579aace32529a/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1516271202,
+    "title": "The Way It Is (Live from Köln 2019 - NYC Epicenters)",
+    "link": "https://www.deezer.com/track/1516271202",
+    "rank": 50815,
+    "artist": {
+     "id": 12736,
+     "name": "Bruce Hornsby",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c3df637846f65670d8e9f8cceda279f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 264254022,
+     "title": "The Way It Is (Live from Köln 2019 - NYC Epicenters)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/94077a696acddd848f186ebf1c959cf7/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1558295992,
+    "title": "The Way It Is (Live 1988)",
+    "link": "https://www.deezer.com/track/1558295992",
+    "rank": 70137,
+    "artist": {
+     "id": 12736,
+     "name": "Bruce Hornsby",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c3df637846f65670d8e9f8cceda279f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 273661442,
+     "title": "Window Display (Live 1988)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/46acbf0deb6df77ba04836c14ad66987/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2937424151,
+    "title": "The Way It Is (Live)",
+    "link": "https://www.deezer.com/track/2937424151",
+    "rank": 88227,
+    "artist": {
+     "id": 12736,
+     "name": "Bruce Hornsby",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c3df637846f65670d8e9f8cceda279f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 626187651,
+     "title": "Step By Step (Live New York '86)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/43538d9d0135c7ce12d12ff1e0f41c24/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 82542076,
+    "title": "The Way It Is (Live at the Jazz House, Copenhagen, Denmark - September 2004)",
+    "link": "https://www.deezer.com/track/82542076",
+    "rank": 106125,
+    "artist": {
+     "id": 12736,
+     "name": "Bruce Hornsby",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c3df637846f65670d8e9f8cceda279f5/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 8288186,
+     "title": "Intersections 1985-2005",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/408302ed28ecc0f19e318910f855d1d0/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 16
+ },
+ "the-beach-boys--good-vibrations": {
+  "data": [
+   {
+    "id": 3091992,
+    "title": "Good Vibrations (Remastered 2001)",
+    "link": "https://www.deezer.com/track/3091992",
+    "rank": 781671,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 299377,
+     "title": "The Very Best Of The Beach Boys: Sounds Of Summer",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/ab113555b056cb808b050dff43a9590a/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176175,
+    "title": "Good Vibrations",
+    "link": "https://www.deezer.com/track/14176175",
+    "rank": 529133,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1786548217,
+    "title": "Good Vibrations (2021 Stereo Mix)",
+    "link": "https://www.deezer.com/track/1786548217",
+    "rank": 319621,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 326318837,
+     "title": "The Very Best Of The Beach Boys: Sounds Of Summer (Expanded Edition Super Deluxe)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/52560aed836bb5f629e89e67a68f41a6/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 508354262,
+    "title": "Good Vibrations",
+    "link": "https://www.deezer.com/track/508354262",
+    "rank": 228961,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 65021552,
+     "title": "The Beach Boys With The Royal Philharmonic Orchestra",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/ea9c6ff174e0093cc65f806e6fc9d933/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 67234520,
+    "title": "Good Vibrations (Live/2012)",
+    "link": "https://www.deezer.com/track/67234520",
+    "rank": 78235,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 6575503,
+     "title": "Live - The 50th Anniversary Tour",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/5bbe8d0ba5c9abe357731fe87a422ef4/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4008647981,
+    "title": "Good Vibrations (Highlights From Tracking Date)",
+    "link": "https://www.deezer.com/track/4008647981",
+    "rank": 70176,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 978189111,
+     "title": "The Pet Sounds Sessions (Deluxe Edition)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/a3064e4489922b9db378d201534b2a3e/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 4008647991,
+    "title": "Good Vibrations (Stereo Backing Track/Instrumental)",
+    "link": "https://www.deezer.com/track/4008647991",
+    "rank": 108165,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 978189111,
+     "title": "The Pet Sounds Sessions (Deluxe Edition)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/a3064e4489922b9db378d201534b2a3e/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 435830572,
+    "title": "Good Vibrations (Live In Hawaii / 8/25/67)",
+    "link": "https://www.deezer.com/track/435830572",
+    "rank": 32962,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 52664252,
+     "title": "1967 - Live Sunshine",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/0e11211a5a9d1bf86c4ce69dbba06ad3/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1173581122,
+    "title": "Good Vibrations (Live)",
+    "link": "https://www.deezer.com/track/1173581122",
+    "rank": 8787,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 192522612,
+     "title": "Good Vibrations (Live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/925c4177051b7be9eefd0f2da3a11af3/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1177097582,
+    "title": "Good Vibrations (Live)",
+    "link": "https://www.deezer.com/track/1177097582",
+    "rank": 8794,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 193178302,
+     "title": "Surfer Girl (Live)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/3977bda7c866691c3d90da5711efe368/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 120466628,
+    "title": "Good Vibrations (Remastered) (Live)",
+    "link": "https://www.deezer.com/track/120466628",
+    "rank": 10164,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 12569112,
+     "title": "The Fillmore East Last 3 Nites - Live & Remastered",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/4d66373b7265147841b7151e4c2d7d13/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 126367619,
+    "title": "Good Vibrations (Live At Daughters Of The American Revolution Constitution Hall, Washington DC/1967)",
+    "link": "https://www.deezer.com/track/126367619",
+    "rank": 58206,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 13308901,
+     "title": "Pet Sounds (50th Anniversary Edition)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/4a5004943ff1c8bf41473fbcdf5e3326/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 126707267,
+    "title": "Good Vibrations (Encore) [Remastered] (Live At Philadelphia Spectrum, April 18Th 1980)",
+    "link": "https://www.deezer.com/track/126707267",
+    "rank": 26591,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 13349449,
+     "title": "Live In The Eighties (Remastered)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/fc9155f1f3d43ae581aad8341615f924/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 133321914,
+    "title": "Good Vibrations (Live 1981 FM Broadcast Remastered) (FM Broadcast The Mall Park, Washington DC 4th July 1981 Remastered)",
+    "link": "https://www.deezer.com/track/133321914",
+    "rank": 1314,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 14194662,
+     "title": "Legendary FM Broadcasts - FM Broadcast The Mall Park, Washington DC 4th July 1981",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/9f05878c57e3936f223c2683d529c86c/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1340316472,
+    "title": "Good Vibrations (Live at John F. Kennedy Stadium, 13th July 1985)",
+    "link": "https://www.deezer.com/track/1340316472",
+    "rank": 115693,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 222178112,
+     "title": "The Beach Boys at Live Aid (Live at John F. Kennedy Stadium, 13th July 1985)",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b42413b948675537ba8573fc3bebf6d4/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176272,
+    "title": "Good Vibrations: Gold Star 2/18/66 (The Pet Sounds Session)",
+    "link": "https://www.deezer.com/track/14176272",
+    "rank": 16836,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176273,
+    "title": "Good Vibrations: Gold Star 4/9/66",
+    "link": "https://www.deezer.com/track/14176273",
+    "rank": 32296,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176274,
+    "title": "Good Vibrations: Western 5/4/66 (First Chorus)",
+    "link": "https://www.deezer.com/track/14176274",
+    "rank": 32857,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176275,
+    "title": "Good Vibrations: Western 5/4/66 (Second Chorus & Fade)",
+    "link": "https://www.deezer.com/track/14176275",
+    "rank": 46164,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176276,
+    "title": "Good Vibrations: Sunset Sound 5/24/66 (Part 1)",
+    "link": "https://www.deezer.com/track/14176276",
+    "rank": 25416,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176277,
+    "title": "Good Vibrations: Sunset Sound 5/24/66 (Parts 2 & 3)",
+    "link": "https://www.deezer.com/track/14176277",
+    "rank": 48734,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176278,
+    "title": "Good Vibrations: Sunset Sound 5/24/66 (Part 4)",
+    "link": "https://www.deezer.com/track/14176278",
+    "rank": 35258,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176279,
+    "title": "Good Vibrations: Western 5/27/66 (Part C)",
+    "link": "https://www.deezer.com/track/14176279",
+    "rank": 30867,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176280,
+    "title": "Good Vibrations: Western (Chorus/2011 Smile Version)",
+    "link": "https://www.deezer.com/track/14176280",
+    "rank": 26690,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 14176281,
+    "title": "Good Vibrations: Western 5/27/66 (Fade Sequence)",
+    "link": "https://www.deezer.com/track/14176281",
+    "rank": 46171,
+    "artist": {
+     "id": 2179,
+     "name": "The Beach Boys",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/d728129020af9a9f9b2f1127d3cfd751/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1299950,
+     "title": "The Smile Sessions",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/bba1cf7653b46ccdcfc9fb1aa81c6c8d/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 81
+ },
+ "abba--dancing-queen": {
+  "data": [
+   {
+    "id": 884025,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/884025",
+    "rank": 946082,
+    "artist": {
+     "id": 180,
+     "name": "ABBA",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/1cd9c41f13f3114367692383758be3c1/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 100323,
+     "title": "ABBA Gold",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/b8b70d474b7a8f27799e0d665e9b737e/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 84791811,
+    "title": "Dancing Queen (Live)",
+    "link": "https://www.deezer.com/track/84791811",
+    "rank": 392383,
+    "artist": {
+     "id": 180,
+     "name": "ABBA",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/1cd9c41f13f3114367692383758be3c1/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 8548981,
+     "title": "Live At Wembley Arena",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/ce19a7bacd7df60683b466172655251a/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 10002627,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/10002627",
+    "rank": 77696,
+    "artist": {
+     "id": 1193688,
+     "name": "Abba Cover Band",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c844593892e05142de575601709eef26/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 916295,
+     "title": "A Tribute to Abba: The Great Pop Music Band",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/c844593892e05142de575601709eef26/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1006072702,
+    "title": "Dancing queen",
+    "link": "https://www.deezer.com/track/1006072702",
+    "rank": 30409,
+    "artist": {
+     "id": 425060,
+     "name": "Abba World Revival",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/324bfe630bc4e7031f85f38e3ba7ba39/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 157627442,
+     "title": "Greatest Hits, Vol. 1",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/184a2e7a250e7bddaa1f2c6869344254/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1050922472,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/1050922472",
+    "rank": 22296,
+    "artist": {
+     "id": 64888272,
+     "name": "Abba Experience",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 167039892,
+     "title": "60s, 70s Oldies - Vintage Greatest Radio Hits",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/355fa698b9885a54d505868a9a7b8efb/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 10597409,
+    "title": "Dancing Queen (From \"Mama Mia\")",
+    "link": "https://www.deezer.com/track/10597409",
+    "rank": 31319,
+    "artist": {
+     "id": 1227902,
+     "name": "Abba Maniacs",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 969366,
+     "title": "Movie Love Songs",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/4002630c119bd06489bd45e1d4830bf5/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 116799004,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/116799004",
+    "rank": 8960,
+    "artist": {
+     "id": 9623126,
+     "name": "Cast of Abba-Salutely 70's",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/90b91901f2f4052d1e60b04d5d8810e3/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 12099106,
+     "title": "Abba-Salutely 70's",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/90b91901f2f4052d1e60b04d5d8810e3/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1272747992,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/1272747992",
+    "rank": 98668,
+    "artist": {
+     "id": 615123,
+     "name": "ABBA Tribute",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/fd27d7baf978d2ec2982ed749d4915dc/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 214173122,
+     "title": "ABBA Gold: The Greatest Hits",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/fd27d7baf978d2ec2982ed749d4915dc/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 12950957,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/12950957",
+    "rank": 2640,
+    "artist": {
+     "id": 826870,
+     "name": "a Tribute To ABBA",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 1187636,
+     "title": "Tribute to ABBA",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/ef4cb88f33eaaaa891df72f4f90b8f87/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 1504670222,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/1504670222",
+    "rank": 33076,
+    "artist": {
+     "id": 15085977,
+     "name": "The Real Abba Gold",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/e67e1c5390c4ffa1bfad6bd5a2a6864f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 261385582,
+     "title": "The Tribute Album",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/e67e1c5390c4ffa1bfad6bd5a2a6864f/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2235104687,
+    "title": "Dancing Queen - ABBA Piano Cover",
+    "link": "https://www.deezer.com/track/2235104687",
+    "rank": 39517,
+    "artist": {
+     "id": 209469647,
+     "name": "ABBA Piano Covers",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/e02433214fd6118ac7c8bd00a9081550/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 428962807,
+     "title": "Dancing Queen - ABBA Piano Cover",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/e02433214fd6118ac7c8bd00a9081550/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2257721297,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/2257721297",
+    "rank": 13757,
+    "artist": {
+     "id": 148190,
+     "name": "ABBA Revival Band",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/c29dcbca07b5fc870b06aefef8c7cc83/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 434768237,
+     "title": "Plays Abba Hits",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/e78216fbbac1bd6d2f409109681afd7a/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2762921221,
+    "title": "Abba - Dancing Queen - Piano Cover",
+    "link": "https://www.deezer.com/track/2762921221",
+    "rank": 26631,
+    "artist": {
+     "id": 209469647,
+     "name": "ABBA Piano Covers",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/e02433214fd6118ac7c8bd00a9081550/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 577113911,
+     "title": "ABBA - Piano Covers",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/6a9c88ea8a4cc29dad233b56bb9123be/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2864107972,
+    "title": "Mama Mia / Take a Chance / Sos / Voulez Vous / Knowing Me Knowing You / Dancing Queen",
+    "link": "https://www.deezer.com/track/2864107972",
+    "rank": 314,
+    "artist": {
+     "id": 81253122,
+     "name": "ABBA-NRG",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist//1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 606871082,
+     "title": "Pump up the Nrg",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/2b8e6c5e083b1e7d4a90aa44640af9a0/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 3025700801,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/3025700801",
+    "rank": 470,
+    "artist": {
+     "id": 250207202,
+     "name": "Abba na Viola",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/da6f7d5f7ac39fcf88e5b0447c351796/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 650693251,
+     "title": "Dancing Queen",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/0352a1c5a68cdc0585eb96a291cf1309/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 50414921,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/50414921",
+    "rank": 64799,
+    "artist": {
+     "id": 3508311,
+     "name": "ABBA-DJ",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/120de0dbfb88a35e36d332118c509234/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 4859311,
+     "title": "Non-Stop Club Remixes",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/120de0dbfb88a35e36d332118c509234/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 50414931,
+    "title": "La Reina del Baile (Dancing Queen)",
+    "link": "https://www.deezer.com/track/50414931",
+    "rank": 75245,
+    "artist": {
+     "id": 3508311,
+     "name": "ABBA-DJ",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/120de0dbfb88a35e36d332118c509234/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 4859311,
+     "title": "Non-Stop Club Remixes",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/120de0dbfb88a35e36d332118c509234/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 519900872,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/519900872",
+    "rank": 21183,
+    "artist": {
+     "id": 3222401,
+     "name": "ABBA Stars",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/acc75227bee496d228117a1ba7b094b2/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 66966012,
+     "title": "Golden Songs",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/acc75227bee496d228117a1ba7b094b2/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 61168315,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/61168315",
+    "rank": 52368,
+    "artist": {
+     "id": 4038622,
+     "name": "Black Abba",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/97e9b082296cd24248be666558b4b51f/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 5991043,
+     "title": "Black Abba Tribute",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/97e9b082296cd24248be666558b4b51f/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 7626208,
+    "title": "Dancing queen",
+    "link": "https://www.deezer.com/track/7626208",
+    "rank": 39384,
+    "artist": {
+     "id": 520784,
+     "name": "Abbamania",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/32fc3310d874be9cffc8d8a405b465dd/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 703201,
+     "title": "Abba Mania",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/cc5911783f8631cee70a43ad15521a6b/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 78927110,
+    "title": "Dancing Queen",
+    "link": "https://www.deezer.com/track/78927110",
+    "rank": 31684,
+    "artist": {
+     "id": 5892720,
+     "name": "Abba-tastic",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/f037082317e9a8c559614aee98aa7691/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 7846217,
+     "title": "Non-Stop Tribute Megamix",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/f037082317e9a8c559614aee98aa7691/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 21
+ },
+ "the-bangles--eternal-flame": {
+  "data": [
+   {
+    "id": 3254274,
+    "title": "Eternal Flame (Acoustic Version)",
+    "link": "https://www.deezer.com/track/3254274",
+    "rank": 526613,
+    "artist": {
+     "id": 994,
+     "name": "The Bangles",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/8cd2e8e4eb075be1a1bdf067892057ac/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 310414,
+     "title": "Something That You Said",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/7106ba3da8c0f04d6d04f41c5f53d282/1000x1000-000000-80-0-0.jpg"
+    }
+   },
+   {
+    "id": 2847452,
+    "title": "Eternal Flame",
+    "link": "https://www.deezer.com/track/2847452",
+    "rank": 425921,
+    "artist": {
+     "id": 994,
+     "name": "The Bangles",
+     "picture_xl": "https://cdn-images.dzcdn.net/images/artist/8cd2e8e4eb075be1a1bdf067892057ac/1000x1000-000000-80-0-0.jpg"
+    },
+    "album": {
+     "id": 276592,
+     "title": "Love Songs",
+     "cover_xl": "https://cdn-images.dzcdn.net/images/cover/8eca53d6ff7d73a6c6dcfab7fd3f95f8/1000x1000-000000-80-0-0.jpg"
+    }
+   }
+  ],
+  "total": 2
+ }
+}

@@ -1,0 +1,1 @@
+{ "extends": "../../tsconfig.base.json", "compilerOptions": { "rootDir": "src", "outDir": "dist", "module": "ESNext", "moduleResolution": "Bundler", "composite": false, "declaration": false, "noEmit": true, "lib": ["ES2022", "DOM", "DOM.Iterable"] }, "include": ["src"], "references": [{ "path": "../core" }] }
