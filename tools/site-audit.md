@@ -1,6 +1,6 @@
 # Strudelify website audit
 
-Completed 11 September 2026 against the local source database and rebuilt production site.
+Initial audit completed 11 September 2026. The subsequent [instrumental performance audit](music-quality-audit.md) supersedes the renderer, test totals, source choices and fidelity limitations below.
 
 ## Library
 

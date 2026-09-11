@@ -1,0 +1,28 @@
+{
+  "source": "https://colinraffel.com/projects/lmd/",
+  "license": "CC-BY-4.0",
+  "entries": [
+    {
+      "id": "the-beatles--love-me-do",
+      "file": "love-me-do.mid",
+      "original": "The Beatles/Love Me Do.mid",
+      "reason": "Instrumental version with acoustic guitar, bass, harmonica and drums; replaces an embellished organ/synth-brass/synth-strings arrangement.",
+      "sha256": "502955304e0db73bfc74bb423e284cbf424e7bfaaa74316143dc374b7bbf3e3f",
+      "drumKit": "acoustic"
+    },
+    {
+      "id": "nirvana--smells-like-teen-spirit",
+      "file": "smells-like-teen-spirit.mid",
+      "original": "Nirvana/Smells Like Teen Spirit.8.mid",
+      "reason": "Fuller approximately five-minute instrumental arrangement with electric pick bass and guitar parts. Replaces the shorter slap-bass version. Channel 3 (zero-based 2), the synth lead entering at the verse, is the vocal guide and is excluded.",
+      "sha256": "001959270e233df2660cfc0a936395d9dcf9a2df259920a8c35cda7db8cb58ba",
+      "drumKit": "acoustic",
+      "originalSha256": "22658eeb5f1216d6822ad2fc3c4304317abc8b56aed7afb747149289bb2c93bc",
+      "repair": "Corrected four MTrk payload-length headers to the actual next chunk boundary. Track payload bytes were not changed.",
+      "vocalChannels": [
+        2
+      ],
+      "beatScale": 0.5
+    }
+  ]
+}

@@ -48,14 +48,12 @@ export const el = {
   posSec: $<HTMLSpanElement>('pos-sec'),
   // options
   optMelody: $<HTMLLabelElement>('opt-melody'),
-  optLead: $<HTMLLabelElement>('opt-lead'),
   optBars: $<HTMLLabelElement>('opt-bars'),
   optNote: $<HTMLSpanElement>('opt-note'),
   optsSkel: $<HTMLDivElement>('opts-skel'),
   optNoteText: $<HTMLSpanElement>('opt-note-text'),
   melodyLabel: $<HTMLSpanElement>('melody-label'),
   melody: $<HTMLInputElement>('melody'),
-  melodySound: $<HTMLSelectElement>('melodySound'),
   maxBars: $<HTMLSelectElement>('maxBars'),
   // timeline
   timeline: $<HTMLDivElement>('timeline'),

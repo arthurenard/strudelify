@@ -10,7 +10,7 @@ describe('CLI defaults', () => {
   it('takes its compile defaults from core instead of hard-coding them', () => {
     expect(src).toMatch(/'--max-tracks <n>'[^\n]*String\(DEFAULT_MAX_TRACKS\)/);
     expect(src).toMatch(/'--max-bars <n>'[^\n]*String\(DEFAULT_MAX_BARS\)/);
-    expect(src).toMatch(/'--melody-sound <name>'[^\n]*DEFAULT_MELODY_SOUND/);
+    expect(src).not.toContain(".option('--melody-sound");
     expect(src).not.toMatch(/'--max-tracks <n>'[^\n]*'\d+'/);
     expect([DEFAULT_MAX_TRACKS, DEFAULT_MAX_BARS, DEFAULT_MELODY_SOUND]).toEqual([12, 200, 'gm_lead_2_sawtooth']);
   });

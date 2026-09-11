@@ -6,13 +6,14 @@ No LLM involved: the music is compiled from open, machine-readable transcription
 The bundled library contains **10,644 catalogue entries**: 10,176 with MIDI and 468 with chord charts only.
 Of the MIDI entries, 271 also have a chord chart. Alternate transcriptions and artist/title spellings remain
 in the catalogue, so this is an entry count, not a verified count of distinct compositions. The website
-uses that wording and derives its count directly from the shipped index.
+uses that wording and derives its count directly from the shipped index. Two MIDI entries currently have
+no separately identified instrumental parts; the player explains this and disables playback.
 
 - **Chords and structure** from the [McGill Billboard](https://ddmal.music.mcgill.ca/research/billboard)
   chord annotations (about 740 Billboard hits, 1958 to 1991).
 - **Melody, bass, drums, tempo and key** from the
   [Lakh MIDI dataset](https://colinraffel.com/projects/lmd/) clean subset (about 10k songs, CC-BY).
-- Output is instrumental. The vocal line is played by a synth, never a voice, and can be switched off.
+- Detected lead and backing vocal parts are excluded. Instrumental melodies retain their instruments.
 - Lyrics are deliberately not included.
 
 ## Layout
@@ -56,7 +57,7 @@ catalogue, not a song; words inside a title only resolve when they explain nearl
 Ambiguous queries print the candidates and exit 1; pass the artist or the exact id. Songs not in the
 database also exit 1 with the nearest matches, never a silent substitute.
 
-Options: `--no-melody`, `--melody-sound <name>`, `--max-bars <n>`, `--max-tracks <n>`, `--json`,
+Options: `--no-melody` (also removes instrumental leads), `--max-bars <n>`, `--max-tracks <n>`, `--json`,
 `--db <dir>` (or `STRUDELIFY_DB`).
 
 ## Web app
@@ -81,7 +82,8 @@ editor. Deploy `packages/web/dist` together with `packages/data/public/db` (abou
   cover, read from its pixels once it has loaded; without a cover a letter tile in a colour derived
   from the title stands in. Hits and tints are cached in localStorage; these lookups are the only
   network calls that leave your machine besides the app's own files. Hovering a search result or an
-  example card warms its art, so the song opens with cover and tint in place.
+  example card warms its art, so the song opens with cover and tint in place. All landing-page cards
+  also load their album artwork automatically, with two concurrent lookups and a letter fallback.
 - **Player**: play/pause (`Space`), back to start (`Home`), `←`/`→` move four bars, a hard stop that
   also silences ringing notes. The readout shows time, bar, the chord sounding and the section.
 - **Timeline**: a bar ruler, a section lane and a chord lane over a seekable slider. Sections are the
@@ -90,8 +92,8 @@ editor. Deploy `packages/web/dist` together with `packages/data/public/db` (abou
   its own symbol; zoomed out, bars are grouped into harmonic phrases (`F · A♭` over sixteen alternating
   bars) so long songs stay legible. Long songs scroll sideways with an overview strip as the map.
   Everything is keyboard-reachable (Tab to a lane, arrows along it, Enter to jump).
-- **Options**: the melody switch says what it switches ("Vocal line" on a synth, or "Lead guitar" that
-  keeps its own instrument), a lead-sound picker for sung lines, and a bar cap (default 200 bars of 4/4).
+- **Options**: an instrumental-lead switch and an optional excerpt length. The website renders all
+  instrumental tracks and the full song by default. Detected vocals are always excluded.
   A chord chart is always rendered whole and has no options.
 - **Code**: the generated file in a Strudel editor with a wrap toggle, an always-visible horizontal
   scrollbar for the long note lines, copy, download and "Open in strudel.cc" (the code travels in the
@@ -106,51 +108,43 @@ dropped duplicates, the mix scaling), and every part's comment says its role, it
 
 ### MIDI songs
 
-- **Time**: the dominant tempo and metre set the grid. Sections at another tempo keep their real
-  duration; a tempo within 5 % of a simple ratio (2x, 3x, 1.5x, half) is snapped to it so its notes stay
-  on the cell grid, a short count-in is squeezed onto the grid, and bar 0 is phased to the file's bar
-  lines so a pickup bar does not shift every later downbeat.
-- **Parts**: notes merge per channel and program. The raw file is scanned as well as parsed, because
-  @tonejs/midi drops controller channels and RPNs: channel volume and expression (CC 7 x CC 11), pan
-  (CC 10), sustain (CC 64, which lengthens held notes) and coarse tuning (RPN 2) are honoured. Track
-  names come from the raw chunks too (read as UTF-8 when they are, Windows-1252 otherwise); names that
-  are credits ("Sequenced by…", URLs, the song's own title) are dropped.
-- **Patches**: programs selected with bank 127 are read through the Roland MT-32 map when the file
-  means it (a GS reset, MT-32 patch names, a bass patch in a bass register all vote), and whole files
-  whose track names are MT-32 patch names are read through that map. A name that states a definite
-  instrument family overrules a patch of another family, in bank-127 and plain General MIDI parts alike
-  ("Les Paul" on a bass patch plays an overdriven guitar, "ORGAN - MELODY" on the piano every channel
-  starts on plays an organ); a name that fits its patch, names a family that stands in for it (horns on
-  saxes, a mandolin on a banjo) or asks for a synth on a synth is trusted as it is. Effects patches are
-  dropped; GS rhythm parts and XG bank-127 kits join channel 10 in one drum part.
-- **Cleaning**: stray events hours after the song, duplicate copies (including stereo doubles delayed by
-  up to an eighth note), stubs of a few notes and single-pitch "drum" parts on melodic patches are
-  removed or folded.
-- **Roles**: bass by patch and register (a bass patch above middle C is a tune, a soprano sax at A1 is a
-  bass, a double bass or tuba line in the bass register is the bass), chords by polyphony measured without octave doublings, drums, and the melody chosen by a score
-  (a line rather than chords, in the singer's range, present through the song, mixed up front). A part
-  named as the vocal wins when it is substantial; a sung line split over several channels or patches
-  (a sax for the verse, a horn for the chorus) is reassembled into one melody.
-- **Sounds**: every part keeps its General MIDI soundfont (`gm_*`). A singer never plays on a voice: a
-  sung line goes to the melody sound (`--melody-sound`, default `gm_lead_2_sawtooth`), vocal harmony to
-  a synth choir pad, a bass line written on a voice patch to a synth bass, and a "bass" on a patch that
-  cannot play one to a bass soundfont. Drum keys map to `bd sd hh oh cp rim cr rd ht mt lt sh cb tb`.
-- **Mix**: a part's gain folds its mean velocity into the channel level (the GM curve); pan is pulled
-  towards the centre. The lead vocal is lifted to at least 90 % of the loudest accompaniment part, an
-  instrumental lead to 75 % when it is present through the song, backing vocals are held under the lead,
-  and a dense moment scales every gain for headroom. Drums get a second, quieter layer for ghost notes.
-- **Notation**: each track becomes a `<bar bar …>` sequence of quantised notes (16 cells per 4/4 bar,
-  or a 24-cell triplet grid when the rhythm section's onsets say shuffle) with `@` elongation for held
-  notes and `!n` for repeated bars. Up to 12 pitched tracks are rendered: the melody parts and the main
-  bass are guaranteed, the rest go to the parts heard most.
-  Full-bar notes occupy exactly one cycle. Parts with overlapping notes or notes held across bar lines
-  use explicit note durations, so sustain is independent of the spacing between onsets. Volume swells
-  that begin near silence are measured during the held notes instead of being discarded as silent parts.
+- **Time:** `loadSong()` and `songFromMidi()` preserve elapsed time through tempo changes. The
+  dominant tempo sets the display grid; nearby tempos are not snapped to it. Source timing is
+  represented to microbeat precision. `sourceTiming: false` opts into the older grid analysis.
+- **Notation:** the default renderer emits native `arrange`/`timecat`/`pure` patterns with independent note durations and
+  velocities. Integer time weights avoid expensive floating-point rational conversions. Strummed chord tones and drum flams remain separate events. Overlapping notes and
+  notes crossing bar lines retain their releases. `compile(song, { timing: 'grid' })` opts into
+  shorter, quantised notation. Both modes exclude detected vocal parts.
+- **Dynamics:** the default renderer preserves each note's velocity and volume/expression/pan at
+  its onset. Quiet instrumental details are not discarded or boosted into lead parts. Swells that
+  begin near silence use the mean level during the note until continuous envelopes are supported.
+- **Instruments:** General MIDI patches and explicit instrument names guide the soundfont choice;
+  legacy MT-32 bank mappings are reconciled. The two reviewed examples select recorded VCSL acoustic
+  drums instead of the default electronic kit. See [source selections](packages/data/curated/README.md).
+- **Analysis:** notes merge per channel/program, sustain and coarse tuning are applied, and heuristic
+  cleaning removes duplicates, strays and effects. These decisions can still differ from the recording.
+- **Limits:** the CLI/core default cap remains 200 bars of 4/4 and 12 pitched tracks; callers can override
+  these. The website requests the complete arrangement. Generated code is longer than compact notation.
 
-### McGill songs
+### Chord-only songs
 
-Each section becomes an `arrange()` row of chord symbols played with `chord().voicing()`, a bass line
-from the slash bass or root, and a simple groove for the metre.
+Each section becomes an `arrange()` row of chord symbols with generated piano voicings, root/slash-bass
+notes and a simple groove. The website labels this **Generated accompaniment**. Chord charts do not
+contain the original instrumental notes, rhythm or instrumentation and cannot reproduce the recording.
+
+### Source selection and fidelity
+
+The builder scores duration, instrumental coverage and usable track names with capped note-count
+bonuses. More notes alone no longer determine the chosen variant. Reviewed sources and their checksums
+are pinned in `packages/data/curated/manifest.json`; the rest of the catalogue has not been manually
+verified against recordings. The existing generated database has the two reviewed replacements;
+the revised automatic scoring applies on subsequent rebuilds.
+
+This is a transcription compiler, not lossless reconstruction of recorded audio. MIDI arrangements may
+omit sections, add parts or mislabel instruments. Vocal identification is heuristic. Continuous pitch
+bends and within-note expression changes, some percussion variants, original guitar/amp timbres and
+studio production are not reproduced exactly. Runtime validation establishes playable code and event
+consistency, not perceptual equivalence to the original music.
 
 ### Both sources
 

@@ -1043,7 +1043,7 @@ interface Timing {
 }
 
 /** Dominant tempo and metre, the beat map, the bar-line phase, and the remarks describing them. */
-function readTiming(midi: MidiType): Timing {
+function readTiming(midi: MidiType, sourceTiming = false): Timing {
   const ppq = midi.header.ppq || 480;
   const endTicks = midi.durationTicks || 0;
   const meters = meterMap(midi);
@@ -1054,7 +1054,7 @@ function readTiming(midi: MidiType): Timing {
   const bpm = dominant(tempos, endTicks, (a, b) => seconds(b) - seconds(a));
   // Snapped to a microbeat so float noise cannot push a downbeat into the previous bar.
   const beats = beatMap(midi.header.tempos, bpm, ppq, barLen);
-  const toBeat = (ticks: number) => Math.round(beatAt(beats, ticks, ppq) * 1e6) / 1e6;
+  const toBeat = (ticks: number) => Math.round((sourceTiming ? seconds(ticks) * bpm / 60 : beatAt(beats, ticks, ppq)) * 1e6) / 1e6;
   const barOffset = barPhase(meters, endTicks, ppq, barLen, toBeat);
   const barOf = (ticks: number) => Math.floor((toBeat(ticks) - barOffset) / barLen) + 1;
   const remarks: string[] = [];
@@ -1083,6 +1083,9 @@ function readTiming(midi: MidiType): Timing {
   if (meters.length > 1) {
     const list = meters.slice(0, 4).map((m) => `${m.value[0]}/${m.value[1]} at bar ${barOf(m.ticks)}`);
     remarks.push(`metre changes (${list.join(', ')}${meters.length > 4 ? ', ...' : ''}) are rendered on a constant ${num}/${den} grid of one bar per cycle`);
+  }
+  if (sourceTiming) {
+    remarks.splice(0, remarks.length, ...(tempos.length > 1 ? ['Tempo changes preserved in elapsed time; displayed bars use the dominant tempo.'] : []));
   }
   return { ppq, endTicks, num, den, barLen, bpm, barOffset, toBeat, barOf, remarks };
 }
@@ -1115,8 +1118,10 @@ function readParts(midi: MidiType, channels: Map<number, ChannelState>, time: Ti
       entry.notes.push({
         pitch: Math.max(0, Math.min(127, n.midi + transpose)),
         start,
-        duration: Math.min(MAX_NOTE_BARS * time.barLen, Math.max(time.toBeat(n.ticks + n.durationTicks) - start, 0.0625)),
+        duration: Math.min(MAX_NOTE_BARS * time.barLen, Math.max(time.toBeat(n.ticks + n.durationTicks) - start, 0.000001)),
         velocity: n.velocity,
+        ...(st && (st.volume.length || st.expression.length) ? { volume: (valueAt(st.volume, n.ticks, 100) / 127) * (valueAt(st.expression, n.ticks, 127) / 127) } : {}),
+        ...(st?.pan.length ? { pan: valueAt(st.pan, n.ticks, 64) / 127 } : {}),
       });
       entry.ticks.push(n.ticks);
     }
@@ -1358,9 +1363,10 @@ function applyControllers(parts: Part[], channels: Map<number, ChannelState>, ti
           }
           return (sum + (end - from) * current) / n.duration;
         });
-        const heldLevel = Math.round(median(sustained.sort((a, b) => a - b)) * 1000) / 1000;
+        const heldLevel = Math.round(median([...sustained].sort((a, b) => a - b)) * 1000) / 1000;
         if (heldLevel > e.volume && heldLevel >= 0.05) {
           e.volume = heldLevel;
+          e.notes.forEach((n, i) => { n.volume = sustained[i]; });
           e.remarks.push('volume swells after note-on; mean controller level during held notes used');
         }
       }
@@ -1548,9 +1554,9 @@ function detectKey(midi: MidiType, tracks: Track[]): { tonic?: string; mode?: 'm
 
 // ---------- main ----------
 
-export function songFromMidi(data: Uint8Array, identity: MidiIdentity): Song {
+export function songFromMidi(data: Uint8Array, identity: MidiIdentity, opts: { sourceTiming?: boolean } = {}): Song {
   const midi = new Midi(data);
-  const time = readTiming(midi);
+  const time = readTiming(midi, opts.sourceTiming ?? true);
   const events = scanChannelEvents(data);
   const channels = channelStates(events);
   const maps = soundMap(events);
@@ -1602,7 +1608,7 @@ export function cyclesPerMinute(meta: SongMeta): number {
 }
 
 /** Detect a chord per bar from the harmonic tracks and emit a single section. */
-function detectSectionsFromMidi(song: Song): Section[] {
+export function detectSectionsFromMidi(song: Song): Section[] {
   const bar = barLength(song.meta);
   const pitched = song.tracks.filter((t) => t.role !== 'drums');
   if (!pitched.length) return [];

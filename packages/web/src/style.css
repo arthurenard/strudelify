@@ -594,3 +594,6 @@ strudel-editor { display: block; }
   .knob { transform: translate(calc(var(--x, 0px) - 50%), -50%) scale(1); }
   .track-bar { height: 5px; }
 }
+
+.ex-tile { overflow: hidden; }
+.ex-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }

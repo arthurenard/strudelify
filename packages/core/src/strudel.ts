@@ -1,61 +1,22 @@
 /**
- * Song -> Strudel code.
- *
- * One Strudel cycle is one bar. Every track is a `<bar bar ...>` sequence so the
- * layers stay aligned; identical consecutive bars collapse to `bar!n`.
- *
- * Mix decisions (see `mixLevel`): a part's gain folds its mean velocity into the channel volume
- * and expression (CC 7 x CC 11, squared as the GM spec does), and CC 10 becomes `.pan()` (pulled
- * towards the centre, further for the lead). Per-note velocity is not rendered for pitched parts
- * (mini-notation has no per-step velocity and a parallel `.velocity()` pattern would double the
- * code); drums get a second, quieter layer for ghost notes instead, which is where dynamics matter
- * most. Hand percussion the default kit lacks (congas, bongos, agogo, guiro, claves, triangle...)
- * is a layer per instrument from the VCSL bank, trimmed to the kit's level (`renderDrums`,
- * `percTrim`); its dynamics are not split. The mix is normalised on the parts that carry real weight (`gainsFor`): a loud eight-bar
- * stab is clipped at the maximum gain rather than pulling the whole song down.
- *
- * Sounds (`soundFor`): every part keeps its General MIDI soundfont, with two exceptions that are
- * spelled out in the part's comment. Parts that stand in for a singer (`Track.vocal`) never play on
- * a voice: a sung line (the melody or a monophonic backing line) goes to the melody sound and a
- * block of vocal harmony to a synth choir pad. A sung line in several parts that take turns (a sax
- * for the verse, a horn for the chorus, see `Track.sungLine`) goes to the melody sound as one
- * consistent lead, so the melody sound option applies to every song whose singer was found; a
- * lead that merely changes patch per section without vocal evidence keeps its patches and is not
- * called a sung line. A bass part whose patch cannot play a bass line (a track called "bass" left
- * on a soprano sax) is played on a bass soundfont, and a bass line written on a voice patch on a
- * synth bass.
- *
- * Lead levels (`levelVocals`): a singer re-sounded from a voice patch is mixed by velocity alone,
- * because the file's channel volume compensated for the patch we no longer use (choirs are set to
- * CC 7 = 127 to be heard at all, and that would make a bright sawtooth scream); a singer named on a
- * real instrument keeps its channel volume. The lead vocal is then lifted to at least
- * `VOCAL_LEAD_FLOOR`, and an instrumental melody to at least `INSTRUMENT_LEAD_FLOOR`, of the loudest
- * major accompaniment part; backing vocals are held at `BACKING_VOCAL_RATIO` of the lead, so the
- * singer is never buried under its own harmonies. A sung line the file mutes (a guide vocal) is
- * lifted to the floor rather than dropped, and so is one merely quiet in the file; the comment says
- * which. An instrumental lead is floored only when it is present through `LEAD_FLOOR_MIN_COVERAGE`
- * of the song: a lick over a quarter of the bars is a fill and keeps the file's level.
- *
- * Grid (`songGrid`, `chooseGrid`): the straight or triplet subdivision is decided once per song from
- * the rhythm section's onsets, and a part leaves that grid only on overwhelming evidence of its own.
- *
- * Track selection (`selectTracks`): parts that are inaudible in the file or too small to matter are
- * dropped, the melody parts and the main bass always make it, and the remaining slots go to the
- * parts heard most. Headroom (`mixParts`) is decided by the loudest moment, not by the number of parts.
+ * Song -> Strudel code. Source-performance rendering is the default (performance.ts):
+ * exact note onsets, independent releases, per-note velocity and onset controller state.
+ * Detected vocals are excluded from both rendering modes. The optional `timing: 'grid'`
+ * path below produces shorter, quantised notation with the historical mixing heuristics.
+ * Chord-only material remains explicitly generated accompaniment.
  */
+import { compilePerformance } from './performance.js';
 import type { Song, Track, NoteEvent, Section, SongMeta } from './types.js';
 import { barLength, barStart, barIndex, cyclesPerMinute, STUB_NOTES, meanVelocity, median, percentile, partName } from './midi.js';
 import { gmName, gmLabel, drumName, percName, percTrim, percTrimDb, percShare, PERC_SAMPLES, BASS_PROGRAMS, BASS_CAPABLE_PROGRAMS, BASS_FALLBACK_SOUND, BASS_PATCH_TOP, BASS_LEAD_SOUND, VOICE_BASS_SOUND, VOCAL_PROGRAMS, AUDIBLE_LEVEL, mixLevel, isAudible, isMuted } from './gm.js';
 import { pitchClass, voicingSafe } from './chords.js';
 
 export interface CompileOptions {
-  /** Include the melody parts (one line, or the parts of a singer's channel that changes patch per section). Default true. */
+  /** Source note timing (default), or compact quantised notation. Vocals are always omitted. */
+  timing?: 'source' | 'grid';
+  /** Include instrumental melody parts. Detected vocals are always excluded. Default true. */
   melody?: boolean;
-  /**
-   * Sound that replaces the singer: used for every sung line (a vocal-like patch or a track named as
-   * a vocal, see `Track.vocal`), whether it is the melody or a monophonic backing line. Melodies on
-   * real instruments keep their own General MIDI sound. Default gm_lead_2_sawtooth.
-   */
+  /** @deprecated Retained for API compatibility; vocal tracks are always omitted. */
   melodySound?: string;
   /** Maximum number of pitched tracks rendered from MIDI. Default 12. */
   maxTracks?: number;
@@ -296,9 +257,9 @@ const IDENT_MAX = 24;
  * `string`); when no word survives (a name in another script, punctuation) the patch's label
  * (`fallback`) names the part instead, so no part is ever `t_` or `t_1946`.
  */
-const RESERVED_NAMES = new Set(('await break case catch class const continue debugger default delete do else enum export extends false finally for function if implements import in instanceof interface let new null package private protected public return static super switch this throw true try typeof var void while with yield arguments eval note s chord arrange stack silence setcpm mini m').split(' '));
+const RESERVED_NAMES = new Set(('await break case catch class const continue debugger default delete do else enum export extends false finally for function if implements import in instanceof interface let new null package private protected public return static super switch this throw true try typeof var void while with yield arguments eval note s chord arrange stack silence setcpm mini m pure timecat gain undefined infinity nan').split(' '));
 
-function ident(s: string, fallback = 'part'): string {
+export function ident(s: string, fallback = 'part'): string {
   const words = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
   while (words.length && /^\d/.test(words[0])) words.shift();
   const kept: string[] = [];
@@ -324,10 +285,10 @@ export function compile(song: Song, opts: CompileOptions = {}): string {
     `// ${meta.bpm} bpm, ${meta.beatsPerBar}/${meta.beatUnit}, key ${key}. Source: ${meta.sources.join(' + ')}.`,
     `// Generated by strudelify. One cycle = one bar.`,
     ...remarks.map((r) => `// note: ${r}`),
-    `setcpm(${cpm.toFixed(2)})`,
+    `setcpm(${cpm.toFixed(8).replace(/0{1,6}$/, '')})`,
     '',
   ];
-  if (song.tracks.length) return header.concat(compileTracks(song, { melody, melodySound, maxTracks, maxBars })).join('\n');
+  if (song.tracks.length) return header.concat((opts.timing === 'grid' ? compileTracks : compilePerformance)(song, { melody, melodySound, maxTracks, maxBars, timing: opts.timing ?? 'source' })).join('\n');
   return header.concat(compileSections(song)).join('\n');
 }
 
@@ -374,7 +335,7 @@ const CHORDS_BONUS = 1.25;
  * notes that are not a drone are left out first.
  */
 export function selectTracks(song: Song, max: number, melody: boolean): Track[] {
-  const pitched = song.tracks.filter((t) => t.role !== 'drums' && (melody || t.role !== 'melody'));
+  const pitched = song.tracks.filter((t) => !t.vocal && t.role !== 'drums' && (melody || t.role !== 'melody'));
   const weights = new Map(pitched.map((t) => [t, musicalWeight(t)]));
   const heaviest = Math.max(0, ...weights.values());
   // (A sung line the file mutes, a guide vocal, is kept: `renderPitched` lifts it to the vocal floor.)

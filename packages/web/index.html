@@ -87,21 +87,6 @@
                 <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
                 <span class="switch-label" id="melody-label">Melody</span>
               </label>
-              <label class="field" id="opt-lead">
-                <span class="field-label">Lead</span>
-                <span class="select-wrap">
-                  <select id="melodySound" aria-label="Lead sound">
-                    <option value="gm_lead_2_sawtooth">Saw lead</option>
-                    <option value="gm_lead_1_square">Square lead</option>
-                    <option value="gm_lead_6_voice">Synth voice</option>
-                    <option value="gm_flute">Flute</option>
-                    <option value="gm_piano">Piano</option>
-                    <option value="gm_electric_guitar_clean">Clean guitar</option>
-                    <option value="triangle">Triangle</option>
-                  </select>
-                  <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </span>
-              </label>
               <label class="field" id="opt-bars" title="How much of the song to render: the whole song, or only its first bars">
                 <span class="select-wrap">
                   <select id="maxBars" aria-label="Length to render">
@@ -220,8 +205,8 @@
 
         <ul class="features">
           <li><strong>Real transcriptions</strong><span>McGill Billboard chord annotations and the Lakh MIDI clean subset. The library includes alternate transcriptions of some songs.</span></li>
-          <li><strong>One bar, one cycle</strong><span>Every layer is a <code>&lt;bar bar …&gt;</code> sequence, so the timeline, the code and the sound stay aligned.</span></li>
-          <li><strong>Instrumental by design</strong><span>The vocal line is a synth you can switch off. No voices, no lyrics, ever.</span></li>
+          <li><strong>One bar, one cycle</strong><span>Every layer follows the same bar timeline, keeping the code, playback and song structure aligned.</span></li>
+          <li><strong>Instrumental by design</strong><span>Detected vocal parts are removed. Guitar riffs, harmonica and other instrumental leads stay.</span></li>
         </ul>
       </section>
     </main>

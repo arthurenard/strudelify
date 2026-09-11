@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { Command } from 'commander';
-import { createIndex, loadSong, compile, shareUrl, DEFAULT_MAX_BARS, DEFAULT_MAX_TRACKS, DEFAULT_MELODY_SOUND, type IndexEntry, type CompileOptions } from '@strudelify/core';
+import { createIndex, loadSong, compile, shareUrl, DEFAULT_MAX_BARS, DEFAULT_MAX_TRACKS, type IndexEntry, type CompileOptions } from '@strudelify/core';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DB = process.env.STRUDELIFY_DB ?? path.resolve(HERE, '..', '..', 'data', 'public', 'db');
@@ -46,14 +46,13 @@ program
   .option('-o, --out <file>', 'write the code to a file instead of stdout')
   .option('-u, --url', 'print a strudel.cc share link')
   .option('--open', 'open the song in strudel.cc')
-  .option('--no-melody', 'leave out the melody line')
+  .option('--no-melody', 'also leave out instrumental lead melodies (vocals are always removed)')
   // Defaults come from core so the CLI, the web app and `compile()` agree.
-  .option('--melody-sound <name>', 'Strudel sound for a vocal melody', DEFAULT_MELODY_SOUND)
   .option('--max-bars <n>', 'cap on bars rendered (counted in 4/4 bars)', String(DEFAULT_MAX_BARS))
   .option('--max-tracks <n>', 'cap on pitched tracks rendered', String(DEFAULT_MAX_TRACKS))
   .option('--json', 'dump the analysed song model instead of code')
   .description('compile a song to Strudel code')
-  .action(async (query: string[], o: { out?: string; url?: boolean; open?: boolean; melody: boolean; melodySound: string; maxBars: string; maxTracks: string; json?: boolean }) => {
+  .action(async (query: string[], o: { out?: string; url?: boolean; open?: boolean; melody: boolean; maxBars: string; maxTracks: string; json?: boolean }) => {
     const { entries, index, read } = openIndex(program.opts().db);
     const q = query.join(' ');
     let entry = entries.find((e) => e.id === q);
@@ -79,7 +78,7 @@ program
     }
     const song = await loadSong(entry, read);
     if (o.json) { console.log(JSON.stringify(song, null, 2)); return; }
-    const opts: CompileOptions = { melody: o.melody, melodySound: o.melodySound, maxBars: Number(o.maxBars), maxTracks: Number(o.maxTracks) };
+    const opts: CompileOptions = { melody: o.melody, maxBars: Number(o.maxBars), maxTracks: Number(o.maxTracks) };
     const code = compile(song, opts);
     console.error(`# ${describe(entry)}`);
     if (o.out) { fs.writeFileSync(o.out, code); console.error(`wrote ${o.out}`); }

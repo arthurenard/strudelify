@@ -35,58 +35,41 @@ const readFile = async (p: string) => {
 };
 
 // ---------- options ----------
-/** The lead sound only matters while the melody plays. */
-function syncLead() {
-  el.melodySound.disabled = !el.melody.checked;
-  el.optLead.classList.toggle('disabled', !el.melody.checked);
-}
-el.melody.addEventListener('change', syncLead);
-/** Bar-cap choices for this song: only caps shorter than the song, plus "All N bars"; the default is 200 or the whole song. */
+/** Bar-cap choices for this song: only caps shorter than the song, plus "All N bars"; the default is the whole song. */
 function fillBarCaps(totalBars: number, meta: Song['meta']) {
   const { options: opts, value } = barCapOptions(totalBars, meta.beatsPerBar * (4 / meta.beatUnit));
   el.maxBars.innerHTML = opts.map((o) => `<option value="${o.value}">${esc(o.label)}</option>`).join('');
-  el.maxBars.value = String(value);
+  el.maxBars.value = String(opts[opts.length - 1]?.value ?? value);
 }
 function options(): CompileOptions {
-  return { melody: el.melody.checked, melodySound: el.melodySound.value, maxBars: Number(el.maxBars.value) || 200 };
+  return { melody: el.melody.checked, maxTracks: Number.MAX_SAFE_INTEGER, maxBars: Number(el.maxBars.value) || 200 };
 }
 
-/**
- * Only offer the controls that change the output: the melody switch needs a melody track, the lead sound a
- * vocal one, and the bar cap only applies to MIDI songs (a chord chart is always rendered whole, so it has no
- * options at all and the row is dropped). The melody switch says what it switches: the sung line played on a
- * synth, or an instrumental lead that keeps its own instrument.
- */
+/** Instrumental leads can be toggled; detected vocals are always omitted. Charts have no MIDI options. */
 function applyOptionVisibility(song: Song) {
-  const melodyTracks = song.tracks.filter((t) => t.role === 'melody');
+  const melodyTracks = song.tracks.filter((t) => t.role === 'melody' && !t.vocal);
   const hasMelody = melodyTracks.length > 0;
-  const vocal = melodyTracks.find((t) => t.vocal);
   const hasTracks = song.tracks.length > 0;
   el.optMelody.hidden = !hasMelody;
-  el.optLead.hidden = !vocal;
   el.optBars.hidden = !hasTracks;
   el.optMelody.closest<HTMLElement>('.opts')!.hidden = !hasTracks;
-  if (vocal) {
-    el.melodyLabel.textContent = 'Vocal line';
-    el.optMelody.title = 'The sung line, played on a synth (pick the sound under Lead). Off for a backing track.';
-  } else if (hasMelody) {
+  if (hasMelody) {
     const lead = leadName(gmLabel(melodyTracks[0].program));
     el.melodyLabel.textContent = `Lead ${lead}`;
     el.optMelody.title = `The instrumental lead line uses ${gmLabel(melodyTracks[0].program)}. It keeps its own instrument; off for the backing alone.`;
   }
-  syncLead();
   if (hasTracks) fillBarCaps(barRange(song)?.totalBars ?? 0, song.meta);
-  // A MIDI song without a melody track says so where the switch would be (the sentence lives in the tooltip).
-  el.optNote.hidden = !(hasTracks && !hasMelody);
-  el.optNoteText.textContent = 'No melody track';
-  el.optNote.title = 'This transcription has no melody track, so there is no line to switch or to put on a lead sound.';
+  // Explain when vocal parts have been excluded.
+  el.optNote.hidden = !song.tracks.some(t => t.vocal);
+  el.optNoteText.textContent = 'Vocals removed';
+  el.optNote.title = 'Detected lead and backing vocal parts are excluded. Instrumental melodies keep their own instruments.';
 }
 
 const SOURCE_CHIPS: Record<string, { label: string; title: string; chartOnly?: string }> = {
   midi: { label: 'MIDI notes', title: 'Notes, tempo and instruments come from a MIDI transcription in the Lakh MIDI dataset (clean subset, CC-BY).' },
   mcgill: {
     label: 'Chord chart', title: 'Chords and song structure come from the McGill Billboard annotations, transcribed by musicians.',
-    chartOnly: 'This song is a chord chart (McGill Billboard): chords, bass and a groove, played in full. There are no transcribed notes, so there is no melody to switch and no length to cap.',
+    chartOnly: 'Chord accompaniment only: generated piano, bass and drums. This source has no instrumental note transcription and does not reproduce the original arrangement.',
   },
 };
 
@@ -102,6 +85,7 @@ function renderChips(entry: IndexEntry, song: Song, code: string, key: { tonic?:
   if (n) chips.push(`<span class="chip" title="${esc(`${n} instrument part${n === 1 ? '' : 's'} in the generated code:\n${parts.join('\n')}`)}"><span class="k">Parts</span>${n}</span>`);
   for (const s of entry.sources) {
     const c = SOURCE_CHIPS[s];
+    if (c && !song.tracks.length) chips.push('<span class="chip">Generated accompaniment</span>');
     if (c) chips.push(`<span class="chip src ${s}" title="${esc(!song.tracks.length && c.chartOnly ? c.chartOnly : c.title)}"><i aria-hidden="true"></i>${c.label}</span>`);
   }
   el.chips.innerHTML = chips.join('');
@@ -242,7 +226,7 @@ export async function choose(entry: IndexEntry) {
   state.current = null;
   closeSearch(); // whichever way a song is opened (result, example card, link), a stale query does not linger in the box
   setStatus('Analysing…');
-  // Rendering options are per song: the melody is back on for every new song (the lead sound, a taste, is kept).
+  // Include instrumental leads by default for each newly opened song.
   el.melody.checked = true;
   showSkeleton(entry); // synchronously, before the (async) hard stop: the page shows the new song at once
   const artist = displayArtist(entry.artist);
@@ -282,6 +266,13 @@ export function recompile() {
   const opts = options();
   const { song } = cur;
   cur.code = compile(song, opts);
+  const playable = !cur.code.trimEnd().endsWith('\nsilence');
+  el.play.disabled = !playable;
+  hideBanner();
+  if (!playable) {
+    void stop();
+    showBanner('No separate instrumental parts remain in this transcription with the current options.');
+  }
   cur.tl = timeline(song, opts);
   cur.chordSource = song.tracks.length ? 'detected' : 'chart';
   let key: { tonic?: string; mode?: 'major' | 'minor' } = { tonic: song.meta.tonic, mode: song.meta.mode };
@@ -329,4 +320,4 @@ export function recompile() {
   updatePosition(state.started ? 0 : state.pausedBar, true);
   if (state.started) play(); // re-evaluate with the new code
 }
-for (const input of [el.melody, el.melodySound, el.maxBars]) input.addEventListener('change', recompile);
+for (const input of [el.melody, el.maxBars]) input.addEventListener('change', recompile);

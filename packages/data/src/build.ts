@@ -7,6 +7,8 @@
  * into a single entry that carries both files.
  */
 import fs from 'node:fs';
+import { transcriptionScore } from './quality.js';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { songFromMidi, parseMcgill, normaliseText, type IndexEntry } from '@strudelify/core';
@@ -44,6 +46,12 @@ function splitCsv(line: string): string[] {
 interface Draft { title: string; artist: string; year?: number; mcgill?: string; midi?: string; midiScore: number; bpm?: number; key?: string; variants: number }
 
 function main() {
+  // Fail before touching a working database if the downloaded source trees are absent/empty.
+  const midiRootCheck = path.join(RAW, 'clean_midi');
+  if (!fs.existsSync(midiRootCheck) || !fs.readdirSync(midiRootCheck).some(a => {
+    const p = path.join(midiRootCheck, a);
+    return fs.statSync(p).isDirectory() && fs.readdirSync(p).some(f => /\.mid$/i.test(f));
+  })) throw new Error('MIDI source files are missing. Run the downloader before rebuilding.');
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(SONGS, { recursive: true });
   const drafts = new Map<string, Draft>();
@@ -79,10 +87,8 @@ function main() {
       try {
         const song = songFromMidi(new Uint8Array(fs.readFileSync(file)), { id: 'tmp', title, artist });
         const notes = song.tracks.reduce((a, t) => a + t.notes.length, 0);
-        const hasMelody = song.tracks.some((t) => t.role === 'melody');
-        const hasDrums = song.tracks.some((t) => t.role === 'drums');
         if (notes < 50) throw new Error('too few notes');
-        score = notes + (hasMelody ? 5000 : 0) + (hasDrums ? 2000 : 0);
+        score = transcriptionScore(song);
         bpm = song.meta.bpm;
         key = song.meta.tonic ? `${song.meta.tonic} ${song.meta.mode ?? ''}`.trim() : undefined;
       } catch { midiFail++; continue; }
@@ -99,6 +105,8 @@ function main() {
   }
   console.log(`midi: ${midiCount} files parsed, ${midiFail} unreadable`);
 
+  const curatedRoot = path.resolve(HERE, '..', 'curated');
+  const curated: { entries: { id: string; file: string; sha256: string; drumKit?: 'acoustic'; vocalChannels?: number[]; beatScale?: number }[] } = JSON.parse(fs.readFileSync(path.join(curatedRoot, 'manifest.json'), 'utf8'));
   const entries: IndexEntry[] = [];
   const usedIds = new Set<string>();
   for (const d of drafts.values()) {
@@ -106,13 +114,20 @@ function main() {
     let n = 2;
     while (usedIds.has(id)) id = `${slug(d.artist)}--${slug(d.title)}-${n++}`;
     usedIds.add(id);
+    const pinned = curated.entries.find(e => e.id === id);
+    if (pinned) {
+      const file = path.join(curatedRoot, pinned.file), bytes = fs.readFileSync(file);
+      if (crypto.createHash('sha256').update(bytes).digest('hex') !== pinned.sha256) throw new Error(`Curated source checksum mismatch: ${id}`);
+      const song = songFromMidi(bytes, { id, title: d.title, artist: d.artist }, { sourceTiming: true });
+      d.midi = file; d.bpm = song.meta.bpm * (pinned.beatScale ?? 1); d.key = `${song.meta.tonic ?? ''} ${song.meta.mode ?? ''}`.trim();
+    }
     const files: IndexEntry['files'] = {};
     if (d.midi) { files.midi = `songs/${id}.mid`; fs.copyFileSync(d.midi, path.join(SONGS, `${id}.mid`)); }
     if (d.mcgill) { files.mcgill = `songs/${id}.txt`; fs.copyFileSync(d.mcgill, path.join(SONGS, `${id}.txt`)); }
     const sources: IndexEntry['sources'] = [];
     if (d.mcgill) sources.push('mcgill');
     if (d.midi) sources.push('midi');
-    entries.push({ id, title: d.title, artist: d.artist, year: d.year, sources, bpm: d.bpm, key: d.key, popularity: d.variants + (d.mcgill ? 4 : 0), files });
+    entries.push({ id, ...(pinned?.drumKit ? { drumKit: pinned.drumKit } : {}), ...(pinned?.vocalChannels ? { vocalChannels: pinned.vocalChannels } : {}), ...(pinned?.beatScale ? { beatScale: pinned.beatScale } : {}), title: d.title, artist: d.artist, year: d.year, sources, bpm: d.bpm, key: d.key, popularity: d.variants + (d.mcgill ? 4 : 0), files });
   }
   entries.sort((a, b) => a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title));
   fs.writeFileSync(path.join(OUT, 'index.json'), JSON.stringify(entries));

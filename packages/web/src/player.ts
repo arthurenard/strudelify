@@ -35,7 +35,7 @@ export function currentBar(): number {
 export async function play(fromBar?: number) {
   const e = ed();
   const cur = state.current;
-  if (!e || !cur || el.play.getAttribute('aria-busy') === 'true') return;
+  if (!e || !cur || el.play.disabled || el.play.getAttribute('aria-busy') === 'true') return;
   // aria-busy rather than disabled: a disabled button drops keyboard focus to <body>.
   el.play.setAttribute('aria-busy', 'true');
   try {

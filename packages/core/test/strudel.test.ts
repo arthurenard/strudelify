@@ -1,9 +1,13 @@
+import type { CompileOptions } from '../src/strudel.js';
 import { describe, it, expect } from 'vitest';
 import vm from 'node:vm';
-import { compile, noteName, timeline, chordSummary, chooseGrid, songGrid, gridCandidates, gainsFor, panFor, selectTracks, mixParts, barRange, PAN_WIDTH_LEAD, VOCAL_LEAD_FLOOR, BACKING_VOCAL_RATIO, INSTRUMENT_LEAD_FLOOR, LEAD_OVERLAP_SHARE, LEAD_FLOOR_MIN_COVERAGE } from '../src/strudel.js';
+import { compile as compileSource, noteName, timeline, chordSummary, chooseGrid, songGrid, gridCandidates, gainsFor, panFor, selectTracks, mixParts, barRange, PAN_WIDTH_LEAD, VOCAL_LEAD_FLOOR, BACKING_VOCAL_RATIO, INSTRUMENT_LEAD_FLOOR, LEAD_OVERLAP_SHARE, LEAD_FLOOR_MIN_COVERAGE } from '../src/strudel.js';
 import { AUDIBLE_LEVEL, percShare } from '../src/gm.js';
 import { hash2code, shareUrl } from '../src/share.js';
 import type { Song, Track, NoteEvent } from '../src/types.js';
+
+// These assertions cover the optional compact-grid renderer; performance.test.ts covers the default.
+const compile = (song: Parameters<typeof compileSource>[0], opts: CompileOptions = {}) => compileSource(song, { timing: 'grid', ...opts });
 
 function song(): Song {
   return {
@@ -83,15 +87,16 @@ describe('compile (MIDI tracks)', () => {
   });
 });
 
-describe('melody sound', () => {
-  it('replaces a vocal-like melody with the chosen synth and names the original patch', () => {
-    const s = song();
-    s.tracks[0] = { ...s.tracks[0], program: 52, name: 'Vocals', vocal: true };
-    const code = compile(s);
-    expect(code).toContain('// melody · vocal line ("Vocals", choir aahs) on gm_lead_2_sawtooth, never a voice');
-    expect(code).toContain('.s("gm_lead_2_sawtooth")');
-    expect(compile(s, { melodySound: 'triangle' })).toContain('.s("triangle")');
+describe('vocal exclusion in compact mode', () => {
+  it('omits all vocal parts even when a replacement sound is supplied', () => {
+    const s = song(); s.tracks[0].vocal = true;
+    s.tracks.push({ ...s.tracks[0], name: 'Backing', role: 'chords' });
+    const code = compile(s, { melodySound: 'triangle' });
+    expect(code).not.toContain('const melody =');
+    expect(code).not.toContain('const backing =');
+    expect(selectTracks(s, 12, true).every(t => !t.vocal)).toBe(true);
   });
+
   it('ignores melodySound for instrumental melodies', () => {
     expect(compile(song(), { melodySound: 'triangle' })).toContain('.s("gm_flute")');
   });
@@ -472,54 +477,11 @@ describe('sounds', () => {
     expect(compile(s)).toContain('// melody · "tune" · instrumental lead, electric bass finger in the file, above a bass\'s last fret (median c5), played on gm_lead_8_bass_lead, the synth patch made for both registers · gain');
     // A singer on a bass patch is a singer first: the melody sound, never the bass+lead synth.
     s.tracks[0] = { ...s.tracks[0], vocal: true };
-    expect(compile(s)).toContain('// melody · vocal line ("tune", electric bass finger) on gm_lead_2_sawtooth, never a voice');
+    expect(compile(s)).not.toContain('const melody =');
   });
-  it('never plays a singer on a voice: sung lines go to the melody sound, vocal harmony to a synth choir pad', () => {
-    const s = song();
-    s.tracks.push({ name: 'backing', program: 53, role: 'other', vocal: true, notes: line(64, 3) });
-    s.tracks.push({ name: 'choir', program: 52, role: 'chords', vocal: true, notes: line(60, 3).concat(line(64, 3), line(67, 3)) });
-    const code = compile(s);
-    expect(code).toContain('// other · backing vocal ("backing", voice oohs) on gm_lead_2_sawtooth, never a voice');
-    expect(code).toContain('// chords · vocal harmony ("choir", choir aahs) on gm_pad_choir, never a voice');
-    expect(code).not.toMatch(/gm_(voice_oohs|choir_aahs)/);
-    expect(compile(s, { melodySound: 'triangle' })).toMatch(/const backing = [^\n]+\n {2}\.s\("triangle"\)/);
-  });
-  it('levels a re-sounded singer by velocity alone and lifts the lead vocal to the band', () => {
-    // The file runs the choir at CC 7 = 127 to make a soft voice patch heard; that compensation must not reach the sawtooth.
-    const s = song();
-    s.tracks[0] = { ...s.tracks[0], program: 52, name: 'Vocals', vocal: true, volume: 1, notes: line(72, 40, 0.6) };
-    s.tracks.push({ name: 'keys', program: 0, role: 'chords', notes: line(60, 40, 0.9).concat(line(64, 40, 0.9)), volume: 100 / 127 });
-    const code = compile(s);
-    const gain = (name: string) => Number(new RegExp(`const ${name} = [^\\n]+\\n {2}\\.s\\("[^"]+"\\)\\.gain\\(([\\d.]+)\\)`).exec(code)![1]);
-    // Velocity alone would put the singer at 0.6 against the keys' 0.9; the lead is lifted to 90% of the band.
-    expect(gain('keys')).toBe(0.96);
-    expect(gain('melody')).toBe(Math.round(0.9 * VOCAL_LEAD_FLOOR * (0.8 / 0.75) * 100) / 100);
-    expect(code).toContain('never a voice · gain 0.86 · lifted to the band');
-    // A singer that already sits above the band is left alone and says its level comes from velocity.
-    s.tracks[0].notes = line(72, 40, 1);
-    expect(compile(s)).toContain('never a voice · gain 1 · level from velocity');
-    // The same part on its own instrument (not a singer) keeps the file's channel volume.
-    s.tracks[0] = { ...s.tracks[0], vocal: false, program: 73 };
-    expect(compile(s)).toContain('gm_flute · instrumental lead, keeps its own instrument · gain 1');
-  });
-  it('never lets backing vocals be louder than the lead on the same sound', () => {
-    const s = song();
-    s.tracks[0] = { ...s.tracks[0], program: 85, name: 'Lead Vocal', vocal: true, volume: 0.6, notes: line(72, 40, 0.6) };
-    s.tracks.push({ name: 'Harmony vox', program: 54, role: 'other', vocal: true, volume: 1, notes: line(67, 40, 0.95) });
-    s.tracks.push({ name: 'choir', program: 52, role: 'chords', vocal: true, volume: 1, notes: line(60, 40, 0.95).concat(line(64, 40, 0.95), line(67, 40, 0.95)) });
-    const code = compile(s);
-    const gain = (name: string) => Number(new RegExp(`const ${name} = [^\\n]+\\n {2}\\.s\\("[^"]+"\\)\\.gain\\(([\\d.]+)\\)`).exec(code)![1]);
-    expect(gain('harmony_vox')).toBeLessThanOrEqual(BACKING_VOCAL_RATIO * gain('melody') + 0.01);
-    expect(gain('choir')).toBeLessThanOrEqual(BACKING_VOCAL_RATIO * gain('melody') + 0.01);
-    expect(code).toContain('vocal line ("Lead Vocal", lead 6 voice) on gm_lead_2_sawtooth, never a voice · gain 0.64 · level from velocity');
-    expect(code).toContain('backing vocal ("Harmony vox", synth choir) on gm_lead_2_sawtooth, never a voice · gain 0.45 · held under the lead');
-    expect(code).toContain('vocal harmony ("choir", choir aahs) on gm_pad_choir, never a voice · gain 0.45 · held under the lead');
-    // Backing vocals under an instrumental lead are held under it too.
-    s.tracks[0] = { ...s.tracks[0], vocal: false, program: 73 };
-    const flute = compile(s);
-    expect(gain('melody')).toBeGreaterThan(0);
-    expect(Number(/const harmony_vox = [^\n]+\n {2}\.s\("[^"]+"\)\.gain\(([\d.]+)\)/.exec(flute)![1])).toBeLessThanOrEqual(BACKING_VOCAL_RATIO * Number(/const melody = [^\n]+\n {2}\.s\("[^"]+"\)\.gain\(([\d.]+)\)/.exec(flute)![1]) + 0.01);
-  });
+
+
+
   it('lifts an instrumental melody to the band and says so, leaving one that is already up front alone', () => {
     // A clarinet vocal line at CC 7 = 60 and velocity 0.6 under a rhythm guitar at CC 7 = 127: faithful to the file it would sit at a quarter of the guitar.
     const s = song();
@@ -556,45 +518,9 @@ describe('sounds', () => {
     expect(gain(after, 'melody')).toBe(gain(brief, 'melody'));
     expect(LEAD_OVERLAP_SHARE).toBe(0.25);
   });
-  it('keeps the channel volume of a singer named on a real instrument, and discards it only for a voice patch', () => {
-    const s = song();
-    s.tracks[0] = { ...s.tracks[0], program: 26, name: 'MELODY', vocal: true, volume: 0.5, notes: line(72, 40, 0.8) };
-    s.tracks.push({ name: 'keys', program: 0, role: 'chords', notes: line(60, 40, 0.9).concat(line(64, 40, 0.9)), volume: 100 / 127 });
-    const code = compile(s);
-    // Velocity alone would give 0.85; CC 7 = 0.5 gives 0.34, which the vocal floor lifts to 90% of the keys.
-    expect(code).toContain('vocal line ("MELODY", electric guitar jazz) on gm_lead_2_sawtooth, never a voice · gain 0.86 · lifted to the band');
-    expect(code).not.toContain('level from velocity');
-    s.tracks[0].volume = 1;
-    expect(compile(s)).toContain('never a voice · gain 1\n');
-  });
-  it('renders a sung line the file mutes at the vocal floor rather than dropping it', () => {
-    const s = song();
-    s.tracks[0] = { ...s.tracks[0], program: 73, name: 'Vocal', vocal: true, volume: 0, notes: line(72, 40, 0.8) };
-    s.tracks.push({ name: 'keys', program: 0, role: 'chords', notes: line(60, 40, 0.9).concat(line(64, 40, 0.9)) });
-    expect(selectTracks(s, 12, true).map((t) => t.name)).toContain('Vocal');
-    const code = compile(s);
-    expect(code).toContain('vocal line ("Vocal", flute) on gm_lead_2_sawtooth, never a voice · gain 0.86 · muted guide line in the file, lifted to the band');
-    // A muted part that is not the sung line is still left out.
-    s.tracks[0] = { ...s.tracks[0], vocal: false };
-    expect(selectTracks(s, 12, true).map((t) => t.name)).not.toContain('Vocal');
-  });
-  it('tells a vocal the file mutes from one it merely keeps quiet, and lifts both', () => {
-    // Let It Be's "Vocal": CC 7 = 36 and velocity 39% under a full-level band.
-    const s = song();
-    s.tracks[0] = { ...s.tracks[0], program: 31, name: 'Vocal', vocal: true, volume: 36 / 127, notes: line(72, 40, 0.39) };
-    s.tracks.push({ name: 'keys', program: 0, role: 'chords', notes: line(60, 40, 0.9).concat(line(64, 40, 0.9)) });
-    expect(compile(s)).toContain('vocal line ("Vocal", guitar harmonics) on gm_lead_2_sawtooth, never a voice · gain 0.86 · quiet in the file, level 5% (velocity 39%, CC 7 x CC 11 36), lifted to the band');
-    // Inaudible but not muted (a few notes at that level) is said as such; CC 7 = 0 is muted.
-    s.tracks[0].volume = 0.1;
-    expect(compile(s)).toContain('inaudible in the file, level 1% (velocity 39%, CC 7 x CC 11 13), lifted to the band');
-    s.tracks[0].volume = 0;
-    expect(compile(s)).toContain('muted guide line in the file, lifted to the band');
-    // A quiet part that is not the sung line is kept once it has a real number of notes, and left out as a stub.
-    s.tracks[0] = { ...s.tracks[0], vocal: false, role: 'other', name: 'counter', volume: 36 / 127 };
-    expect(selectTracks(s, 12, true).map((t) => t.name)).toContain('counter');
-    s.tracks[0].notes = line(72, 4, 0.39);
-    expect(selectTracks(s, 12, true).map((t) => t.name)).not.toContain('counter');
-  });
+
+
+
   it('lifts an instrumental lead only when it plays through a third of the song, and says why not', () => {
     // A 12-bar guitar lick at CC 7 = 60 in a 48-bar song under a loud rhythm guitar: the file's level is kept.
     const s = song();
@@ -609,7 +535,7 @@ describe('sounds', () => {
     s.tracks[0].notes = line(72, 20, 0.6, 80);
     expect(compile(s)).toContain('lifted to the band');
     s.tracks[0] = { ...s.tracks[0], vocal: true, name: 'Vocal', notes: line(72, 12, 0.6, 80) };
-    expect(compile(s)).toContain('lifted to the band');
+    expect(compile(s)).not.toContain('const melody =');
     expect(LEAD_FLOOR_MIN_COVERAGE).toBeCloseTo(1 / 3, 6);
   });
   it('names parts from their track name, capped to the leading words, and from the patch when the name is a credit', () => {

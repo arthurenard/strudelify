@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Audit every library entry and parse all generated Strudel mini-notation. */
+/** Audit source files and execute generated code through the actual Strudel runtime. */
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -21,11 +21,11 @@ if (workerCount > 1) {
     child.on('error', error => { console.error(error); resolve(1); });
     child.on('exit', code => resolve(code ?? 1));
   })));
-  const combined = { entries: 0, midi: 0, chordsOnly: 0, both: 0, checked: 0, patterns: 0, failures: [], truncated: [], empty: [], duplicateGroups: [], remarks: {}, orphans: [] };
+  const combined = { entries: 0, midi: 0, chordsOnly: 0, both: 0, checked: 0, patterns: 0, failures: [], truncated: [], empty: [], unavailableInstrumentals: [], duplicateGroups: [], remarks: {}, orphans: [] };
   for (let shard = 0; shard < workerCount; shard++) {
     const report = JSON.parse(fs.readFileSync(path.join(temp, `${shard}.json`), 'utf8'));
     for (const key of ['entries', 'midi', 'chordsOnly', 'both', 'checked', 'patterns']) combined[key] += report[key];
-    for (const key of ['failures', 'truncated', 'empty']) combined[key].push(...report[key]);
+    for (const key of ['failures', 'truncated', 'empty', 'unavailableInstrumentals']) combined[key].push(...report[key]);
     for (const [remark, count] of Object.entries(report.remarks)) combined.remarks[remark] = (combined.remarks[remark] ?? 0) + count;
     combined.orphans = report.orphans;
   }
@@ -41,9 +41,10 @@ if (workerCount > 1) {
   process.exit(codes.some(code => code !== 0) || combined.failures.length ? 1 : 0);
 }
 const [shard, shards] = (process.argv.find(arg => arg.startsWith('--shard='))?.split('=')[1] ?? '0/1').split('/').map(Number);
-const entries = allEntries.filter((_, i) => i % shards === shard);
+const onlyIds = process.argv.find(arg => arg.startsWith('--ids='))?.slice('--ids='.length).split(',');
+const entries = allEntries.filter((entry, i) => i % shards === shard && (!onlyIds || onlyIds.includes(entry.id)));
 const report = { entries: entries.length, midi: 0, chordsOnly: 0, both: 0, checked: 0, patterns: 0,
-  failures: [], truncated: [], empty: [], duplicateGroups: [], remarks: {} };
+  failures: [], truncated: [], empty: [], unavailableInstrumentals: [], duplicateGroups: [], remarks: {} };
 const ids = new Set(), files = new Set(), identities = new Map();
 for (const entry of entries) {
   try {
@@ -67,7 +68,7 @@ for (const entry of entries) {
     report.patterns += [...code.matchAll(/(?:note\(|mini\(|s\(|\[\d+,\s*)(["'])(?:[^"'\\]|\\.)*\1/g)].length;
     const snapshot = (bar) => pattern.queryArc(bar, bar + 1).map(event => {
       for (const key of ['duration', 'gain', 'pan']) if (typeof event.value[key] === 'number' && !Number.isFinite(event.value[key])) throw new Error(`Invalid runtime ${key}`);
-      return { value: event.value, start: Number((Number(event.whole?.begin ?? event.part.begin) - bar).toFixed(6)), end: Number((Number(event.whole?.end ?? event.part.end) - bar).toFixed(6)) };
+      return { value: event.value, start: Number((Number((event.whole?.begin ?? event.part.begin).sub(bar))).toFixed(6)), end: Number((Number((event.whole?.end ?? event.part.end).sub(bar))).toFixed(6)) };
     });
     const first = snapshot(0);
     snapshot(Math.floor(tl.bars / 2));
@@ -76,7 +77,10 @@ for (const entry of entries) {
     if (JSON.stringify(first) !== JSON.stringify(repeated)) {
       throw new Error('Generated pattern does not repeat at the timeline boundary');
     }
-    if (/stack\(\)|^silence$/m.test(code)) report.empty.push(entry.id);
+    if (/stack\(\)|^silence$/m.test(code)) {
+      if (song.tracks.length && song.tracks.every(t => t.vocal)) report.unavailableInstrumentals.push(entry.id);
+      else report.empty.push(entry.id);
+    }
     const range = barRange(song);
     if (range && range.nBars < range.totalBars) report.truncated.push({ id: entry.id, ...range });
     for (const remark of song.meta.remarks ?? []) report.remarks[remark] = (report.remarks[remark] ?? 0) + 1;

@@ -14,7 +14,7 @@ const n = (pitch: number, start: number, duration: number): NoteEvent => ({ pitc
 
 describe('generated note durations in the Strudel runtime', () => {
   it('keeps track names from shadowing the player’s generated helper calls', () => {
-    for (const name of ['M', 'New', 'Stack']) {
+    for (const name of ['M', 'New', 'Stack', 'Undefined', 'Pure', 'Gain', 'Timecat']) {
       const song = makeSong([n(60, 0, 1), n(64, 1, 1)]);
       song.tracks[0].role = 'other';
       song.tracks[0].name = name;

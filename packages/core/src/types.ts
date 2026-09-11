@@ -7,6 +7,8 @@
 export type Source = 'mcgill' | 'midi';
 
 export interface SongMeta {
+  /** Explicit reviewed drum sound profile; otherwise use the default bank. */
+  drumKit?: 'acoustic';
   id: string;
   title: string;
   artist: string;
@@ -56,6 +58,10 @@ export interface NoteEvent {
   /** Duration in beats (same unit). */
   duration: number;
   velocity: number;
+  /** CC 7 × CC 11 at the note onset (0–1), when present. */
+  volume?: number;
+  /** CC 10 at the note onset (0–1), when present. */
+  pan?: number;
 }
 
 export type TrackRole = 'melody' | 'bass' | 'chords' | 'drums' | 'other';
@@ -74,15 +80,13 @@ export interface Track {
   pan?: number;
   /**
    * True when the part stands in for a singer: a vocal-like patch (choir, voice, synth voice, breath)
-   * or a track name that says vocal/vox/lead vocal. Only such melody tracks are rendered on the
-   * replacement synth; other melodies keep their own instrument.
+   * or a track name that says vocal/vox/lead vocal. Such parts are excluded from the instrumental output; other melodies keep their own instrument.
    */
   vocal?: boolean;
   /**
    * True when the melody is carried by several parts that take turns (a singer's channel that
    * changes patch per section, or stand-in patches spread over channels: a sax for the verse, a
-   * horn for the chorus). With `vocal` set too, each is a section of the sung line and is rendered
-   * on the melody sound; without it the parts are an instrumental lead in sections and keep their
+   * horn for the chorus). With `vocal` set too, each is a section of the sung line and is excluded from output; without it the parts are an instrumental lead in sections and keep their
    * own patches.
    */
   sungLine?: boolean;
@@ -102,6 +106,12 @@ export interface Song {
 
 /** A compact row in the searchable index shipped to CLI and web. */
 export interface IndexEntry {
+  /** Reviewed notation-rate correction; scales both beats and BPM, preserving elapsed time. */
+  beatScale?: number;
+  /** Reviewed zero-based MIDI channels carrying a vocal guide. */
+  vocalChannels?: number[];
+  /** Explicit reviewed drum sound profile. */
+  drumKit?: 'acoustic';
   id: string;
   title: string;
   artist: string;
