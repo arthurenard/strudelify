@@ -57,7 +57,9 @@ catalogue, not a song; words inside a title only resolve when they explain nearl
 Ambiguous queries print the candidates and exit 1; pass the artist or the exact id. Songs not in the
 database also exit 1 with the nearest matches, never a silent substitute.
 
-Options: `--no-melody` (also removes instrumental leads), `--max-bars <n>`, `--max-tracks <n>`, `--json`,
+The CLI defaults to editable, reusable riffs. Pass `--source-detail` for unrounded MIDI events.
+
+Options: `--source-detail`, `--no-melody` (also removes instrumental leads), `--max-bars <n>`, `--max-tracks <n>`, `--json`,
 `--db <dir>` (or `STRUDELIFY_DB`).
 
 ## Web app
@@ -93,7 +95,8 @@ editor. Deploy `packages/web/dist` together with `packages/data/public/db` (abou
   bars) so long songs stay legible. Long songs scroll sideways with an overview strip as the map.
   Everything is keyboard-reachable (Tab to a lane, arrows along it, Enter to jump).
 - **Options**: an instrumental-lead switch and an optional excerpt length. The website renders all
-  instrumental tracks and the full song by default. Detected vocals are always excluded.
+  instrumental tracks and the full song by default. **Live coding** uses reusable mini-notation riffs;
+  **Source detail** retains the unrounded event representation. Detected vocals are always excluded.
   A chord chart is always rendered whole and has no options.
 - **Code**: the generated file in a Strudel editor with a wrap toggle, an always-visible horizontal
   scrollbar for the long note lines, copy, download and "Open in strudel.cc" (the code travels in the
@@ -108,10 +111,19 @@ dropped duplicates, the mix scaling), and every part's comment says its role, it
 
 ### MIDI songs
 
+The website and CLI default to **Live coding**: short `note()` and `n()` patterns, shared chord
+voicings through `transpose()`, named 1–4-bar riffs and an explicit `arrange()` sequence per instrument.
+Repeated phrases are defined once, including the bass, guitar and separate drum parts. Onsets and
+note durations can each change by up to 15 ms to nearby musical fractions; note pitches, note counts and dynamics
+are retained. This is a deliberate editing tradeoff, disclosed beside the code-style selector.
+
+The core API keeps its source-detail default for compatibility. Use `compile(song, { timing: 'patterns' })`
+for editable output or `{ timing: 'source' }` for unrounded source events. Chord-only generation is unchanged.
+
 - **Time:** `loadSong()` and `songFromMidi()` preserve elapsed time through tempo changes. The
   dominant tempo sets the display grid; nearby tempos are not snapped to it. Source timing is
   represented to microbeat precision. `sourceTiming: false` opts into the older grid analysis.
-- **Notation:** the default renderer emits native `arrange`/`timecat`/`pure` patterns with independent note durations and
+- **Source-detail notation:** this renderer emits native `arrange`/`timecat`/`pure` patterns with independent note durations and
   velocities. Integer time weights avoid expensive floating-point rational conversions. Strummed chord tones and drum flams remain separate events. Overlapping notes and
   notes crossing bar lines retain their releases. `compile(song, { timing: 'grid' })` opts into
   shorter, quantised notation. Both modes exclude detected vocal parts.

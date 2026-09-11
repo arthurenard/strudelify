@@ -12,12 +12,15 @@ import { evaluatePattern } from './strudel-runtime.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const db = path.join(root, 'packages/data/public/db');
 const allEntries = JSON.parse(fs.readFileSync(path.join(db, 'index.json'), 'utf8'));
+const timing = process.argv.find(arg => arg.startsWith('--timing='))?.split('=')[1] ?? 'source';
+if (!['source', 'grid', 'patterns'].includes(timing)) throw new Error('Invalid --timing');
+const options = { timing, ...(process.argv.includes('--full') ? { maxBars: Number.MAX_SAFE_INTEGER, maxTracks: Number.MAX_SAFE_INTEGER } : {}) };
 const workerCount = Number(process.argv.find(arg => arg.startsWith('--workers='))?.split('=')[1] ?? 1);
 if (!Number.isInteger(workerCount) || workerCount < 1 || workerCount > 8) throw new Error('--workers must be between 1 and 8');
 if (workerCount > 1) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'strudelify-audit-'));
   const codes = await Promise.all(Array.from({ length: workerCount }, (_, shard) => new Promise(resolve => {
-    const child = fork(fileURLToPath(import.meta.url), [`--shard=${shard}/${workerCount}`, `--output=${path.join(temp, `${shard}.json`)}`], { stdio: 'inherit' });
+    const child = fork(fileURLToPath(import.meta.url), [...process.argv.slice(2).filter(arg => !arg.startsWith('--workers=') && !arg.startsWith('--output=')), `--shard=${shard}/${workerCount}`, `--output=${path.join(temp, `${shard}.json`)}`], { stdio: 'inherit' });
     child.on('error', error => { console.error(error); resolve(1); });
     child.on('exit', code => resolve(code ?? 1));
   })));
@@ -36,7 +39,7 @@ if (workerCount > 1) {
   }
   combined.duplicateGroups = [...groups.values()].filter(group => group.length > 1);
   if (new Set(allEntries.map(e => e.id)).size !== allEntries.length) combined.failures.push({ error: 'Duplicate catalogue IDs' });
-  fs.writeFileSync(path.join(root, 'tools/library-report.json'), JSON.stringify(combined, null, 2) + '\n');
+  fs.writeFileSync(process.argv.find(arg => arg.startsWith('--output='))?.slice('--output='.length) ?? path.join(root, 'tools/library-report.json'), JSON.stringify(combined, null, 2) + '\n');
   console.log(JSON.stringify({ ...combined, remarks: undefined, truncated: combined.truncated.length, duplicateGroups: combined.duplicateGroups.length }, null, 2));
   process.exit(codes.some(code => code !== 0) || combined.failures.length ? 1 : 0);
 }
@@ -59,9 +62,9 @@ for (const entry of entries) {
     if (entry.files.midi) report.midi++; else report.chordsOnly++;
     if (entry.files.midi && entry.files.mcgill) report.both++;
     const song = await loadSong(entry, async (file) => fs.readFileSync(path.join(db, file)));
-    const code = compile(song);
+    const code = compile(song, options);
     new vm.Script(code);
-    const tl = timeline(song);
+    const tl = timeline(song, options);
     if (!(tl.bars > 0 && Number.isFinite(tl.bars) && tl.cpm > 0 && Number.isFinite(tl.cpm))) throw new Error('Invalid timeline');
     if (/\b(?:NaN|Infinity|undefined)\b/.test(code.split('\n').filter(l => !l.startsWith('//')).join('\n'))) throw new Error('Non-finite generated code');
     const pattern = evaluatePattern(code);
@@ -81,7 +84,7 @@ for (const entry of entries) {
       if (song.tracks.length && song.tracks.every(t => t.vocal)) report.unavailableInstrumentals.push(entry.id);
       else report.empty.push(entry.id);
     }
-    const range = barRange(song);
+    const range = barRange(song, options.maxBars);
     if (range && range.nBars < range.totalBars) report.truncated.push({ id: entry.id, ...range });
     for (const remark of song.meta.remarks ?? []) report.remarks[remark] = (report.remarks[remark] ?? 0) + 1;
     report.checked++;

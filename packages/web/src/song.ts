@@ -42,7 +42,7 @@ function fillBarCaps(totalBars: number, meta: Song['meta']) {
   el.maxBars.value = String(opts[opts.length - 1]?.value ?? value);
 }
 function options(): CompileOptions {
-  return { melody: el.melody.checked, maxTracks: Number.MAX_SAFE_INTEGER, maxBars: Number(el.maxBars.value) || 200 };
+  return { timing: el.codeStyle.value === 'source' ? 'source' : 'patterns', melody: el.melody.checked, maxTracks: Number.MAX_SAFE_INTEGER, maxBars: Number(el.maxBars.value) || 200 };
 }
 
 /** Instrumental leads can be toggled; detected vocals are always omitted. Charts have no MIDI options. */
@@ -320,4 +320,4 @@ export function recompile() {
   updatePosition(state.started ? 0 : state.pausedBar, true);
   if (state.started) play(); // re-evaluate with the new code
 }
-for (const input of [el.melody, el.maxBars]) input.addEventListener('change', recompile);
+for (const input of [el.melody, el.maxBars, el.codeStyle]) input.addEventListener('change', recompile);

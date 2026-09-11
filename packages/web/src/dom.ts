@@ -55,6 +55,7 @@ export const el = {
   melodyLabel: $<HTMLSpanElement>('melody-label'),
   melody: $<HTMLInputElement>('melody'),
   maxBars: $<HTMLSelectElement>('maxBars'),
+  codeStyle: $<HTMLSelectElement>('code-style'),
   // timeline
   timeline: $<HTMLDivElement>('timeline'),
   tlScroll: $<HTMLDivElement>('tl-scroll'),

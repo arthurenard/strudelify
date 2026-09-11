@@ -668,6 +668,7 @@ export function partList(code: string): string[] {
     if (!/^const \w+ = (?:note|mini|s|chord|arrange)\(/.test(lines[i])) continue;
     const m = /^\/\/ ([^·\n]+?)(?: · ([^·\n]+?))?(?: · |$)/.exec(lines[i - 1] ?? '');
     if (/^const \w+ = arrange\(/.test(lines[i]) && !m) continue;
+    if (/^const \w+_riff\d+ = /.test(lines[i]) && !['bass', 'chords', 'melody', 'drums', 'other'].includes(m?.[1]?.trim() ?? '')) continue;
     const role = m?.[1]?.trim() ?? 'part';
     const instrument = (m?.[2] ?? '').trim().replace(/^gm_/, '').replace(/_/g, ' ');
     out.push(instrument && !/^(gain|pan)\b/.test(instrument) ? `${role} · ${instrument}` : role);

@@ -87,6 +87,15 @@
                 <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
                 <span class="switch-label" id="melody-label">Melody</span>
               </label>
+              <label class="field" title="Live coding uses reusable riffs and cleans timing within 15 ms. Source detail retains the unrounded events.">
+                <span class="select-wrap">
+                  <select id="code-style" aria-label="Code style">
+                    <option value="patterns" selected>Live coding</option>
+                    <option value="source">Source detail</option>
+                  </select>
+                  <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+              </label>
               <label class="field" id="opt-bars" title="How much of the song to render: the whole song, or only its first bars">
                 <span class="select-wrap">
                   <select id="maxBars" aria-label="Length to render">

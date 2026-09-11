@@ -50,9 +50,10 @@ program
   // Defaults come from core so the CLI, the web app and `compile()` agree.
   .option('--max-bars <n>', 'cap on bars rendered (counted in 4/4 bars)', String(DEFAULT_MAX_BARS))
   .option('--max-tracks <n>', 'cap on pitched tracks rendered', String(DEFAULT_MAX_TRACKS))
+  .option('--source-detail', 'emit unrounded MIDI events instead of reusable live-coding riffs')
   .option('--json', 'dump the analysed song model instead of code')
   .description('compile a song to Strudel code')
-  .action(async (query: string[], o: { out?: string; url?: boolean; open?: boolean; melody: boolean; maxBars: string; maxTracks: string; json?: boolean }) => {
+  .action(async (query: string[], o: { out?: string; url?: boolean; open?: boolean; melody: boolean; maxBars: string; maxTracks: string; json?: boolean; sourceDetail?: boolean }) => {
     const { entries, index, read } = openIndex(program.opts().db);
     const q = query.join(' ');
     let entry = entries.find((e) => e.id === q);
@@ -78,7 +79,7 @@ program
     }
     const song = await loadSong(entry, read);
     if (o.json) { console.log(JSON.stringify(song, null, 2)); return; }
-    const opts: CompileOptions = { melody: o.melody, maxBars: Number(o.maxBars), maxTracks: Number(o.maxTracks) };
+    const opts: CompileOptions = { timing: o.sourceDetail ? 'source' : 'patterns', melody: o.melody, maxBars: Number(o.maxBars), maxTracks: Number(o.maxTracks) };
     const code = compile(song, opts);
     console.error(`# ${describe(entry)}`);
     if (o.out) { fs.writeFileSync(o.out, code); console.error(`wrote ${o.out}`); }

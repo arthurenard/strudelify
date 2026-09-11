@@ -661,3 +661,18 @@ describe('lead name', () => {
     expect(leadName('tinkle bell')).toBe('tinkle bell');
   });
 });
+
+
+describe('live-coding part counts', () => {
+  it('counts instrument arrangements, not riff definitions, including source tracks named like riffs', () => {
+    expect(partList([
+      '// bass: reusable phrases',
+      'const bass_riff1 = note("c2 e2")',
+      'const bass_riff2 = note("d2 f2")',
+      '// bass · bass',
+      'const bass = arrange([4, bass_riff1], [4, bass_riff2])',
+      '// chords · guitar',
+      'const guitar_riff1 = note("c3")',
+    ].join('\n'))).toEqual(['bass · bass', 'chords · guitar']);
+  });
+});

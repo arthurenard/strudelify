@@ -5,6 +5,7 @@
  * path below produces shorter, quantised notation with the historical mixing heuristics.
  * Chord-only material remains explicitly generated accompaniment.
  */
+import { compilePatterns } from './patterns.js';
 import { compilePerformance } from './performance.js';
 import type { Song, Track, NoteEvent, Section, SongMeta } from './types.js';
 import { barLength, barStart, barIndex, cyclesPerMinute, STUB_NOTES, meanVelocity, median, percentile, partName } from './midi.js';
@@ -12,8 +13,8 @@ import { gmName, gmLabel, drumName, percName, percTrim, percTrimDb, percShare, P
 import { pitchClass, voicingSafe } from './chords.js';
 
 export interface CompileOptions {
-  /** Source note timing (default), or compact quantised notation. Vocals are always omitted. */
-  timing?: 'source' | 'grid';
+  /** Source timing (API default), editable reusable patterns, or legacy grid notation. Vocals are always omitted. */
+  timing?: 'source' | 'grid' | 'patterns';
   /** Include instrumental melody parts. Detected vocals are always excluded. Default true. */
   melody?: boolean;
   /** @deprecated Retained for API compatibility; vocal tracks are always omitted. */
@@ -257,7 +258,7 @@ const IDENT_MAX = 24;
  * `string`); when no word survives (a name in another script, punctuation) the patch's label
  * (`fallback`) names the part instead, so no part is ever `t_` or `t_1946`.
  */
-const RESERVED_NAMES = new Set(('await break case catch class const continue debugger default delete do else enum export extends false finally for function if implements import in instanceof interface let new null package private protected public return static super switch this throw true try typeof var void while with yield arguments eval note s chord arrange stack silence setcpm mini m pure timecat gain undefined infinity nan').split(' '));
+const RESERVED_NAMES = new Set(('await break case catch class const continue debugger default delete do else enum export extends false finally for function if implements import in instanceof interface let new null package private protected public return static super switch this throw true try typeof var void while with yield arguments eval note n s chord arrange stack silence setcpm mini m pure timecat gain undefined infinity nan').split(' '));
 
 export function ident(s: string, fallback = 'part'): string {
   const words = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
@@ -288,7 +289,7 @@ export function compile(song: Song, opts: CompileOptions = {}): string {
     `setcpm(${cpm.toFixed(8).replace(/0{1,6}$/, '')})`,
     '',
   ];
-  if (song.tracks.length) return header.concat((opts.timing === 'grid' ? compileTracks : compilePerformance)(song, { melody, melodySound, maxTracks, maxBars, timing: opts.timing ?? 'source' })).join('\n');
+  if (song.tracks.length) return header.concat((opts.timing === 'patterns' ? compilePatterns : opts.timing === 'grid' ? compileTracks : compilePerformance)(song, { melody, melodySound, maxTracks, maxBars, timing: opts.timing ?? 'source' })).join('\n');
   return header.concat(compileSections(song)).join('\n');
 }
 
