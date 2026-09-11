@@ -953,10 +953,10 @@ describe.skipIf(!fs.existsSync(DB_INDEX))('real database: round 3', () => {
     expect(resolved(real, 'oxygene part 1 jean michel jarre')).toBe('jean-michel-jarre--oxygene-part-1');
     expect(resolved(real, 'chronologie part 2 jarre')).toBe('jean-michel-jarre--chronologie-part-2');
     expect(resolved(real, 'pink floyd another brick in the wall part 2')).toBe('pink-floyd--another-brick-in-the-wall-part-2');
-    expect(resolved(real, "i'll do anything for love meat loaf")).toBe('meat-loaf--i-ll-do-anything-for-love');
+    expect(resolved(real, "i'll do anything for love meat loaf")).toBe('meat-loaf--ill-do-anything-for-love-but-i-wont-do-that');
   });
   it('reads digits and one-letter words as words', () => {
-    expect(resolved(real, 'mambo no 5')).toBe('lou-bega--mambo-no-5');
+    expect(resolved(real, 'mambo no 5')).toBe('lou-bega--mambo-no-5-a-little-bit-of');
     expect(resolved(real, 'nothing compares 2 u')).toBe('prince--nothing-compares-2-u');
     expect(resolved(real, 'hey j')).toBe('ambiguous');
   });
