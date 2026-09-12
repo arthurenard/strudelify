@@ -13,16 +13,11 @@
     {
       "id": "nirvana--smells-like-teen-spirit",
       "file": "smells-like-teen-spirit.mid",
-      "original": "Nirvana/Smells Like Teen Spirit.8.mid",
-      "reason": "Fuller approximately five-minute instrumental arrangement with electric pick bass and guitar parts. Replaces the shorter slap-bass version. Channel 3 (zero-based 2), the synth lead entering at the verse, is the vocal guide and is excluded.",
-      "sha256": "001959270e233df2660cfc0a936395d9dcf9a2df259920a8c35cda7db8cb58ba",
+      "original": "Nirvana/Smells Like Teen Spirit.7.mid",
+      "reason": "Unmodified 131-bar transcription (about 4:22) with named clean/distorted/overdub guitars, finger bass, full drum kit and an excluded vocal guide. Replaces variant 8, whose repaired headers still left illegal decoded velocity values. This is a shorter alternate transcription, not a verified match to the released recording.",
+      "sha256": "b99dd53bb7ece271dfe2f183f9ecf2c3a8f6c140e6bceb5c72328cebc746e787",
       "drumKit": "acoustic",
-      "originalSha256": "22658eeb5f1216d6822ad2fc3c4304317abc8b56aed7afb747149289bb2c93bc",
-      "repair": "Corrected four MTrk payload-length headers to the actual next chunk boundary. Track payload bytes were not changed.",
-      "vocalChannels": [
-        2
-      ],
-      "beatScale": 0.5
+      "sourceNote": "Alternate transcription: 131 bars, about 4:22 at 120 bpm; not verified against the released recording."
     }
   ]
 }

@@ -34,11 +34,11 @@ function expression(bars: Bar[]): string {
   return `${b.call}(${quote}${body}${quote})${b.suffix}`;
 }
 
-function renderBars(t: Track, song: Song, firstBar: number, nBars: number, token: (n: NoteEvent) => string, compact = false) {
+function renderBars(t: Track, song: Song, firstBar: number, nBars: number, token: (n: NoteEvent) => string, compact = false, cleaned = false) {
   const length = barLength(song.meta), from = barStart(song.meta, firstBar), end = barStart(song.meta, firstBar + nBars);
   const notes = t.notes.filter(n => n.start >= from && n.start < end).map(n => ({ ...n,
-    start: compact ? n.start : Math.min(end - 1e-7, Math.max(from, tidy(n.start - from, song.meta.bpm) + from)),
-    duration: compact ? n.duration : Math.max(1e-7, tidy(n.duration, song.meta.bpm)),
+    start: compact || cleaned ? n.start : Math.min(end - 1e-7, Math.max(from, tidy(n.start - from, song.meta.bpm) + from)),
+    duration: compact || cleaned ? n.duration : Math.max(1e-7, tidy(n.duration, song.meta.bpm)),
   }));
   const controls = (n: NoteEvent) => ({
     velocity: num(n.velocity), gain: num((n.volume ?? t.volume ?? NOMINAL_VOLUME) ** 2 * 0.8), pan: num(n.pan ?? t.pan ?? 0.5),
@@ -85,7 +85,7 @@ function renderBars(t: Track, song: Song, firstBar: number, nBars: number, token
     const legato = compact ? loopLegato : starts.every((s, i) => groups.get(s)!.every(n => Math.abs(Math.min(n.duration, end - n.start) / length - spans[i] / units) < 1e-6));
     // Drum samples in a live-coding loop use their natural decay; MIDI key-release lengths
     // (often several bars for percussion) are not useful rhythmic instructions.
-    const naturalDrums = compact && t.role === 'drums';
+    const naturalDrums = (compact || cleaned) && t.role === 'drums';
     const explicit = !naturalDrums && !legato && !uniform;
     const mapped = explicit || varying.length > 0;
     const weights = [...spans, ...(starts[0] ? [starts[0]] : [])];
@@ -108,12 +108,12 @@ function renderBars(t: Track, song: Song, firstBar: number, nBars: number, token
 }
 
 /** Greedy phrase dictionary: name repeated 1–4-bar phrases; inline one-off fills. */
-function arrangePhrases(bars: Bar[], name: string, used: Set<string>) {
+function arrangePhrases(bars: Bar[], name: string, used: Set<string>, compact = false, maxPhrase = 4) {
   const definitions: string[] = [], rows: { count: number; ref: string; start: number }[] = [];
   const dictionary = new Map<string, string>();
   const signatures = bars.map(key);
   const occurrences = new Map<string, { count: number; end: number }>();
-  for (let n = 1; n <= 4; n++) for (let i = 0; i + n <= bars.length; i++) {
+  for (let n = 1; n <= maxPhrase; n++) for (let i = 0; i + n <= bars.length; i++) {
     const signature = signatures.slice(i, i + n).join('\n');
     const prior = occurrences.get(signature);
     if (!prior || i >= prior.end) occurrences.set(signature, { count: (prior?.count ?? 0) + 1, end: i + n });
@@ -124,14 +124,14 @@ function arrangePhrases(bars: Bar[], name: string, used: Set<string>) {
       rows.push({ count: j - i, ref: 'silence', start: i }); i = j; continue;
     }
     let size = 1, best = 0;
-    for (let n = 1; n <= 4 && i + n <= bars.length; n++) {
+    for (let n = 1; n <= maxPhrase && i + n <= bars.length; n++) {
       const phrase = bars.slice(i, i + n);
       if (!phrase.every(b => b.call === phrase[0].call && b.suffix === phrase[0].suffix)) continue;
       const matches = occurrences.get(signatures.slice(i, i + n).join('\n'))?.count ?? 0;
       const saving = (matches - 1) * (expression(phrase).length - name.length - 10);
       if (matches > 1 && saving > best) { size = n; best = saving; }
     }
-    const phrase = bars.slice(i, i + size), signature = signatures.slice(i, i + size).join('\n');
+    const phrase = bars.slice(i, i + size), signature = expression(phrase);
     let ref = dictionary.get(signature);
     if (!ref && best > 0) {
       let id = dictionary.size + 1;
@@ -155,6 +155,22 @@ function arrangePhrases(bars: Bar[], name: string, used: Set<string>) {
     line += item + ' ';
   }
   if (line.trim()) layout.push(line.trimEnd());
+  if (compact) {
+    const refs = [...new Set(rows.map(r => r.ref))].filter(ref => ref !== 'silence');
+    const labels = refs.map((_, i) => String.fromCharCode(97 + i % 26) + (i >= 26 ? Math.floor(i / 26) : ''));
+    const sequence = rows.map(r => (r.ref === 'silence' ? '~' : labels[refs.indexOf(r.ref)]) + (r.count === 1 ? '' : `@${r.count}`)).join(' ');
+    const defined = new Map(definitions.map(def => { const at = def.indexOf(' = '); return [def.slice(6, at), def.slice(at + 3)]; }));
+    const rawDrums = bars.every(b => b.body === '~' || b.call === 'n' && !b.suffix);
+    const entries: string[] = []; let row = '  ';
+    for (const [i, ref] of refs.entries()) {
+      const value = defined.get(ref) ?? ref;
+      const item = `${labels[i]}: ${rawDrums ? value.replace(/^n\("(.*)"\)$/, '"$1"') : value},`;
+      if (row.length > 2 && row.length + item.length > 100) { entries.push(row.trimEnd()); row = '  '; }
+      row += item + ' ';
+    }
+    if (row.trim()) entries.push(row.trimEnd());
+    return { definitions: [], arrangement: `mini('<${sequence}>').pickRestart({\n${entries.join('\n')}\n})${rawDrums ? '.n()' : ''}` };
+  }
   return { definitions, arrangement: `arrange(\n${layout.join('\n')}\n)` };
 }
 
@@ -162,26 +178,28 @@ export function compilePatterns(song: Song, opts: Required<CompileOptions>): str
   const range = barRange(song, opts.maxBars);
   if (!range) return ['silence'];
   const selected = song.tracks.filter(t => !t.vocal && (opts.melody || t.role !== 'melody'));
-  const lines = [opts.form === 'loop' ? '// Automatic main loop: edit these patterns to start live coding.' : '// Live coding: edit a riff once to change every repeat.', opts.form === 'loop' ? '// Full arrangement keeps the variations; Source detail keeps the unrounded events.' : '// Timing cleaned within 15 ms; choose Source detail for the unrounded events.', ''];
+  const lines = [opts.form === 'loop' ? '// Automatic main loop: edit these patterns to start live coding.' : '// Live coding: edit a riff once to change every repeat.', opts.form === 'loop' ? '// Full arrangement keeps the variations; Source detail keeps the unrounded events.' : opts.simplify ? '// Full form on a musical grid; Source detail retains the original timing, dynamics and doubled parts.' : '// Timing cleaned within 15 ms; choose Source detail for the unrounded events.', ''];
   const names: string[] = [], used = new Set<string>();
   const emit = (t: Track, base: string, token: (n: NoteEvent) => string, sound: string) => {
     if (!t.notes.length) return;
     let name = ident(base), i = 2; while (used.has(name)) name = `${ident(base)}_${i++}`; used.add(name);
-    const { bars, setters } = renderBars(t, song, range.firstBar, range.nBars, token, opts.form === 'loop');
+    const { bars, setters } = renderBars(t, song, range.firstBar, range.nBars, token, opts.form === 'loop', opts.simplify);
     if (bars.every(b => b.body === '~')) return;
     const compact = opts.form === 'loop';
     const compatible = bars.every(b => b.call === bars[0].call && b.suffix === bars[0].suffix);
     const { definitions, arrangement } = compact && compatible
       ? { definitions: [], arrangement: expression(bars) }
-      : arrangePhrases(bars, name, used);
+      : arrangePhrases(bars, name, used, opts.simplify, opts.simplify && t.role === 'drums' ? 1 : 4);
     names.push(name);
-    lines.push(...(definitions.length ? [`// ${partName(t.name) || base}: reusable phrases`, ...definitions] : []), `// ${t.role} · ${base}`, `const ${name} = ${arrangement}`, `  ${setters}${sound}`, '');
+    lines.push(...(definitions.length ? [`// ${partName(t.name) || base}: reusable phrases`, ...definitions] : []), ...(opts.simplify ? [`const ${name} = ${arrangement}${setters}${sound}`, ''] : [`// ${t.role} · ${base}`, `const ${name} = ${arrangement}`, `  ${setters}${sound}`, '']));
   };
   for (const t of selected.filter(t => t.role !== 'drums').slice(0, opts.maxTracks)) {
     const sound = soundFor(t, opts.melodySound).sound;
-    emit(t, t.role === 'bass' ? 'bass' : partName(t.name) || gmName(t.program).replace(/^gm_/, ''), n => noteName(n.pitch), `.s('${sound}')`);
+    emit(t, t.role === 'bass' ? 'bass' : opts.simplify ? gmName(t.program).replace(/^gm_/, '') : partName(t.name) || gmName(t.program).replace(/^gm_/, ''), n => noteName(n.pitch), `.s('${sound}')`);
   }
   for (const t of selected.filter(t => t.role === 'drums')) {
+    // GM keys that select the very same sample are a single voice in the editable mix.
+    const rendered = new Set<string>();
     for (const pitch of [...new Set(t.notes.map(n => n.pitch))].sort((a, b) => a - b)) {
       const acoustic = song.meta.drumKit === 'acoustic' ? ACOUSTIC_DRUMS[pitch] : undefined;
       const perc = percName(pitch);
@@ -189,10 +207,20 @@ export function compilePatterns(song: Song, opts: Required<CompileOptions>): str
       if (!sample) continue;
       const index = acoustic?.index ?? Number(perc?.token.split(':')[1] ?? 0);
       const trim = acoustic?.gain ?? (perc ? percTrim(perc.sample) : 1);
+      const voice = `${sample}:${index}:${trim}`;
+      if (opts.simplify && rendered.has(voice)) continue;
+      rendered.add(voice);
+      const equivalent = (p: number) => {
+        if (!opts.simplify) return p === pitch;
+        const a = song.meta.drumKit === 'acoustic' ? ACOUSTIC_DRUMS[p] : undefined, b = percName(p);
+        return `${a?.sample ?? b?.sample ?? drumName(p)}:${a?.index ?? Number(b?.token.split(':')[1] ?? 0)}:${a?.gain ?? (b ? percTrim(b.sample) : 1)}` === voice;
+      };
+      const hits = t.notes.filter(n => equivalent(n.pitch));
+      const unique = opts.simplify ? [...new Map(hits.map(n => [n.start, { ...n, pitch }])).values()] : hits;
       const label = ({ 35: 'kick', 36: 'kick', 38: 'snare', 40: 'snare', 42: 'closed_hat', 44: 'pedal_hat', 46: 'open_hat', 49: 'crash', 51: 'ride' } as Record<number, string>)[pitch] ?? `percussion_${pitch}`;
-      emit({ ...t, name: label, notes: t.notes.filter(n => n.pitch === pitch) }, label, () => String(index), `.s('${sample}')${trim === 1 ? '' : `.mul(gain(${trim}))`}`);
+      emit({ ...t, name: label, notes: unique }, label, () => String(index), `.s('${sample}')${trim === 1 ? '' : `.mul(gain(${trim}))`}`);
     }
   }
-  lines.push('// Mix: mute a part here, or change its sound and effects above.', names.length ? opts.form === 'loop' ? `stack(${names.join(', ')})` : `stack(\n  ${names.join(',\n  ')}\n)` : 'silence');
+  lines.push('// Mix: mute a part here, or change its sound and effects above.', names.length ? opts.form === 'loop' || opts.simplify ? `stack(${names.join(', ')})` : `stack(\n  ${names.join(',\n  ')}\n)` : 'silence');
   return lines;
 }

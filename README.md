@@ -123,15 +123,18 @@ merges unison attacks, uses natural drum-sample decay, and reduces dynamics and 
 not an exact rendition of the whole recording. The code identifies the source passage and simplifications.
 No song IDs or hand-authored riffs participate in this process.
 
-**Full arrangement** names reusable 1–4-bar phrases and sequences them with `arrange()`. Onsets and
-note durations can change by up to 15 ms; pitches, note counts and dynamics remain intact.
+**Full arrangement** retains the complete bar timeline and sequences reusable riffs with Strudel's
+[`pickRestart()`](https://strudel.cc/learn/conditional-modifiers/#pickrestart). It quantizes to a shared
+musical grid, steadies each part's dynamics, removes empty/unison events, merges matching guitar
+doubles while keeping their unique solos/fills, and combines percussion keys that play the same sample.
+Drum samples use their natural decay. These are explicit simplifications, not recording fidelity guarantees.
 **Source detail** retains the unrounded instrumental events. Both are available in the selector.
 
 The core API keeps its source-detail/full-song default for compatibility:
 
 ```js
 compile(song, { form: 'loop', timing: 'patterns' }) // short automatic sketch
-compile(song, { form: 'song', timing: 'patterns' }) // full arrangement, reusable phrases
+compile(song, { timing: 'patterns', simplify: true }) // complete, cleaned arrangement
 compile(song, { timing: 'source' })                // unrounded instrumental events
 ```
 

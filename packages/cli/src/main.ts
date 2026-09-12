@@ -80,7 +80,7 @@ program
     }
     const song = await loadSong(entry, read);
     if (o.json) { console.log(JSON.stringify(song, null, 2)); return; }
-    const opts: CompileOptions = { form: o.fullSong || o.sourceDetail ? 'song' : 'loop', timing: o.sourceDetail ? 'source' : 'patterns', melody: o.melody, maxBars: Number(o.maxBars), maxTracks: Number(o.maxTracks) };
+    const opts: CompileOptions = { simplify: !!o.fullSong && !o.sourceDetail, form: o.fullSong || o.sourceDetail ? 'song' : 'loop', timing: o.sourceDetail ? 'source' : 'patterns', melody: o.melody, maxBars: Number(o.maxBars), maxTracks: Number(o.maxTracks) };
     const code = compile(song, opts);
     console.error(`# ${describe(entry)}`);
     if (o.out) { fs.writeFileSync(o.out, code); console.error(`wrote ${o.out}`); }

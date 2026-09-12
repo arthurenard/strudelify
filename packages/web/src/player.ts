@@ -4,7 +4,7 @@
  */
 import { el, toast } from './dom.js';
 import { state } from './state.js';
-import { ed, editorEl, audioContext } from './repl.js';
+import { ed, editorEl, audioContext, preloadLocalDrums } from './repl.js';
 import { updatePosition } from './timeline.js';
 
 export function setStarted(v: boolean) {
@@ -41,6 +41,7 @@ export async function play(fromBar?: number) {
   try {
     const ctx = audioContext();
     if (ctx?.state === 'suspended') await ctx.resume();
+    if (cur.song.meta.drumKit === 'acoustic') await preloadLocalDrums();
     e.setCode(cur.code);
     await e.evaluate(true);
     const bar = fromBar ?? state.pausedBar;

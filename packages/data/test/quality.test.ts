@@ -14,3 +14,7 @@ it('pins reviewed sources by checksum', () => {
   const manifest = JSON.parse(fs.readFileSync(new URL('manifest.json', root), 'utf8'));
   for (const entry of manifest.entries) expect(crypto.createHash('sha256').update(fs.readFileSync(new URL(entry.file, root))).digest('hex')).toBe(entry.sha256);
 });
+it('rejects corrupt decoded velocity instead of rewarding a longer arrangement', () => {
+  const song: Song = { meta: {...meta,sources:['midi']}, sections: [], tracks: [{name:'Guitar',program:27,role:'chords',notes:Array.from({length:100},(_,i)=>({pitch:60,start:i*4,duration:1,velocity:129/127}))}] };
+  expect(transcriptionScore(song)).toBe(-1);
+});

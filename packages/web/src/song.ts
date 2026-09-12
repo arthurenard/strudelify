@@ -42,7 +42,7 @@ function fillBarCaps(totalBars: number, meta: Song['meta']) {
   el.maxBars.value = String(opts[opts.length - 1]?.value ?? value);
 }
 function options(): CompileOptions {
-  return { form: el.codeStyle.value === 'loop' ? 'loop' : 'song', timing: el.codeStyle.value === 'source' ? 'source' : 'patterns', melody: el.melody.checked, maxTracks: Number.MAX_SAFE_INTEGER, maxBars: Number(el.maxBars.value) || 200 };
+  return { simplify: el.codeStyle.value === 'patterns', form: el.codeStyle.value === 'loop' ? 'loop' : 'song', timing: el.codeStyle.value === 'source' ? 'source' : 'patterns', melody: el.melody.checked, maxTracks: Number.MAX_SAFE_INTEGER, maxBars: Number(el.maxBars.value) || 200 };
 }
 
 /** Instrumental leads can be toggled; detected vocals are always omitted. Charts have no MIDI options. */
@@ -86,7 +86,7 @@ function renderChips(entry: IndexEntry, song: Song, code: string, key: { tonic?:
   for (const s of entry.sources) {
     const c = s === 'midi' && entry.provenance?.provider === 'pdmx' ? { label: 'Score arrangement', title: `PDMX score-derived MIDI. Rated ${entry.provenance.rating}/5 by ${entry.provenance.ratings} users. Instrumentation follows the score arrangement, which may differ from the recording.` } : SOURCE_CHIPS[s];
     if (c && !song.tracks.length) chips.push('<span class="chip">Generated accompaniment</span>');
-    if (c) chips.push(`<span class="chip src ${s}" title="${esc(!song.tracks.length && c.chartOnly ? c.chartOnly : c.title)}"><i aria-hidden="true"></i>${c.label}</span>`);
+    if (c) chips.push(`<span class="chip src ${s}" title="${esc(!song.tracks.length && c.chartOnly ? c.chartOnly : [c.title, entry.sourceNote].filter(Boolean).join(' '))}"><i aria-hidden="true"></i>${c.label}</span>`);
   }
   el.chips.innerHTML = chips.join('');
 }

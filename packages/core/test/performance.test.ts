@@ -65,7 +65,7 @@ describe('instrumental performance rendering', () => {
   });
   for (const [file, title, artist, instruments] of [
     ['love-me-do.mid', 'Love Me Do', 'The Beatles', [22, 25, 32]],
-    ['smells-like-teen-spirit.mid', 'Smells Like Teen Spirit', 'Nirvana', [25, 27, 29, 30, 34]],
+    ['smells-like-teen-spirit.mid', 'Smells Like Teen Spirit', 'Nirvana', [27, 29, 30, 33]],
   ] as const) it(`renders every retained instrumental note in the curated ${title}`, async () => {
     const data = fs.readFileSync(new URL(`../../data/curated/${file}`, import.meta.url));
     const manifest = JSON.parse(fs.readFileSync(new URL('../../data/curated/manifest.json', import.meta.url), 'utf8'));

@@ -6,6 +6,7 @@
  * Chord-only material remains explicitly generated accompaniment.
  */
 import { selectLoop } from './loop.js';
+import { prepareArrangement } from './arrangement.js';
 import { compilePatterns } from './patterns.js';
 import { compilePerformance } from './performance.js';
 import type { Song, Track, NoteEvent, Section, SongMeta } from './types.js';
@@ -14,6 +15,8 @@ import { gmName, gmLabel, drumName, percName, percTrim, percTrimDb, percShare, P
 import { pitchClass, voicingSafe } from './chords.js';
 
 export interface CompileOptions {
+  /** Clean timing, duplicate attacks and dynamics across the full song for editing. Default false. */
+  simplify?: boolean;
   /** Full arrangement (API default), or an automatically selected short instrumental loop. */
   form?: 'song' | 'loop';
   /** Source timing (API default), editable reusable patterns, or legacy grid notation. Vocals are always omitted. */
@@ -275,6 +278,7 @@ export function ident(s: string, fallback = 'part'): string {
 
 export function compile(song: Song, opts: CompileOptions = {}): string {
   if (opts.form === 'loop') song = selectLoop(song, opts).song;
+  else if (opts.simplify) song = prepareArrangement(song);
   const melody = opts.melody ?? true;
   const melodySound = opts.melodySound ?? DEFAULT_MELODY_SOUND;
   const maxTracks = opts.maxTracks ?? DEFAULT_MAX_TRACKS;
@@ -293,7 +297,7 @@ export function compile(song: Song, opts: CompileOptions = {}): string {
     `setcpm(${cpm.toFixed(8).replace(/0{1,6}$/, '')})`,
     '',
   ].map(line => line.startsWith('//') ? line.replace(/[\r\n\u2028\u2029]/g, ' ') : line);
-  if (song.tracks.length) return header.concat((opts.timing === 'patterns' ? compilePatterns : opts.timing === 'grid' ? compileTracks : compilePerformance)(song, { melody, melodySound, maxTracks, maxBars, timing: opts.timing ?? 'source', form: opts.form ?? 'song' })).join('\n');
+  if (song.tracks.length) return header.concat((opts.timing === 'patterns' ? compilePatterns : opts.timing === 'grid' ? compileTracks : compilePerformance)(song, { melody, melodySound, maxTracks, maxBars, timing: opts.timing ?? 'source', form: opts.form ?? 'song', simplify: opts.simplify ?? false })).join('\n');
   return header.concat(compileSections(song)).join('\n');
 }
 
@@ -788,9 +792,9 @@ export function barRange(song: Song, maxBars = DEFAULT_MAX_BARS): { firstBar: nu
   let first = Infinity, last = 0;
   for (const t of song.tracks) for (const n of t.notes) { first = Math.min(first, n.start); last = Math.max(last, n.start + n.duration); }
   if (!isFinite(first)) return null;
-  const firstBar = barIndex(song.meta, first);
+  const firstBar = song.meta.arrangementBars ? 0 : barIndex(song.meta, first);
   const lastBar = barIndex(song.meta, last - 1e-6); // a note ending exactly on a bar line does not open a new bar
-  const totalBars = lastBar - firstBar + 1;
+  const totalBars = song.meta.arrangementBars ?? lastBar - firstBar + 1;
   const cap = Math.max(1, Math.round(maxBars * 4 / barLength(song.meta)));
   // A song that barely exceeds the cap is rendered whole rather than losing its last bars.
   const tolerance = Math.max(2, Math.round(cap * 0.05));
@@ -813,6 +817,7 @@ export interface Timeline {
 /** Everything a UI needs to draw a seekable timeline that matches `compile()`'s output. */
 export function timeline(song: Song, opts: CompileOptions = {}): Timeline {
   if (opts.form === 'loop') song = selectLoop(song, opts).song;
+  else if (opts.simplify) song = prepareArrangement(song);
   const cpm = cyclesPerMinute(song.meta);
   const secondsPerBar = 60 / cpm;
   const bpb = song.meta.beatsPerBar;

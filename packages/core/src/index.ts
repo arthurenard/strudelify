@@ -11,3 +11,4 @@ export * from './detect.js';
 export * from './key.js';
 export * from './load.js';
 export * from './loop.js';
+export * from './arrangement.js';

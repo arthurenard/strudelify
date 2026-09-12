@@ -1,5 +1,6 @@
 /** Incremental, reproducible PDMX import through Zenodo's public record API. */
 import fs from 'node:fs';
+import { validTranscription } from './quality.js';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -53,6 +54,7 @@ async function main() {
       const song = songFromMidi(data, { id, title: item.title, artist: item.artist });
       const instrumental = song.tracks.filter(t => !t.vocal && t.role !== 'drums');
       if (!instrumental.length || instrumental.reduce((n, t) => n + t.notes.length, 0) < 32) throw Error('Insufficient instrumental notes');
+      if (!validTranscription(song)) throw new Error('Invalid decoded MIDI events');
       const code = compile(song, { timing: 'patterns', form: 'loop' });
       if (/\b(?:NaN|Infinity|undefined)\b/.test(code.split('\n').filter(l => !l.startsWith('//')).join('\n'))) throw Error('Non-finite output');
       if (code.length > 12000) throw Error('Main-loop code exceeds readability limit');

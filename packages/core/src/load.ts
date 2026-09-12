@@ -34,6 +34,7 @@ export async function loadSong(entry: IndexEntry, read: FileReader): Promise<Son
   if (!song) throw new Error(`Entry ${entry.id} has no source files`);
   for (const track of song.tracks) if (track.channel !== undefined && entry.vocalChannels?.includes(track.channel)) track.vocal = true;
   song.meta.drumKit = entry.drumKit;
+  if (entry.sourceNote) song.meta.remarks = [...(song.meta.remarks ?? []), entry.sourceNote];
   if (entry.provenance) song.meta.remarks = [...(song.meta.remarks ?? []), `Transcription provider: ${entry.provenance.provider}. ${entry.provenance.url}; license: ${entry.provenance.license}`];
   song.meta.title = entry.title;
   song.meta.artist = entry.artist;

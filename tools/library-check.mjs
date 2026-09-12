@@ -7,7 +7,7 @@ import os from 'node:os';
 import { fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { loadSong, compile, timeline, barRange, normaliseText } from '../packages/core/dist/index.js';
-import { evaluatePattern } from './strudel-runtime.mjs';
+import { evaluatePattern, queryPattern } from './strudel-runtime.mjs';
 
 function sizeSummary(rows) {
   const percentile = (key, p) => [...rows].sort((a, b) => a[key] - b[key])[Math.max(0, Math.ceil(rows.length * p) - 1)]?.[key];
@@ -20,7 +20,7 @@ const allEntries = JSON.parse(fs.readFileSync(path.join(db, 'index.json'), 'utf8
 const timing = process.argv.find(arg => arg.startsWith('--timing='))?.split('=')[1] ?? 'source';
 if (!['source', 'grid', 'patterns'].includes(timing)) throw new Error('Invalid --timing');
 const form = process.argv.includes('--loop') ? 'loop' : 'song';
-const options = { timing, form, ...(process.argv.includes('--full') ? { maxBars: Number.MAX_SAFE_INTEGER, maxTracks: Number.MAX_SAFE_INTEGER } : {}) };
+const options = { timing, form, simplify: process.argv.includes('--simplify'), ...(process.argv.includes('--full') ? { maxBars: Number.MAX_SAFE_INTEGER, maxTracks: Number.MAX_SAFE_INTEGER } : {}) };
 const workerCount = Number(process.argv.find(arg => arg.startsWith('--workers='))?.split('=')[1] ?? 1);
 if (!Number.isInteger(workerCount) || workerCount < 1 || workerCount > 8) throw new Error('--workers must be between 1 and 8');
 if (workerCount > 1) {
@@ -76,7 +76,7 @@ for (const entry of entries) {
     if (/\b(?:NaN|Infinity|undefined)\b/.test(code.split('\n').filter(l => !l.startsWith('//')).join('\n'))) throw new Error('Non-finite generated code');
     const pattern = evaluatePattern(code);
     report.patterns += [...code.matchAll(/(?:note\(|mini\(|s\(|\[\d+,\s*)(["'])(?:[^"'\\]|\\.)*\1/g)].length;
-    const snapshot = (bar) => pattern.queryArc(bar, bar + 1).map(event => {
+    const snapshot = (bar) => queryPattern(pattern, bar, bar + 1).map(event => {
       for (const key of ['duration', 'gain', 'pan']) if (typeof event.value[key] === 'number' && !Number.isFinite(event.value[key])) throw new Error(`Invalid runtime ${key}`);
       return { value: event.value, start: Number((Number((event.whole?.begin ?? event.part.begin).sub(bar))).toFixed(6)), end: Number((Number((event.whole?.end ?? event.part.end).sub(bar))).toFixed(6)) };
     });

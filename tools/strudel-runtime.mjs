@@ -10,7 +10,8 @@ const result = buildSync({
   bundle: true, platform: 'browser', format: 'esm', write: false,
 });
 export const runtime = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
-runtime.setStringParser(runtime.mini);
+// Match the browser REPL: double-quoted strings are parsed by the transpiler,
+// while single-quoted strings stay literal unless passed explicitly to mini().
 const names = Object.keys(runtime).filter(name => /^[A-Za-z_$][\w$]*$/.test(name));
 const values = names.map(name => runtime[name]);
 
@@ -21,11 +22,22 @@ export function evaluatePattern(code) {
   return new Function(...names, `return (() => {\n${body}\n})()`)(...values);
 }
 
+/** Strudel logs some query failures and returns []; do not mistake those for valid silence. */
+export function queryPattern(pattern, start, end) {
+  const previous = console.error, errors = [];
+  console.error = (...args) => errors.push(String(args[0]).slice(0, 250));
+  try {
+    const events = pattern.queryArc(start, end);
+    if (errors.length) throw new Error(`Strudel query failed: ${errors.join('; ')}`);
+    return events;
+  } finally { console.error = previous; }
+}
+
 /** Admission gate for automatically imported transcriptions; checks actual runtime events. */
 export function validatePattern(code, bars) {
   if (!(bars > 0 && bars <= 4)) throw Error('Invalid main-loop period');
   const pattern = evaluatePattern(code);
-  const snapshot = start => pattern.queryArc(start, start + bars).filter(e => e.hasOnset()).map(e => {
+  const snapshot = start => queryPattern(pattern, start, start + bars).filter(e => e.hasOnset()).map(e => {
     for (const key of ['duration', 'velocity', 'gain', 'pan']) {
       if (typeof e.value[key] === 'number' && !Number.isFinite(e.value[key])) throw Error(`Invalid runtime ${key}`);
     }

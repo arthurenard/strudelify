@@ -7,7 +7,7 @@
  * into a single entry that carries both files.
  */
 import fs from 'node:fs';
-import { transcriptionScore } from './quality.js';
+import { transcriptionScore, validTranscription } from './quality.js';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -89,6 +89,7 @@ function main() {
         const notes = song.tracks.reduce((a, t) => a + t.notes.length, 0);
         if (notes < 50) throw new Error('too few notes');
         score = transcriptionScore(song);
+        if (score < 0) throw new Error('invalid transcription');
         bpm = song.meta.bpm;
         key = song.meta.tonic ? `${song.meta.tonic} ${song.meta.mode ?? ''}`.trim() : undefined;
       } catch { midiFail++; continue; }
@@ -106,7 +107,7 @@ function main() {
   console.log(`midi: ${midiCount} files parsed, ${midiFail} unreadable`);
 
   const curatedRoot = path.resolve(HERE, '..', 'curated');
-  const curated: { entries: { id: string; file: string; sha256: string; drumKit?: 'acoustic'; vocalChannels?: number[]; beatScale?: number }[] } = JSON.parse(fs.readFileSync(path.join(curatedRoot, 'manifest.json'), 'utf8'));
+  const curated: { entries: { id: string; file: string; sha256: string; sourceNote?: string; drumKit?: 'acoustic'; vocalChannels?: number[]; beatScale?: number }[] } = JSON.parse(fs.readFileSync(path.join(curatedRoot, 'manifest.json'), 'utf8'));
   const entries: IndexEntry[] = [];
   const usedIds = new Set<string>();
   for (const d of drafts.values()) {
@@ -119,6 +120,7 @@ function main() {
       const file = path.join(curatedRoot, pinned.file), bytes = fs.readFileSync(file);
       if (crypto.createHash('sha256').update(bytes).digest('hex') !== pinned.sha256) throw new Error(`Curated source checksum mismatch: ${id}`);
       const song = songFromMidi(bytes, { id, title: d.title, artist: d.artist }, { sourceTiming: true });
+      if (!validTranscription(song)) throw new Error(`Invalid curated transcription: ${id}`);
       d.midi = file; d.bpm = song.meta.bpm * (pinned.beatScale ?? 1); d.key = `${song.meta.tonic ?? ''} ${song.meta.mode ?? ''}`.trim();
     }
     const files: IndexEntry['files'] = {};
@@ -127,7 +129,7 @@ function main() {
     const sources: IndexEntry['sources'] = [];
     if (d.mcgill) sources.push('mcgill');
     if (d.midi) sources.push('midi');
-    entries.push({ id, ...(pinned?.drumKit ? { drumKit: pinned.drumKit } : {}), ...(pinned?.vocalChannels ? { vocalChannels: pinned.vocalChannels } : {}), ...(pinned?.beatScale ? { beatScale: pinned.beatScale } : {}), title: d.title, artist: d.artist, year: d.year, sources, bpm: d.bpm, key: d.key, popularity: d.variants + (d.mcgill ? 4 : 0), files });
+    entries.push({ id, ...(pinned?.sourceNote ? { sourceNote: pinned.sourceNote } : {}), ...(pinned?.drumKit ? { drumKit: pinned.drumKit } : {}), ...(pinned?.vocalChannels ? { vocalChannels: pinned.vocalChannels } : {}), ...(pinned?.beatScale ? { beatScale: pinned.beatScale } : {}), title: d.title, artist: d.artist, year: d.year, sources, bpm: d.bpm, key: d.key, popularity: d.variants + (d.mcgill ? 4 : 0), files });
   }
   entries.sort((a, b) => a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title));
   fs.writeFileSync(path.join(OUT, 'index.json'), JSON.stringify(entries));

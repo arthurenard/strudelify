@@ -2,9 +2,12 @@
  * The embedded Strudel REPL: lazy loading of the 2 MB bundle and typed access to the editor element.
  */
 import { el } from './dom.js';
+import { registerLocalDrums, preloadLocalDrums } from './samples.js';
+export { preloadLocalDrums };
 
 export interface Scheduler { started: boolean; lastEnd: number; num_ticks_since_cps_change: number; now(): number; stop(): void }
 export interface StrudelMirror {
+  prebaked: Promise<void>;
   code: string;
   setCode(code: string): void;
   evaluate(autostart?: boolean): Promise<void>;
@@ -32,4 +35,8 @@ let replPromise: Promise<void> | null = null;
 export const loadRepl = (): Promise<void> => (replPromise ??= import('@strudel/repl').then(() => new Promise<void>((resolve) => {
   const tick = () => (ed() ? resolve() : requestAnimationFrame(tick)); // the custom element upgrades on define
   tick();
-})));
+})).then(async () => {
+  // Override only reviewed sample indices after the REPL has registered its default banks.
+  await ed()!.prebaked;
+  await registerLocalDrums();
+}));
