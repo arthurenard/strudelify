@@ -6,6 +6,7 @@ import { createIndex, type IndexEntry, type SongIndex } from '@strudelify/core';
 import { el, setStatus, showBanner } from './dom.js';
 import { state } from './state.js';
 import { loadRepl } from './repl.js';
+import { lookupArt } from './art.js';
 import {
   esc, songTint, initial, highlightTokens, highlight, buildArtistIndex, artistMatch, queryLooksLikeTitle, byPopularity,
   displayArtist, tidyHits, keyName, setArtistAliases, canonicalArtists, type ArtistGroup,
@@ -66,6 +67,37 @@ let previewHandler: (entry: IndexEntry) => void = () => {};
 export function onPreview(fn: (entry: IndexEntry) => void) { previewHandler = fn; }
 let previewTimer: number | undefined;
 
+// Only visible rows fetch artwork. A shared two-slot queue also bounds requests while typing.
+let coverQueue: Row[] = [];
+let coverLoads = 0;
+const coverObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(entries => {
+  for (const item of entries) if (item.isIntersecting) {
+    coverObserver!.unobserve(item.target);
+    const row = rows.find(row => row.el === item.target);
+    if (row) coverQueue.push(row);
+  }
+  loadRowCovers();
+}, { root: el.results });
+
+function loadRowCovers() {
+  if (el.resultsPanel.hidden) return;
+  while (coverLoads < 2 && coverQueue.length) {
+    const row = coverQueue.shift()!;
+    if (!row.el.isConnected) continue;
+    coverLoads++;
+    const e = row.entry;
+    void lookupArt(e.id, displayArtist(e.artist), e.title, { year: e.year, supersede: false }).then(info => {
+      if (!row.el.isConnected || info.kind !== 'track' || !info.art) return;
+      const tile = row.el.querySelector<HTMLElement>('.opt-tile')!;
+      const img = new Image();
+      img.alt = ''; img.decoding = 'async'; img.width = 40; img.height = 40;
+      img.onload = () => { if (row.el.isConnected) tile.replaceChildren(img); };
+      // Keep the letter tile if the image URL fails to load.
+      img.src = info.art;
+    }).catch(() => {}).finally(() => { coverLoads--; loadRowCovers(); });
+  }
+}
+
 // ---------- recent ----------
 const RECENT_KEY = 'recent';
 const RECENT_MAX = 4;
@@ -79,6 +111,7 @@ export function rememberRecent(id: string) {
 
 function openPanel(open: boolean) {
   el.resultsPanel.hidden = !open;
+  if (open) loadRowCovers();
   el.q.setAttribute('aria-expanded', String(open));
   if (!open) { el.q.removeAttribute('aria-activedescendant'); activeRow = -1; }
 }
@@ -112,6 +145,8 @@ function rowHtml(e: IndexEntry, tokens: string[], inGroup: boolean): string {
 }
 
 function resetRows() {
+  coverObserver?.disconnect();
+  coverQueue = [];
   el.results.innerHTML = '';
   rows = [];
   activeRow = -1;
@@ -127,7 +162,9 @@ function makeRow(e: IndexEntry, tokens: string[], inGroup = false) {
     li.addEventListener('click', () => choose(e));
     li.addEventListener('pointermove', () => { if (activeRow !== i) setActiveRow(i, false); });
     el.results.appendChild(li);
-    rows.push({ entry: e, el: li });
+    const row = { entry: e, el: li };
+    rows.push(row);
+    if (coverObserver) coverObserver.observe(li); else coverQueue.push(row);
 }
 function addGroup(label: string, count?: string) {
   const li = document.createElement('li');
