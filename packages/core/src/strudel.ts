@@ -5,6 +5,7 @@
  * path below produces shorter, quantised notation with the historical mixing heuristics.
  * Chord-only material remains explicitly generated accompaniment.
  */
+import { selectLoop } from './loop.js';
 import { compilePatterns } from './patterns.js';
 import { compilePerformance } from './performance.js';
 import type { Song, Track, NoteEvent, Section, SongMeta } from './types.js';
@@ -13,6 +14,8 @@ import { gmName, gmLabel, drumName, percName, percTrim, percTrimDb, percShare, P
 import { pitchClass, voicingSafe } from './chords.js';
 
 export interface CompileOptions {
+  /** Full arrangement (API default), or an automatically selected short instrumental loop. */
+  form?: 'song' | 'loop';
   /** Source timing (API default), editable reusable patterns, or legacy grid notation. Vocals are always omitted. */
   timing?: 'source' | 'grid' | 'patterns';
   /** Include instrumental melody parts. Detected vocals are always excluded. Default true. */
@@ -271,6 +274,7 @@ export function ident(s: string, fallback = 'part'): string {
 }
 
 export function compile(song: Song, opts: CompileOptions = {}): string {
+  if (opts.form === 'loop') song = selectLoop(song, opts).song;
   const melody = opts.melody ?? true;
   const melodySound = opts.melodySound ?? DEFAULT_MELODY_SOUND;
   const maxTracks = opts.maxTracks ?? DEFAULT_MAX_TRACKS;
@@ -288,8 +292,8 @@ export function compile(song: Song, opts: CompileOptions = {}): string {
     ...remarks.map((r) => `// note: ${r}`),
     `setcpm(${cpm.toFixed(8).replace(/0{1,6}$/, '')})`,
     '',
-  ];
-  if (song.tracks.length) return header.concat((opts.timing === 'patterns' ? compilePatterns : opts.timing === 'grid' ? compileTracks : compilePerformance)(song, { melody, melodySound, maxTracks, maxBars, timing: opts.timing ?? 'source' })).join('\n');
+  ].map(line => line.startsWith('//') ? line.replace(/[\r\n\u2028\u2029]/g, ' ') : line);
+  if (song.tracks.length) return header.concat((opts.timing === 'patterns' ? compilePatterns : opts.timing === 'grid' ? compileTracks : compilePerformance)(song, { melody, melodySound, maxTracks, maxBars, timing: opts.timing ?? 'source', form: opts.form ?? 'song' })).join('\n');
   return header.concat(compileSections(song)).join('\n');
 }
 
@@ -693,7 +697,7 @@ function compileSections(song: Song): string[] {
     const chordBars = sectionBars(s, bpb, (sym) => voicingSafe(splitSlash(sym).chord));
     const bassBars = sectionBars(s, bpb, (sym) => bassNoteName(splitSlash(sym).bass));
     if (!chordBars.length) continue;
-    chordRows.push(`  // ${s.raw ?? s.label} (${chordBars.length} bars)`);
+    chordRows.push(`  // ${String(s.raw ?? s.label).replace(/[\r\n\u2028\u2029]/g, ' ')} (${chordBars.length} bars)`);
     chordRows.push(`  [${chordBars.length}, ${JSON.stringify(sequence(chordBars))}],`);
     bassRows.push(`  [${bassBars.length}, ${JSON.stringify(sequence(bassBars))}],`);
   }
@@ -780,6 +784,7 @@ function grooveFor(beatsPerBar: number, beatUnit: number): string {
  * silence trimmed). `maxBars` counts bars of 4/4, so the cap is a length in beats whatever the metre.
  */
 export function barRange(song: Song, maxBars = DEFAULT_MAX_BARS): { firstBar: number; nBars: number; totalBars: number } | null {
+  if (song.meta.loopBars) return { firstBar: 0, nBars: song.meta.loopBars, totalBars: song.meta.loopBars };
   let first = Infinity, last = 0;
   for (const t of song.tracks) for (const n of t.notes) { first = Math.min(first, n.start); last = Math.max(last, n.start + n.duration); }
   if (!isFinite(first)) return null;
@@ -807,6 +812,7 @@ export interface Timeline {
 
 /** Everything a UI needs to draw a seekable timeline that matches `compile()`'s output. */
 export function timeline(song: Song, opts: CompileOptions = {}): Timeline {
+  if (opts.form === 'loop') song = selectLoop(song, opts).song;
   const cpm = cyclesPerMinute(song.meta);
   const secondsPerBar = 60 / cpm;
   const bpb = song.meta.beatsPerBar;

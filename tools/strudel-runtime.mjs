@@ -20,3 +20,19 @@ export function evaluatePattern(code) {
   const body = runtime.transpiler(source, { emitMiniLocations: false, emitWidgets: false }).output;
   return new Function(...names, `return (() => {\n${body}\n})()`)(...values);
 }
+
+/** Admission gate for automatically imported transcriptions; checks actual runtime events. */
+export function validatePattern(code, bars) {
+  if (!(bars > 0 && bars <= 4)) throw Error('Invalid main-loop period');
+  const pattern = evaluatePattern(code);
+  const snapshot = start => pattern.queryArc(start, start + bars).filter(e => e.hasOnset()).map(e => {
+    for (const key of ['duration', 'velocity', 'gain', 'pan']) {
+      if (typeof e.value[key] === 'number' && !Number.isFinite(e.value[key])) throw Error(`Invalid runtime ${key}`);
+    }
+    return { value: e.value, start: Number(e.whole.begin.sub(start)).toFixed(6), end: Number(e.whole.end.sub(start)).toFixed(6) };
+  });
+  const first = snapshot(0);
+  if (!first.length) throw Error('No playable instrumental events');
+  if (JSON.stringify(first) !== JSON.stringify(snapshot(bars))) throw Error('Main loop does not repeat at its boundary');
+  return first.length;
+}

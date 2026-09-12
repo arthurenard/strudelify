@@ -1,5 +1,8 @@
 # Live-coding output audit
 
+Historical full-arrangement audit. The default now uses automatic Main loop selection; see
+[the pipeline review](pipeline-review.md) for the current behavior and expanded catalogue.
+
 12 September 2026. The previous renderer optimized individual MIDI-event fidelity at the expense of
 readable Strudel. Smells Like Teen Spirit produced 235,953 characters in 500 lines, with repeated
 `timecat`/`pure` event arrays and large timing weights. Tiny differences between otherwise identical

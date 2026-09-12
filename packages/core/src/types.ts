@@ -7,6 +7,8 @@
 export type Source = 'mcgill' | 'midi';
 
 export interface SongMeta {
+  /** Explicit period of an automatically selected excerpt, including its trailing rest. */
+  loopBars?: number;
   /** Explicit reviewed drum sound profile; otherwise use the default bank. */
   drumKit?: 'acoustic';
   id: string;
@@ -106,6 +108,8 @@ export interface Song {
 
 /** A compact row in the searchable index shipped to CLI and web. */
 export interface IndexEntry {
+  /** Attribution and quality metadata from an external transcription provider. */
+  provenance?: { provider: 'pdmx' | 'klangio'; url: string; license: string; rating?: number; ratings?: number };
   /** Reviewed notation-rate correction; scales both beats and BPM, preserving elapsed time. */
   beatScale?: number;
   /** Reviewed zero-based MIDI channels carrying a vocal guide. */

@@ -9,12 +9,18 @@ import { fileURLToPath } from 'node:url';
 import { loadSong, compile, timeline, barRange, normaliseText } from '../packages/core/dist/index.js';
 import { evaluatePattern } from './strudel-runtime.mjs';
 
+function sizeSummary(rows) {
+  const percentile = (key, p) => [...rows].sort((a, b) => a[key] - b[key])[Math.max(0, Math.ceil(rows.length * p) - 1)]?.[key];
+  return { chars: { median: percentile('chars', .5), p95: percentile('chars', .95), max: percentile('chars', 1) }, lines: { median: percentile('lines', .5), p95: percentile('lines', .95), max: percentile('lines', 1) } };
+}
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const db = path.join(root, 'packages/data/public/db');
 const allEntries = JSON.parse(fs.readFileSync(path.join(db, 'index.json'), 'utf8'));
 const timing = process.argv.find(arg => arg.startsWith('--timing='))?.split('=')[1] ?? 'source';
 if (!['source', 'grid', 'patterns'].includes(timing)) throw new Error('Invalid --timing');
-const options = { timing, ...(process.argv.includes('--full') ? { maxBars: Number.MAX_SAFE_INTEGER, maxTracks: Number.MAX_SAFE_INTEGER } : {}) };
+const form = process.argv.includes('--loop') ? 'loop' : 'song';
+const options = { timing, form, ...(process.argv.includes('--full') ? { maxBars: Number.MAX_SAFE_INTEGER, maxTracks: Number.MAX_SAFE_INTEGER } : {}) };
 const workerCount = Number(process.argv.find(arg => arg.startsWith('--workers='))?.split('=')[1] ?? 1);
 if (!Number.isInteger(workerCount) || workerCount < 1 || workerCount > 8) throw new Error('--workers must be between 1 and 8');
 if (workerCount > 1) {
@@ -24,11 +30,11 @@ if (workerCount > 1) {
     child.on('error', error => { console.error(error); resolve(1); });
     child.on('exit', code => resolve(code ?? 1));
   })));
-  const combined = { entries: 0, midi: 0, chordsOnly: 0, both: 0, checked: 0, patterns: 0, failures: [], truncated: [], empty: [], unavailableInstrumentals: [], duplicateGroups: [], remarks: {}, orphans: [] };
+  const combined = { entries: 0, midi: 0, chordsOnly: 0, both: 0, checked: 0, patterns: 0, codeSizes: [], failures: [], truncated: [], empty: [], unavailableInstrumentals: [], duplicateGroups: [], remarks: {}, orphans: [] };
   for (let shard = 0; shard < workerCount; shard++) {
     const report = JSON.parse(fs.readFileSync(path.join(temp, `${shard}.json`), 'utf8'));
     for (const key of ['entries', 'midi', 'chordsOnly', 'both', 'checked', 'patterns']) combined[key] += report[key];
-    for (const key of ['failures', 'truncated', 'empty', 'unavailableInstrumentals']) combined[key].push(...report[key]);
+    for (const key of ['failures', 'truncated', 'empty', 'unavailableInstrumentals', 'codeSizes']) combined[key].push(...report[key]);
     for (const [remark, count] of Object.entries(report.remarks)) combined.remarks[remark] = (combined.remarks[remark] ?? 0) + count;
     combined.orphans = report.orphans;
   }
@@ -40,14 +46,14 @@ if (workerCount > 1) {
   combined.duplicateGroups = [...groups.values()].filter(group => group.length > 1);
   if (new Set(allEntries.map(e => e.id)).size !== allEntries.length) combined.failures.push({ error: 'Duplicate catalogue IDs' });
   fs.writeFileSync(process.argv.find(arg => arg.startsWith('--output='))?.slice('--output='.length) ?? path.join(root, 'tools/library-report.json'), JSON.stringify(combined, null, 2) + '\n');
-  console.log(JSON.stringify({ ...combined, remarks: undefined, truncated: combined.truncated.length, duplicateGroups: combined.duplicateGroups.length }, null, 2));
+  console.log(JSON.stringify({ ...combined, codeSizes: undefined, readability: sizeSummary(combined.codeSizes), remarks: undefined, truncated: combined.truncated.length, duplicateGroups: combined.duplicateGroups.length }, null, 2));
   process.exit(codes.some(code => code !== 0) || combined.failures.length ? 1 : 0);
 }
 const [shard, shards] = (process.argv.find(arg => arg.startsWith('--shard='))?.split('=')[1] ?? '0/1').split('/').map(Number);
 const onlyIds = process.argv.find(arg => arg.startsWith('--ids='))?.slice('--ids='.length).split(',');
 const entries = allEntries.filter((entry, i) => i % shards === shard && (!onlyIds || onlyIds.includes(entry.id)));
 const report = { entries: entries.length, midi: 0, chordsOnly: 0, both: 0, checked: 0, patterns: 0,
-  failures: [], truncated: [], empty: [], unavailableInstrumentals: [], duplicateGroups: [], remarks: {} };
+  codeSizes: [], failures: [], truncated: [], empty: [], unavailableInstrumentals: [], duplicateGroups: [], remarks: {} };
 const ids = new Set(), files = new Set(), identities = new Map();
 for (const entry of entries) {
   try {
@@ -63,6 +69,7 @@ for (const entry of entries) {
     if (entry.files.midi && entry.files.mcgill) report.both++;
     const song = await loadSong(entry, async (file) => fs.readFileSync(path.join(db, file)));
     const code = compile(song, options);
+    report.codeSizes.push({ id: entry.id, chars: code.length, lines: code.split("\n").length });
     new vm.Script(code);
     const tl = timeline(song, options);
     if (!(tl.bars > 0 && Number.isFinite(tl.bars) && tl.cpm > 0 && Number.isFinite(tl.cpm))) throw new Error('Invalid timeline');
@@ -84,7 +91,7 @@ for (const entry of entries) {
       if (song.tracks.length && song.tracks.every(t => t.vocal)) report.unavailableInstrumentals.push(entry.id);
       else report.empty.push(entry.id);
     }
-    const range = barRange(song, options.maxBars);
+    const range = form === 'loop' ? null : barRange(song, options.maxBars);
     if (range && range.nBars < range.totalBars) report.truncated.push({ id: entry.id, ...range });
     for (const remark of song.meta.remarks ?? []) report.remarks[remark] = (report.remarks[remark] ?? 0) + 1;
     report.checked++;
@@ -99,6 +106,6 @@ const allFiles = new Set(allEntries.flatMap(e => Object.values(e.files)));
 report.orphans = fs.readdirSync(path.join(db, 'songs')).filter(file => !allFiles.has(`songs/${file}`));
 const output = process.argv.find(arg => arg.startsWith('--output='))?.slice('--output='.length) ?? path.join(root, 'tools/library-report.json');
 fs.writeFileSync(output, JSON.stringify(report, null, 2) + '\n');
-console.log(JSON.stringify({ ...report, failures: report.failures.slice(0,30), failureCount: report.failures.length, duplicateGroups: report.duplicateGroups.length, truncated: report.truncated.length, remarks: undefined }, null, 2));
+console.log(JSON.stringify({ ...report, codeSizes: undefined, failures: report.failures.slice(0,30), failureCount: report.failures.length, duplicateGroups: report.duplicateGroups.length, truncated: report.truncated.length, remarks: undefined }, null, 2));
 console.log(`Report: ${output}`);
 if (report.failures.length || report.empty.length || report.orphans.length) process.exitCode = 1;

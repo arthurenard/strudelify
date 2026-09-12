@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc -b",
     "data": "npm run build -w @strudelify/data && node packages/data/dist/build.js",
-    "dev:web": "npm run dev -w @strudelify/web"
+    "dev:web": "npm run dev -w @strudelify/web",
+    "data:expand": "npm run build -w @strudelify/core && npm run build -w @strudelify/data && node packages/data/dist/pdmx.js"
   },
   "devDependencies": {
     "@strudel/core": "^1.2.6",

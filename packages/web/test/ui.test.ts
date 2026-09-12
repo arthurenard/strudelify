@@ -664,6 +664,9 @@ describe('lead name', () => {
 
 
 describe('live-coding part counts', () => {
+  it('counts direct drum patterns in a main loop', () => {
+    expect(partList('// bass · bass\nconst bass = note("c2")\n// drums · snare\nconst snare = n("~ 0 ~ 0")')).toEqual(['bass · bass', 'drums · snare']);
+  });
   it('counts instrument arrangements, not riff definitions, including source tracks named like riffs', () => {
     expect(partList([
       '// bass: reusable phrases',

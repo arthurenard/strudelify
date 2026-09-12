@@ -12,3 +12,4 @@ tools/library-report.json
 *.log
 coverage/
 .DS_Store
+__pycache__/

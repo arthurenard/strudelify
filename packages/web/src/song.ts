@@ -1,7 +1,7 @@
 /**
  * Opening a song: skeleton, fetch + parse, compile, hero (art, tint, chips), options, recompile on change.
  */
-import { loadSong, compile, timeline, barRange, gmLabel, chordSummary, type IndexEntry, type Song, type CompileOptions } from '@strudelify/core';
+import { loadSong, compile, timeline, barRange, selectLoop, gmLabel, chordSummary, type IndexEntry, type Song, type CompileOptions } from '@strudelify/core';
 import { lookupArt } from './art.js';
 import { el, setStatus, showBanner, hideBanner, toast, prefersReducedMotion } from './dom.js';
 import { state } from './state.js';
@@ -42,7 +42,7 @@ function fillBarCaps(totalBars: number, meta: Song['meta']) {
   el.maxBars.value = String(opts[opts.length - 1]?.value ?? value);
 }
 function options(): CompileOptions {
-  return { timing: el.codeStyle.value === 'source' ? 'source' : 'patterns', melody: el.melody.checked, maxTracks: Number.MAX_SAFE_INTEGER, maxBars: Number(el.maxBars.value) || 200 };
+  return { form: el.codeStyle.value === 'loop' ? 'loop' : 'song', timing: el.codeStyle.value === 'source' ? 'source' : 'patterns', melody: el.melody.checked, maxTracks: Number.MAX_SAFE_INTEGER, maxBars: Number(el.maxBars.value) || 200 };
 }
 
 /** Instrumental leads can be toggled; detected vocals are always omitted. Charts have no MIDI options. */
@@ -52,7 +52,7 @@ function applyOptionVisibility(song: Song) {
   const hasTracks = song.tracks.length > 0;
   el.optMelody.hidden = !hasMelody;
   el.optBars.hidden = !hasTracks;
-  el.optMelody.closest<HTMLElement>('.opts')!.hidden = !hasTracks;
+  el.optMelody.closest<HTMLElement>('.opts')!.hidden = false;
   if (hasMelody) {
     const lead = leadName(gmLabel(melodyTracks[0].program));
     el.melodyLabel.textContent = `Lead ${lead}`;
@@ -84,7 +84,7 @@ function renderChips(entry: IndexEntry, song: Song, code: string, key: { tonic?:
   const n = parts.length;
   if (n) chips.push(`<span class="chip" title="${esc(`${n} instrument part${n === 1 ? '' : 's'} in the generated code:\n${parts.join('\n')}`)}"><span class="k">Parts</span>${n}</span>`);
   for (const s of entry.sources) {
-    const c = SOURCE_CHIPS[s];
+    const c = s === 'midi' && entry.provenance?.provider === 'pdmx' ? { label: 'Score arrangement', title: `PDMX score-derived MIDI. Rated ${entry.provenance.rating}/5 by ${entry.provenance.ratings} users. Instrumentation follows the score arrangement, which may differ from the recording.` } : SOURCE_CHIPS[s];
     if (c && !song.tracks.length) chips.push('<span class="chip">Generated accompaniment</span>');
     if (c) chips.push(`<span class="chip src ${s}" title="${esc(!song.tracks.length && c.chartOnly ? c.chartOnly : c.title)}"><i aria-hidden="true"></i>${c.label}</span>`);
   }
@@ -264,6 +264,7 @@ export function recompile() {
   const cur = state.current;
   if (!cur) return;
   const opts = options();
+  el.optBars.hidden = opts.form === 'loop' || !cur.song.tracks.length;
   const { song } = cur;
   cur.code = compile(song, opts);
   const playable = !cur.code.trimEnd().endsWith('\nsilence');
@@ -277,7 +278,7 @@ export function recompile() {
   cur.chordSource = song.tracks.length ? 'detected' : 'chart';
   let key: { tonic?: string; mode?: 'major' | 'minor' } = { tonic: song.meta.tonic, mode: song.meta.mode };
   let keyTitle = '';
-  if (song.tracks.length && song.structure?.length) {
+  if (opts.form !== 'loop' && song.tracks.length && song.structure?.length) {
     // MIDI provides the notes, McGill the chart: lay the annotated sections and chords on the rendered bar grid
     // so the lane, the readout and the code's `// chords:` line agree. When the two transcriptions are different
     // cuts of the song the chart cannot be laid out, and the lane keeps the chords read from the notes.
@@ -312,7 +313,7 @@ export function recompile() {
   // The code the user copies spells its chords and key exactly as the readout and the lane do (comments only).
   cur.code = respellKeyLine(respellChordLine(cur.code, cur.flats), key.tonic, key.mode);
   showCode(cur.code, cur.entry.id);
-  renderChips(cur.entry, song, cur.code, key, keyTitle);
+  renderChips(cur.entry, opts.form === 'loop' ? selectLoop(song, opts).song : song, cur.code, key, keyTitle);
   renderTimeline();
   el.totalTime.textContent = fmt(cur.tl.bars * cur.tl.secondsPerBar);
   el.track.setAttribute('aria-valuemax', String(Math.max(0, cur.tl.bars - 1)));

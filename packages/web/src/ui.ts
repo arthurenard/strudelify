@@ -665,7 +665,7 @@ export function partList(code: string): string[] {
   const out: string[] = [];
   const lines = code.split('\n');
   for (let i = 0; i < lines.length; i++) {
-    if (!/^const \w+ = (?:note|mini|s|chord|arrange)\(/.test(lines[i])) continue;
+    if (!/^const \w+ = (?:note|n|mini|s|chord|arrange)\(/.test(lines[i])) continue;
     const m = /^\/\/ ([^·\n]+?)(?: · ([^·\n]+?))?(?: · |$)/.exec(lines[i - 1] ?? '');
     if (/^const \w+ = arrange\(/.test(lines[i]) && !m) continue;
     if (/^const \w+_riff\d+ = /.test(lines[i]) && !['bass', 'chords', 'melody', 'drums', 'other'].includes(m?.[1]?.trim() ?? '')) continue;

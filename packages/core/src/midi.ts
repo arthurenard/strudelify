@@ -133,7 +133,7 @@ export function isCreditName(name: string, song?: SongName): boolean {
  * at all (a channel number "34", a row of dashes, a date: nothing to call the part by).
  */
 export function partName(name: string | undefined, song?: SongName): string {
-  const n = (name ?? '').replace(/[\x00-\x1f\x7f]/g, '').trim();
+  const n = (name ?? '').replace(/[\x00-\x1f\x7f\u2028\u2029]/g, '').trim();
   return n && /\p{L}/u.test(n) && !isCreditName(n, song) ? n : '';
 }
 

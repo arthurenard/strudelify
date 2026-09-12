@@ -87,10 +87,11 @@
                 <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
                 <span class="switch-label" id="melody-label">Melody</span>
               </label>
-              <label class="field" title="Live coding uses reusable riffs and cleans timing within 15 ms. Source detail retains the unrounded events.">
+              <label class="field" title="Main loop automatically selects and simplifies a repeated instrumental passage. Full arrangement keeps the whole song. Source detail retains unrounded events.">
                 <span class="select-wrap">
                   <select id="code-style" aria-label="Code style">
-                    <option value="patterns" selected>Live coding</option>
+                    <option value="loop" selected>Main loop</option>
+                    <option value="patterns">Full arrangement</option>
                     <option value="source">Source detail</option>
                   </select>
                   <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -195,7 +196,7 @@
 
       <section id="empty" class="empty" aria-label="Introduction">
         <div class="empty-glow" aria-hidden="true"></div>
-        <p class="kicker">Real transcriptions · No AI · Instrumental</p>
+        <p class="kicker">Real transcriptions · Editable patterns · Instrumental</p>
         <h1>Type a song.<br /><span class="grad">Get Strudel code.</span></h1>
         <p class="lede">Chords, structure, melody, bass and drums compiled from open transcriptions into <a href="https://strudel.cc" target="_blank" rel="noopener">Strudel</a> live-coding patterns. Play it here, scrub through the bars, then open it in strudel.cc and start hacking.</p>
         <div class="cta-row">
@@ -213,7 +214,7 @@
         </div>
 
         <ul class="features">
-          <li><strong>Real transcriptions</strong><span>McGill Billboard chord annotations and the Lakh MIDI clean subset. The library includes alternate transcriptions of some songs.</span></li>
+          <li><strong>Real transcriptions</strong><span>McGill chord charts, Lakh MIDI and quality-filtered PDMX scores. The library includes alternate transcriptions of some songs.</span></li>
           <li><strong>One bar, one cycle</strong><span>Every layer follows the same bar timeline, keeping the code, playback and song structure aligned.</span></li>
           <li><strong>Instrumental by design</strong><span>Detected vocal parts are removed. Guitar riffs, harmonica and other instrumental leads stay.</span></li>
         </ul>
@@ -225,7 +226,7 @@
         <span class="foot-brand">Strudelify</span>
         <span class="foot-links">
           Chords: <a href="https://ddmal.music.mcgill.ca/research/billboard" target="_blank" rel="noopener">McGill Billboard</a>
-          · Notes: <a href="https://colinraffel.com/projects/lmd/" target="_blank" rel="noopener">Lakh MIDI</a> (CC-BY)
+          · Notes: <a href="https://colinraffel.com/projects/lmd/" target="_blank" rel="noopener">Lakh MIDI</a> (CC-BY), <a href="https://zenodo.org/records/15571083" target="_blank" rel="noopener">PDMX scores</a>
           · Art: <a href="https://performance-partners.apple.com/search-api" target="_blank" rel="noopener">iTunes</a>, <a href="https://developers.deezer.com" target="_blank" rel="noopener">Deezer</a>, <a href="https://musicbrainz.org" target="_blank" rel="noopener">MusicBrainz</a> &amp; <a href="https://coverartarchive.org" target="_blank" rel="noopener">Cover Art Archive</a>
           · Player: <a href="https://strudel.cc" target="_blank" rel="noopener">Strudel</a> (AGPL-3.0)
         </span>
