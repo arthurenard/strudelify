@@ -180,6 +180,7 @@ const editorSettings = () => ({
   fontSize: 13,
   isLineNumbersDisplayed: true,
   isActiveLineHighlighted: false,
+  isPatternHighlightingEnabled: true,
   isLineWrappingEnabled: wrapLines,
 });
 function applyWrap() {
