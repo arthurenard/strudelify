@@ -36,7 +36,7 @@ export default defineConfig({
       // a successful-looking build with an empty library or dangling song links.
       let entries: { files: Record<string, string> }[];
       try { entries = JSON.parse(fs.readFileSync(path.join(DB, 'index.json'), 'utf8')); }
-      catch { this.error('Missing song database. Run packages/data download + build to populate packages/data/public/db before building the website.'); }
+      catch { this.error('Missing song database. Build or restore packages/data/public/db before building the website. See LAUNCH.md.'); }
       if (!Array.isArray(entries) || !entries.length) this.error('The song database index must be a nonempty array.');
       for (const entry of entries) {
         if (!entry.files || !Object.keys(entry.files).length) this.error('A database entry has no source files.');
