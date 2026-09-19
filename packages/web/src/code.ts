@@ -4,12 +4,14 @@
 import { shareUrl } from '@strudelify/core';
 import { el, toast, isMobile } from './dom.js';
 import { state } from './state.js';
-import { ed, loadRepl } from './repl.js';
+import { ed } from './repl.js';
 
 let shownId = '';
 let lineCount = 0;
+let editorConfigured = false;
 /** Put generated code in the editor and point the actions at it. */
 export function showCode(code: string, id: string) {
+  if (ed() && !editorConfigured) { applyWrap(); editorConfigured = true; }
   ed()?.setCode(code);
   el.open.href = shareUrl(code);
   if (el.download.href.startsWith('blob:')) URL.revokeObjectURL(el.download.href);
@@ -196,5 +198,5 @@ el.wrap.addEventListener('click', () => {
   applyWrap();
 });
 
-// Theme the embedded editor to match the page once the web component has mounted.
-loadRepl().then(() => { applyWrap(); if (state.current) ed()?.setCode(state.current.code); }).catch(() => {});
+// The editor is configured on the first song, after loadRepl resolves. Importing this module
+// must not fetch the synth and sample banks while the user is only browsing covers.

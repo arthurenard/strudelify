@@ -28,8 +28,8 @@ export const ed = (): StrudelMirror | undefined => editorEl.editor;
 export const audioContext = (): AudioContext | undefined => (globalThis as { getAudioContext?: () => AudioContext }).getAudioContext?.();
 
 /**
- * The REPL (editor + synth) is code-split: the landing page renders without it, it is fetched in idle
- * time once the index is in, and a song opened before that simply waits for it.
+ * The REPL (editor + synth) is code-split and fetched when a song opens. Browsing the landing
+ * page and search does not download the engine or initialize its sample banks.
  */
 let replPromise: Promise<void> | null = null;
 export const loadRepl = (): Promise<void> => (replPromise ??= import('@strudel/repl').then(() => new Promise<void>((resolve) => {

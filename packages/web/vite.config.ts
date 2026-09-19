@@ -28,8 +28,25 @@ function landingPlugin(): Plugin {
 export default defineConfig({
   // The song database is built into packages/data/public/db and served as static files.
   publicDir: path.resolve(__dirname, '..', 'data', 'public'),
-  plugins: [landingPlugin()],
-  // The Strudel REPL is one 2 MB chunk by nature; it is code-split and loaded in idle time (see main.ts).
+  plugins: [landingPlugin(), {
+    name: 'strudelify-database-check',
+    apply: 'build',
+    buildStart() {
+      // The database is deliberately gitignored. A fresh clone must not silently publish
+      // a successful-looking build with an empty library or dangling song links.
+      let entries: { files: Record<string, string> }[];
+      try { entries = JSON.parse(fs.readFileSync(path.join(DB, 'index.json'), 'utf8')); }
+      catch { this.error('Missing song database. Build or restore packages/data/public/db before building the website. See LAUNCH.md.'); }
+      if (!Array.isArray(entries) || !entries.length) this.error('The song database index must be a nonempty array.');
+      for (const entry of entries) {
+        if (!entry.files || !Object.keys(entry.files).length) this.error('A database entry has no source files.');
+        for (const file of Object.values(entry.files)) {
+          if (!fs.existsSync(path.join(DB, file))) this.error(`Missing song source: ${file}. Restore the complete database before building.`);
+        }
+      }
+    },
+  }],
+  // The Strudel REPL is code-split and loaded when a song is opened.
   build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 2600 },
   server: { port: 5173 },
 });

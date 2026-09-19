@@ -1,0 +1,56 @@
+# Publication review — 19 September 2026
+
+The app is a working local beta. The full music catalogue is **not cleared for public publication** by this review. Passing software tests does not establish music or artwork rights, and transcription quality is not uniformly verified against recordings. No website was deployed during this review.
+
+## Performance changes
+
+- Search uses 96px CDN images and landing cards use 160px images instead of 600–1000px covers. The hero retains full-size art.
+- Cached artwork bypasses the network queue. Four thumbnail lookups can progress, with each provider's existing rate limits retained.
+- Browser requests time out after 1.8 seconds and move to another provider without retry backoff. Individual thumbnail searches have a four-second budget and skip artist-portrait fallback. Recently missing thumbnails wait 30 seconds before another automatic attempt; opening a song can still perform a full lookup.
+- The editor/audio engine loads when a song opens, instead of competing with homepage images. Artwork lookup starts alongside song loading.
+
+A live three-song check of Nirvana, Queen and The Beatles returned metadata in 401–509 ms. Search thumbnail transfers were 3,941–7,330 bytes, versus 62,562–140,237 bytes for the corresponding full images (94–96% smaller). These are a small network sample, not a site-wide latency guarantee. Provider outages, rate limits and first-time searches can still delay or prevent covers.
+
+## Rights to settle before launch
+
+1. **Software.** The README's MIT declaration is not accompanied by a licence file. Have the copyright holder add the intended licence and notices. The browser bundles Strudel, which is AGPL-3.0. Treat the distributed combined application as requiring AGPL-compliant distribution, including complete corresponding source and build instructions, dependency notices and the licence text. A private GitHub link or minified JavaScript alone is insufficient. Confirm the intended distribution with appropriate licensing advice; this review does not relicense the project. [GNU FAQ](https://www.gnu.org/licenses/gpl-faq.en.html), [AGPL text](https://www.gnu.org/licenses/agpl-3.0.html).
+
+2. **Music.** Lakh declares CC-BY 4.0 and requests attribution to Colin Raffel's 2016 thesis, but also states that the MIDI files were scraped and that Raffel did not transcribe them. That is not a guarantee of permission from every composer, publisher or arranger. Removing vocals or generating new synthesized sound does not establish clearance for the underlying composition, arrangement or downloadable note transcription. Review rights per work, or publish a catalogue of works and arrangements you own, have licensed, or have verified as public domain in the relevant territories. PDMX's agreement between two licence metadata fields is not independent rights verification. [Lakh](https://colinraffel.com/projects/lmd/), [PDMX record](https://zenodo.org/records/15571083).
+
+3. **McGill annotations.** Version 2.0 is CC0, with scholarly citation requested. The previous README description as research-only was incorrect. Cite Burgoyne, Wild and Fujinaga, “An Expert Ground Truth Set for Audio Chord Recognition and Music Analysis,” ISMIR 2011. This annotation licence does not itself clear every use of the underlying songs. [McGill source](https://ddmal.ca/research/The_McGill_Billboard_Project_(Chord_Analysis_Dataset)/).
+
+4. **Artwork and APIs.** Apple's published Search API terms restrict artwork to promoting store content and require a nearby approved store badge linked to the content. The current cover tiles do not supply that presentation; a generic iTunes footer link does not meet that requirement. Resolve whether the proposed use is permitted, change the integration, or remove/replace that source before release. Deezer has separate developer terms. MusicBrainz metadata licensing does not include cover-art copyright. Do not assume that a keyless API grants unrestricted display or redistribution rights. [Apple terms](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/index.html), [Deezer terms](https://cdn-content.dzcdn.net/pdf/CGU-developers.pdf), [MusicBrainz data licence](https://musicbrainz.org/doc/About/Data_License).
+
+5. **Samples and privacy.** Local acoustic recordings have CC0 provenance under `packages/data/public/audio/acoustic/`; preserve it. Review the licences of the remaining remotely fetched banks/soundfonts. Document the external requests to artwork services, Google Fonts, sample hosts and any hosting analytics, plus local storage of search history, cover URLs and preferences. The applicable privacy obligations depend on the deployed service and audience.
+
+For a Belgian launch, ask SABAM/Unisono or qualified counsel specifically about interactive synthesized playback, MIDI/Strudel transcription downloads, arrangements and the territories served. An ordinary background-music licence should not be assumed to cover all those uses. [Belgian FPS Economy copyright FAQ](https://economie.fgov.be/en/themes/intellectual-property/intellectual-property-rights/copyright-and-related-rights/copyright/control-service-copyright-and/frequently-asked-questions).
+
+## Technical state and known limits
+
+- Local library: 12,236 entries, including alternate transcriptions. All 12,507 source-file references exist.
+- Full unit/runtime regression suite and production build pass; web TypeScript check passes. `npm audit --omit=dev` returned zero known advisories on the review date; this is not a complete security audit.
+- Browser checks: four landing covers and eight Nirvana search covers load at the intended thumbnail sizes; the editor stays unloaded while browsing, then loads on song selection; playback and live note boxes work.
+- Source fidelity remains variable. Main loop is a simplified excerpt; Full arrangement is a cleaned transcription; neither promises the original studio recording. This is suitable for beta expectations, not an “exact music” claim.
+- There is no site-wide shared artwork cache. Every new visitor still queries third-party services. If traffic grows, consider a provider-permitted metadata cache or a pre-resolved catalogue, with explicit refresh/retention rules and cleared image use. Deezer JSONP executes third-party script; a production API boundary would reduce that dependency.
+- The database index is about 2.8 MB uncompressed. The complete output is about 547 MB including song sources and local samples. Configure compression and caching at the host and verify its total-size/file-count limits.
+
+## Deploy it yourself, after rights are resolved
+
+This is a static site; no application server is required. Use Node 22 and the checked-in lockfile:
+
+```sh
+npm ci
+# Restore your approved packages/data/public/db catalogue here.
+# It is gitignored and will NOT arrive in a fresh GitHub checkout.
+# See README.md for the original dataset build workflow; rebuilding is not legal clearance.
+npm run build
+npx tsc --noEmit -p packages/web
+npm test
+npm run preview -w @strudelify/web -- --host 127.0.0.1
+```
+
+Publish **the entire `packages/web/dist` directory**. Vite already includes `db/` and `audio/`; there is no second database copy to upload. The build now fails if the database is absent, empty, or references missing source files.
+
+Serve at the domain root with HTTPS; the current `/db/`, `/audio/` and other absolute paths do not support a repository subpath without code/config changes. Song links use hashes, so no server-side song route is needed. Enable gzip/Brotli for JSON and JavaScript. Hashed `/assets/` files can be cached immutably; unversioned HTML, database and sample manifests should revalidate instead of being cached forever. Do not publish raw downloads, `.env`, `node_modules` or repository internals.
+
+On the final HTTPS domain, test a fresh browser session and a phone: search, covers, direct song links, first playback, seek/pause, code highlighting, download, and opening code in Strudel. Repeat with an unavailable artwork provider. The current checks were local, not against your future hosting provider.

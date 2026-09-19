@@ -230,6 +230,8 @@ export async function choose(entry: IndexEntry) {
   el.melody.checked = true;
   showSkeleton(entry); // synchronously, before the (async) hard stop: the page shows the new song at once
   const artist = displayArtist(entry.artist);
+  // Resolve artwork alongside the MIDI and editor downloads, not after compilation.
+  void lookupArt(entry.id, artist, entry.title, { year: entry.year });
   document.title = `${entry.title} — ${artist} · Strudelify`;
   const hash = `#${encodeURIComponent(entry.id)}`;
   if (location.hash !== hash) history.pushState(null, '', hash);

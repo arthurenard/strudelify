@@ -5,8 +5,7 @@
 import { createIndex, type IndexEntry, type SongIndex } from '@strudelify/core';
 import { el, setStatus, showBanner } from './dom.js';
 import { state } from './state.js';
-import { loadRepl } from './repl.js';
-import { lookupArt } from './art.js';
+import { lookupThumbnail, peekArt, thumbnailUrl, type ArtInfo } from './art.js';
 import {
   esc, songTint, initial, highlightTokens, highlight, buildArtistIndex, artistMatch, queryLooksLikeTitle, byPopularity,
   displayArtist, tidyHits, keyName, setArtistAliases, canonicalArtists, type ArtistGroup,
@@ -37,7 +36,6 @@ export function getIndex(): Promise<SongIndex> {
     state.indexError = null;
     setStatus('');
     for (const fn of indexListeners.splice(0)) fn(idx);
-    (window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 800)))(() => { loadRepl().catch(() => {}); });
     return idx;
   })().catch((e: Error) => {
     state.indexError = e.message;
@@ -67,34 +65,41 @@ let previewHandler: (entry: IndexEntry) => void = () => {};
 export function onPreview(fn: (entry: IndexEntry) => void) { previewHandler = fn; }
 let previewTimer: number | undefined;
 
-// Only visible rows fetch artwork. A shared two-slot queue also bounds requests while typing.
+// Only visible rows fetch artwork. Provider queues still enforce their individual rate limits.
 let coverQueue: Row[] = [];
 let coverLoads = 0;
 const coverObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(entries => {
   for (const item of entries) if (item.isIntersecting) {
     coverObserver!.unobserve(item.target);
     const row = rows.find(row => row.el === item.target);
-    if (row) coverQueue.push(row);
+    if (row) {
+      const cached = peekArt(row.entry.id);
+      if (cached) renderRowCover(row, cached);
+      else coverQueue.push(row);
+    }
   }
   loadRowCovers();
 }, { root: el.results });
 
+function renderRowCover(row: Row, info: ArtInfo) {
+  if (!row.el.isConnected || info.kind !== 'track' || !info.art) return;
+  const tile = row.el.querySelector<HTMLElement>('.opt-tile')!;
+  const img = new Image();
+  img.alt = ''; img.decoding = 'async'; img.width = 40; img.height = 40;
+  img.onload = () => { if (row.el.isConnected) tile.replaceChildren(img); };
+  img.src = thumbnailUrl(info.art);
+}
+
 function loadRowCovers() {
   if (el.resultsPanel.hidden) return;
-  while (coverLoads < 2 && coverQueue.length) {
+  while (coverLoads < 4 && coverQueue.length) {
     const row = coverQueue.shift()!;
     if (!row.el.isConnected) continue;
     coverLoads++;
     const e = row.entry;
-    void lookupArt(e.id, displayArtist(e.artist), e.title, { year: e.year, supersede: false }).then(info => {
-      if (!row.el.isConnected || info.kind !== 'track' || !info.art) return;
-      const tile = row.el.querySelector<HTMLElement>('.opt-tile')!;
-      const img = new Image();
-      img.alt = ''; img.decoding = 'async'; img.width = 40; img.height = 40;
-      img.onload = () => { if (row.el.isConnected) tile.replaceChildren(img); };
-      // Keep the letter tile if the image URL fails to load.
-      img.src = info.art;
-    }).catch(() => {}).finally(() => { coverLoads--; loadRowCovers(); });
+    void lookupThumbnail(e.id, displayArtist(e.artist), e.title, e.year)
+      .then(info => renderRowCover(row, info))
+      .catch(() => {}).finally(() => { coverLoads--; loadRowCovers(); });
   }
 }
 

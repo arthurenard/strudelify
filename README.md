@@ -75,7 +75,9 @@ npm run build -w @strudelify/web
 
 The web app is fully static. It fetches `db/index.json`, searches as you type in the browser, fetches
 the song's source file and compiles it client-side, then loads the result into an embedded Strudel
-editor. Deploy `packages/web/dist` together with `packages/data/public/db` (about 580 MB).
+editor. Vite copies the database and local audio into `packages/web/dist`; deploy that whole directory
+at the domain root (about 547 MB in the current build). The database is gitignored, so a fresh GitHub
+checkout must restore/build it before the web build. See [launch review and deployment steps](LAUNCH.md).
 
 - **Search palette**: `/` or `Ctrl/Cmd+K` focuses the box; an empty box lists the songs opened recently
   and the most transcribed ones. A query that names an artist lists that catalogue first (after the
@@ -86,10 +88,10 @@ editor. Deploy `packages/web/dist` together with `packages/data/public/db` (abou
   JSONP, MusicBrainz with the Cover Art Archive, then a Deezer artist portrait; see
   `tools/art-check.md` for the ranking rules). The hero is tinted with the dominant colour of the
   cover, read from its pixels once it has loaded; without a cover a letter tile in a colour derived
-  from the title stands in. Hits and tints are cached in localStorage; these lookups are the only
-  network calls that leave your machine besides the app's own files. Hovering a search result or an
+  from the title stands in. Hits and tints are cached in localStorage; external requests also include Google Fonts and Strudel's remote samples/soundfonts once a song opens. Hovering a search result or an
   example card warms its art, so the song opens with cover and tint in place. All landing-page cards
-  also load their album artwork automatically, with two concurrent lookups and a letter fallback.
+  also load their album artwork automatically, with four concurrent lookups, CDN-sized thumbnails and a letter fallback. Cached covers bypass
+  the lookup queue. Thumbnail misses are retried after 30 seconds; hero lookups can retry immediately.
 - **Player**: play/pause (`Space`), back to start (`Home`), `←`/`→` move four bars, a hard stop that
   also silences ringing notes. The readout shows time, bar, the chord sounding and the section.
 - **Timeline**: a bar ruler, a section lane and a chord lane over a seekable slider. Sections are the
@@ -247,8 +249,11 @@ npx tsc --noEmit -p packages/web      # web typecheck
 
 ## Licences
 
-Code: MIT. Strudel is AGPL-3.0, so a distributed build of the web app must comply with the AGPL.
-Lakh MIDI: CC-BY 4.0 (cite Colin Raffel's thesis). McGill Billboard annotations: research use, see their site.
+The README historically declares the project code MIT, but a standalone licence file still needs to be
+added by the copyright holder. Strudel is AGPL-3.0: distributing the combined web build requires
+compliant licensing, notices and access to its complete corresponding source. This is not a blanket
+licence for the music or artwork. See [LAUNCH.md](LAUNCH.md) before publication.
+Lakh MIDI: CC-BY 4.0 (cite Colin Raffel's thesis). McGill Billboard 2.0 annotations: [CC0](https://ddmal.ca/research/The_McGill_Billboard_Project_(Chord_Analysis_Dataset)/), with scholarly citation requested.
 PDMX: source score links, declared licences and ratings are preserved per entry. See the dataset’s
 no-license-conflict guidance and each source score; dataset metadata does not certify the rights to
 every underlying composition.

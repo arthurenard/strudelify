@@ -3,7 +3,7 @@
  * search.ts (index + palette), song.ts (open + hero + options), player.ts (transport), timeline.ts (lanes)
  * and code.ts (editor + actions); state.ts holds the shared state and dom.ts the element handles.
  */
-import { lookupArt } from './art.js';
+import { lookupThumbnail, peekArt, thumbnailUrl, type ArtInfo } from './art.js';
 import { el, prefersReducedMotion } from './dom.js';
 import { state } from './state.js';
 import { getIndex, onIndex, onChoose, onPreview, focusSearch, closeSearch, entryById } from './search.js';
@@ -58,22 +58,24 @@ function hydrateExamples() {
     a.querySelector('.ex-a')!.textContent = cardSubtitle(e);
     a.title = `${e.title} — ${displayArtist(e.artist)}`;
     a.style.setProperty('--tile', songTint(e));
-    jobs.push(async () => {
-      const info = await lookupArt(e.id, displayArtist(e.artist), e.title, { year: e.year, supersede: false });
+    const renderCover = (info: ArtInfo) => {
       if (!info.art || info.kind !== 'track') return;
       const tile = a.querySelector<HTMLElement>('.ex-tile');
       if (!tile) return;
       const img = new Image();
       img.alt = ''; img.decoding = 'async';
       img.onload = () => tile.replaceChildren(img);
-      img.src = info.art;
-    });
+      img.src = thumbnailUrl(info.art, 160);
+    };
+    const cached = peekArt(e.id);
+    if (cached) renderCover(cached);
+    else jobs.push(async () => renderCover(await lookupThumbnail(e.id, displayArtist(e.artist), e.title, e.year)));
     // Pointing at a card warms its art, so the song opens with its cover and tint in place.
     for (const ev of ['pointerenter', 'focus'] as const) a.addEventListener(ev, () => { prefetchArt(e); });
   }
-  // Two workers keep independent cover lookups from cancelling one another or flooding providers.
+  // Independent lookups can progress while another provider stalls; per-host queues bound requests.
   const worker = async () => { for (let job; (job = jobs.shift());) await job(); };
-  void worker(); void worker();
+  for (let i = 0; i < 4; i++) void worker();
 }
 onIndex((idx) => {
   el.ctaLabel.textContent = browseLabel(idx.entries.length);

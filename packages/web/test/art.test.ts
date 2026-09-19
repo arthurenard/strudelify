@@ -13,6 +13,8 @@ import {
   isTitlePrefix,
   isTributeWrap,
   itunesImage,
+  thumbnailUrl,
+  peekArt,
   lookupArt,
   normalize,
   normalizeArtist,
@@ -387,6 +389,35 @@ describe('lookupArt (cache + supersede)', () => {
     expect(localStorage.length).toBe(0);
   });
 
+  it('makes cached covers available while an unrelated lookup is still pending', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const adapter: ArtAdapter = { json: async () => { await gate; return { results: [] }; }, imageExists: async () => false };
+    const pending = lookupArt('slow-cover-cache-check', 'Nobody', 'Nothing', { adapter, supersede: false, noArtistFallback: true });
+    const cover = { art: 'https://example.com/cover.jpg', kind: 'track' as const, matched: { artist: 'Abba', title: 'Fernando', score: 2 } };
+    writeCache('fast-cover-cache-check', cover);
+    expect(peekArt('fast-cover-cache-check')).toEqual(cover);
+    release();
+    await pending;
+  });
+
+  it('does not request an artist portrait for thumbnails', async () => {
+    const miss = fakeAdapter({ 'itunes.apple.com': { results: [] }, 'api.deezer.com': { data: [] }, 'musicbrainz.org': { recordings: [] } });
+    const info = await lookupArt('thumbnail-no-portrait', 'Nobody', 'Nothing', { adapter: miss.adapter, supersede: false, noArtistFallback: true });
+    expect(info.kind).toBe('placeholder');
+    expect(miss.calls.some(url => url.includes('/search/artist'))).toBe(false);
+  });
+
+  it('gives an opened song a full lookup when its shared thumbnail lookup misses', async () => {
+    const miss = fakeAdapter({ 'itunes.apple.com': { results: [] }, 'api.deezer.com': { data: [] }, 'musicbrainz.org': { recordings: [] } });
+    const hit = fakeAdapter({ 'itunes.apple.com': { results: [itunesRow('Abba', 'Fernando', 'Arrival', '1976')] } });
+    const thumbnail = lookupArt('thumbnail-then-hero', 'Abba', 'Fernando', { adapter: miss.adapter, supersede: false, noArtistFallback: true });
+    const hero = lookupArt('thumbnail-then-hero', 'Abba', 'Fernando', { adapter: hit.adapter });
+    expect((await thumbnail).kind).toBe('placeholder');
+    expect(await hero).toMatchObject({ kind: 'track', album: 'Arrival' });
+    expect(hit.calls).toHaveLength(1);
+  });
+
   it('supersedes the previous in-flight lookup when the user switches song', async () => {
     let release!: () => void;
     const gate = new Promise<void>((r) => { release = r; });
@@ -408,6 +439,17 @@ describe('lookupArt (cache + supersede)', () => {
     const b = lookupArt('abba--fernando-t4', 'Abba', 'Fernando', { adapter, supersede: false });
     expect(await a).toEqual(await b);
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe('thumbnail sizing', () => {
+  it('requests small images from supported CDNs without changing the cached hero URL', () => {
+    const apple = 'https://is1-ssl.mzstatic.com/image/thumb/Music/v4/cover/600x600cc.jpg';
+    expect(thumbnailUrl(apple)).toBe(apple.replace('600x600', '96x96'));
+    const deezer = 'https://cdn-images.dzcdn.net/images/cover/abcdef123456/1000x1000-000000-80-0-0.jpg';
+    expect(thumbnailUrl(deezer, 160)).toBe(deezer.replace('1000x1000', '160x160'));
+    expect(thumbnailUrl('https://other.example/600x600.jpg')).toBe('https://other.example/600x600.jpg');
+    expect(thumbnailUrl('data:image/svg+xml,test')).toBe('data:image/svg+xml,test');
   });
 });
 

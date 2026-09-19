@@ -1071,6 +1071,19 @@ export function itunesImage(url: unknown, size = 600): string | undefined {
   return u ? u.replace(/\/\d+x\d+(bb|cc|-999)?\./, `/${size}x${size}cc.`) : undefined;
 }
 
+/** Ask known image CDNs for thumbnail bytes, not a 600–1000px cover in a 40px slot. */
+export function thumbnailUrl(url: string, size = 96): string {
+  try {
+    const u = new URL(url);
+    if (u.hostname.endsWith('.mzstatic.com')) return itunesImage(url, size)!;
+    if (u.hostname === 'cdn-images.dzcdn.net') {
+      u.pathname = u.pathname.replace(/\/\d+x\d+([-/\.])/, `/${size}x${size}$1`);
+      return u.href;
+    }
+  } catch { /* data URIs and unknown providers retain their original URL */ }
+  return url;
+}
+
 /** Resolution context: `signal` is the combined user+deadline signal, `user` the caller's own one. */
 export interface ResolveContext extends ResolveOptions {
   user?: AbortSignal;
@@ -1807,12 +1820,21 @@ export function writeCache(id: string, info: ArtInfo) {
 
 let browserAdapter: ArtAdapter | null = null;
 function defaultAdapter(): ArtAdapter {
-  if (!browserAdapter) browserAdapter = typeof document !== 'undefined' ? createBrowserAdapter() : createFetchAdapter();
+  if (!browserAdapter) browserAdapter = typeof document !== 'undefined' ? createBrowserAdapter({
+    timeout: 1800,
+    // Interactive lookups have other providers to try. Keep host rate limits, but don't spend
+    // the whole cover budget retrying a stalled provider before trying the next one.
+    queue: new RequestQueue({ hostPolicy: Object.fromEntries(
+      Object.entries(DEFAULT_HOST_POLICY).map(([host, policy]) => [host, { ...policy, maxRetries: 0 }]),
+    ) }),
+  }) : createFetchAdapter();
   return browserAdapter;
 }
 
 const memo = new Map<string, ArtInfo>();
-const inFlight = new Map<string, { job: Promise<ArtInfo>; ctrl: AbortController }>();
+/** Read synchronously so cached covers never wait behind unrelated network lookups. */
+export const peekArt = (id: string): ArtInfo | null => memo.get(id) ?? readCache(id);
+const inFlight = new Map<string, { job: Promise<ArtInfo>; ctrl: AbortController; thumbnail: boolean }>();
 let latest: AbortController | null = null;
 
 export interface LookupOptions {
@@ -1823,6 +1845,7 @@ export interface LookupOptions {
   adapter?: ArtAdapter;
   /** Wall-time budget for the track-art sources, ms (default `DEFAULT_BUDGET`). */
   budget?: number;
+  noArtistFallback?: boolean;
 }
 
 /**
@@ -1831,7 +1854,7 @@ export interface LookupOptions {
  * Bounded in time: after `budget` ms (8 s) of unlucky sources the artist picture or placeholder is returned.
  */
 export async function lookupArt(id: string, artist: string, title: string, opts: LookupOptions = {}): Promise<ArtInfo> {
-  const cached = memo.get(id) ?? readCache(id);
+  const cached = peekArt(id);
   if (cached?.art) {
     memo.set(id, cached);
     return cached;
@@ -1839,7 +1862,14 @@ export async function lookupArt(id: string, artist: string, title: string, opts:
   // Share a running lookup of the same song – unless it was superseded (A → B → A): that one resolves to `{}`
   // as soon as its requests notice the abort, so start a fresh one instead.
   const pending = inFlight.get(id);
-  if (pending && !pending.ctrl.signal.aborted) return pending.job;
+  if (pending && !pending.ctrl.signal.aborted) {
+    const info = await pending.job;
+    // Opening a song must not inherit a thumbnail's short deadline and permanent placeholder.
+    if (pending.thumbnail && !opts.noArtistFallback && info.kind === 'placeholder') {
+      return lookupArt(id, artist, title, opts);
+    }
+    return info;
+  }
 
   if (opts.supersede !== false) latest?.abort();
   const ctrl = new AbortController();
@@ -1849,10 +1879,12 @@ export async function lookupArt(id: string, artist: string, title: string, opts:
     else opts.signal.addEventListener('abort', () => ctrl.abort(), { once: true });
   }
 
-  const entry = { ctrl, job: Promise.resolve<ArtInfo>({}) };
+  const entry = { ctrl, thumbnail: !!opts.noArtistFallback, job: Promise.resolve<ArtInfo>({}) };
   entry.job = (async (): Promise<ArtInfo> => {
     try {
-      const info = await resolveArt({ artist, title, year: opts.year }, opts.adapter ?? defaultAdapter(), { signal: ctrl.signal, budget: opts.budget });
+      const info = await resolveArt({ artist, title, year: opts.year }, opts.adapter ?? defaultAdapter(), {
+        signal: ctrl.signal, budget: opts.budget, noArtistFallback: opts.noArtistFallback,
+      });
       if (info.kind === 'track' || info.kind === 'artist') {
         memo.set(id, info);
         writeCache(id, info);
@@ -1868,4 +1900,16 @@ export async function lookupArt(id: string, artist: string, title: string, opts:
   })();
   inFlight.set(id, entry);
   return entry.job;
+}
+
+const thumbnailMisses = new Map<string, number>();
+/** Thumbnails don't use artist portraits; avoid spending their extra three-second grace period. */
+export async function lookupThumbnail(id: string, artist: string, title: string, year?: number): Promise<ArtInfo> {
+  const cached = peekArt(id);
+  if (cached) return cached;
+  if ((thumbnailMisses.get(id) ?? 0) > Date.now()) return {};
+  const info = await lookupArt(id, artist, title, { year, supersede: false, budget: 4000, noArtistFallback: true });
+  if (!info.art || info.kind === 'placeholder') thumbnailMisses.set(id, Date.now() + 30_000);
+  else thumbnailMisses.delete(id);
+  return info;
 }
