@@ -202,7 +202,7 @@ export function tidyHits<T extends Pick<SearchHit, 'id' | 'title' | 'artist'>>(h
 }
 
 /** Most popular songs first, then alphabetical. */
-export function byPopularity(entries: IndexEntry[]): IndexEntry[] {
+export function byPopularity(entries: readonly IndexEntry[]): IndexEntry[] {
   return [...entries].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0) || a.title.localeCompare(b.title));
 }
 

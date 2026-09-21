@@ -1,13 +1,37 @@
 /**
  * The landing page's example cards and song count, as HTML strings. Used in the browser (search.ts renders the
- * same card for the not-found page; main.ts re-hydrates the landing cards once the index is in) and by the Vite
- * plugin in vite.config.ts, which bakes them into index.html at dev/build time from the database index, so the
- * first paint already carries the count, the years and the tile colours: nothing changes width when the index
- * arrives. Keep this module free of DOM access.
+ * same card for the not-found page; main.ts fills the landing cards once the index is in) and by the Vite
+ * plugin in vite.config.ts, which bakes the song count and fallback cards into index.html at dev/build time.
+ * Keep this module free of DOM access.
  */
 import type { IndexEntry } from '@strudelify/core';
-import { esc, displayArtist } from './ui.js';
+import { esc, displayArtist, byPopularity } from './ui.js';
 import { songTint, initial } from './tint.js';
+import { SPOTIFY_POPULAR_IDS } from './popular-ids.js';
+
+export const LANDING_EXAMPLE_COUNT = 4;
+export const LANDING_EXAMPLE_POOL = 200;
+
+/**
+ * Four songs to put on the landing page: a uniform sample from the 200 library tracks with the most
+ * Spotify streams, or from the catalogue's own popularity ranking when those ids are not in `entries`.
+ */
+export function pickLandingExamples(
+  entries: readonly IndexEntry[],
+  count = LANDING_EXAMPLE_COUNT,
+  random: () => number = Math.random,
+): IndexEntry[] {
+  const byId = new Map(entries.map((e) => [e.id, e]));
+  const preferred = SPOTIFY_POPULAR_IDS.map((id) => byId.get(id)).filter((e): e is IndexEntry => !!e);
+  const pool = (preferred.length >= count ? preferred : byPopularity(entries)).slice(0, LANDING_EXAMPLE_POOL);
+  if (pool.length <= count) return pool.slice();
+  const shuffled = pool.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, count);
+}
 
 /** Card subtitle: artist and year, the two things a listener knows a song by (the dataset is not one of them). */
 export const cardSubtitle = (e: IndexEntry) => [displayArtist(e.artist), e.year].filter(Boolean).join(' · ');

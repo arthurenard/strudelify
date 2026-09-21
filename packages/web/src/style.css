@@ -468,6 +468,7 @@ strudel-editor { display: block; }
 .lede code { font-family: var(--mono); font-size: 0.9em; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
 .cta-row { display: flex; align-items: center; justify-content: center; gap: var(--s4); margin: var(--s5) 0; flex-wrap: wrap; }
 .examples { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); text-align: left; }
+.examples.pending { visibility: hidden; }
 .ex { display: flex; align-items: center; gap: var(--s3); padding: 10px var(--s3); border-radius: var(--r-md); background: var(--panel); border: 1px solid var(--line); text-decoration: none; min-height: 64px; transition: background 0.15s, border-color 0.15s, transform 0.15s var(--ease); min-width: 0; }
 .ex:hover { background: var(--panel-2); border-color: var(--line-2); transform: translateY(-2px); }
 .ex-tile { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-size: 20px; color: rgba(255, 255, 255, 0.85); background: linear-gradient(135deg, var(--tile), color-mix(in srgb, var(--tile) 45%, #000)); flex: none; }

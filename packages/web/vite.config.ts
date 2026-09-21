@@ -6,9 +6,9 @@ import { bakeLanding } from './src/landing.js';
 const DB = path.resolve(__dirname, '..', 'data', 'public', 'db');
 
 /**
- * Bake the database's facts into index.html (song count, the example cards' years and tile colours), so the
- * landing page's first paint is its final paint. Read once per run; a missing index leaves the markup for the
- * browser to fill in.
+ * Bake the database's facts into index.html (song count, fallback example cards' years and tile colours).
+ * The browser then replaces those cards with a random sample from the Spotify-popular pool. Read once per
+ * run; a missing index leaves the markup for the browser to fill in.
  */
 function landingPlugin(): Plugin {
   let entries: Parameters<typeof bakeLanding>[1] = null;

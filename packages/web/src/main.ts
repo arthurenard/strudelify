@@ -7,11 +7,11 @@ import { lookupThumbnail, peekArt, thumbnailUrl, type ArtInfo } from './art.js';
 import { el, prefersReducedMotion } from './dom.js';
 import { state } from './state.js';
 import { getIndex, onIndex, onChoose, onPreview, focusSearch, closeSearch, entryById } from './search.js';
-import { exampleCard, cardSubtitle, browseLabel, searchPlaceholder } from './landing.js';
+import { exampleCard, browseLabel, searchPlaceholder, pickLandingExamples } from './landing.js';
 import { choose, showSection, prefetchArt } from './song.js';
 import { play, stop, seek, currentBar, rewind } from './player.js';
 import { bindTimeline } from './timeline.js';
-import { displayArtist, tidyHits, idWords, songTint } from './ui.js';
+import { displayArtist, tidyHits, idWords } from './ui.js';
 
 bindTimeline({ seek, currentBar });
 onChoose(choose);
@@ -45,19 +45,22 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- landing + chrome ----------
 /**
- * The landing cards and the song count are baked into index.html from the database at build time (landing.ts),
- * so the first paint is the final one; once the index is in they are confirmed against it (a card whose song
- * has left the database is hidden) and wired to warm their art on hover.
+ * The song count is baked into index.html; the four example cards stay hidden until the index is in,
+ * then a random sample from the 200 most-streamed library songs is drawn and wired to load art.
  */
+function revealExamples() {
+  el.examples.classList.remove('pending');
+  el.examples.removeAttribute('aria-busy');
+}
 function hydrateExamples() {
+  const idx = state.index;
+  if (!idx) return;
+  el.examples.innerHTML = pickLandingExamples(idx.entries).map(exampleCard).join('');
+  revealExamples();
   const jobs: (() => Promise<void>)[] = [];
-  for (const a of Array.from(document.querySelectorAll<HTMLAnchorElement>('#examples .ex'))) {
+  for (const a of Array.from(el.examples.querySelectorAll<HTMLAnchorElement>('.ex'))) {
     const e = entryById(decodeURIComponent(a.getAttribute('href')?.slice(1) ?? ''));
     if (!e) { a.hidden = true; continue; }
-    a.querySelector('.ex-t')!.textContent = e.title;
-    a.querySelector('.ex-a')!.textContent = cardSubtitle(e);
-    a.title = `${e.title} — ${displayArtist(e.artist)}`;
-    a.style.setProperty('--tile', songTint(e));
     const renderCover = (info: ArtInfo) => {
       if (!info.art || info.kind !== 'track') return;
       const tile = a.querySelector<HTMLElement>('.ex-tile');
@@ -119,4 +122,4 @@ async function openFromHash() {
 }
 window.addEventListener('hashchange', openFromHash);
 onIndex(() => { openFromHash().catch(() => { /* the banner shows the error */ }); });
-getIndex().catch(() => { /* the banner shows the error */ });
+getIndex().catch(() => { revealExamples(); /* the banner shows the error; fallback cards stay */ });

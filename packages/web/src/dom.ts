@@ -88,6 +88,7 @@ export const el = {
   codeExpand: $<HTMLButtonElement>('code-expand'),
   codeExpandLabel: $<HTMLSpanElement>('code-expand-label'),
   // landing + not found
+  examples: $<HTMLDivElement>('examples'),
   ctaSearch: $<HTMLButtonElement>('cta-search'),
   ctaLabel: $<HTMLSpanElement>('cta-label'),
   nfSearch: $<HTMLButtonElement>('nf-search'),
