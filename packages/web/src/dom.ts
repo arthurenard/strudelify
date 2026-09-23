@@ -95,6 +95,9 @@ export const el = {
   nfId: $<HTMLElement>('nf-id'),
   nfLedeMore: $<HTMLSpanElement>('nf-lede-more'),
   nfMatches: $<HTMLDivElement>('nf-matches'),
+  more: $<HTMLElement>('more'),
+  moreArtist: $<HTMLAnchorElement>('more-artist'),
+  moreSongs: $<HTMLDivElement>('more-songs'),
   toast: $<HTMLDivElement>('toast'),
   top: document.querySelector<HTMLElement>('.top')!,
 };

@@ -8,7 +8,7 @@ import { state } from './state.js';
 import { lookupThumbnail, peekArt, thumbnailUrl, type ArtInfo } from './art.js';
 import {
   esc, songTint, initial, highlightTokens, highlight, buildArtistIndex, artistMatch, queryLooksLikeTitle, byPopularity,
-  displayArtist, tidyHits, keyName, setArtistAliases, canonicalArtists, type ArtistGroup,
+  displayArtist, tidyHits, rowFacts, setArtistAliases, canonicalArtists, type ArtistGroup,
 } from './ui.js';
 
 // ---------- index ----------
@@ -46,12 +46,6 @@ export function getIndex({ quiet = false } = {}): Promise<SongIndex> {
     throw e;
   });
   return indexPromise;
-}
-
-/** Index keys look like "G# major"; show them spelled the way musicians write them (A♭ major). */
-export function prettyKey(key: string | undefined): string {
-  const m = /^([A-G][#b]?) (major|minor)$/.exec(key ?? '');
-  return m ? keyName(m[1], m[2] as 'major' | 'minor') : key ?? '';
 }
 
 // ---------- results ----------
@@ -141,12 +135,16 @@ export function closeSearch() {
   el.qClear.hidden = true;
 }
 export const focusSearch = () => { el.q.focus(); el.q.select(); };
+/** Put `text` in the search box and show its results. */
+export function searchFor(text: string) {
+  el.q.value = text;
+  el.q.focus();
+  void runSearch();
+}
 
 const sourceBadges = (e: IndexEntry) =>
   `<span class="badges">${e.sources.includes('midi') ? '<span class="badge midi">MIDI</span>' : ''}${e.sources.includes('mcgill') ? '<span class="badge chords">Chords</span>' : ''}</span>`;
 
-/** The facts a listener knows a song by, for a row's second line or column: year, key, tempo. */
-export const rowFacts = (e: IndexEntry) => [e.year ? String(e.year) : '', prettyKey(e.key), e.bpm ? `${e.bpm} bpm` : ''].filter(Boolean).join(' · ');
 
 /**
  * One row: tile · title / artist · badges / year · key · bpm. Each slot always means the same thing: the

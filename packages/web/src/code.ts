@@ -26,6 +26,8 @@ export function restoreEdits(code: string) {
 /** Put generated code in the editor and point the actions at it. */
 export function showCode(code: string, id: string) {
   if (ed() && !editorConfigured) { applyWrap(); editorConfigured = true; }
+  // A song page's address serves the code as text first (see prerender.ts); the editor replaces it.
+  document.getElementById('code-static')?.remove();
   generated = code;
   ed()?.setCode(code);
   el.download.download = `${id}.strudel.js`;

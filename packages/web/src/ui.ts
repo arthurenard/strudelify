@@ -14,6 +14,7 @@ export function fmt(seconds: number): string {
 }
 
 export { hashHue, fallbackTint, songTint, initial } from './tint.js';
+import { fnv1a } from './tint.js';
 
 /** Query tokens worth highlighting (normalised, at least two characters). */
 export function queryTokens(query: string): string[] {
@@ -836,9 +837,12 @@ export function cycleLabels(chords: readonly string[]): string[] {
 
 /** Longest title that keeps a browser tab and a history entry readable. */
 const TITLE_MAX = 60;
+/** Longest title that still takes the site's name, the length a results page shows in full. */
+const TITLE_NAMED = 56;
 /**
- * The document title of a song page: "Song — Artist · Strudelify", with a very long song title cut at a word
- * boundary and finished with an ellipsis, so the tab and the history entry still name the song.
+ * The document title of a song page, the same in the app and in its prerendered page: "Song — Artist: Strudel
+ * code · Strudelify", without the site's name when that would not fit, and with a very long song title cut at a
+ * word boundary and finished with an ellipsis, so the tab and the history entry still name the song.
  */
 export function pageTitle(title: string, artist: string): string {
   let t = title.trim();
@@ -847,5 +851,31 @@ export function pageTitle(title: string, artist: string): string {
     const space = cut.lastIndexOf(' ');
     t = `${(space > TITLE_MAX / 2 ? cut.slice(0, space) : cut).replace(/[\s,:;–—-]+$/, '')}…`;
   }
-  return `${t} — ${artist} · Strudelify`;
+  const base = `${t} — ${artist}: Strudel code`;
+  return base.length <= TITLE_NAMED ? `${base} · Strudelify` : base;
 }
+
+/** Index keys look like "G# major"; show them spelled the way musicians write them (A♭ major). */
+export function prettyKey(key: string | undefined): string {
+  const m = /^([A-G][#b]?) (major|minor)$/.exec(key ?? '');
+  return m ? keyName(m[1], m[2] as 'major' | 'minor') : key ?? '';
+}
+/** The facts a listener knows a song by, for a row's second line or column: year, key, tempo. */
+export const rowFacts = (e: Pick<IndexEntry, 'year' | 'key' | 'bpm'>) => [e.year ? String(e.year) : '', prettyKey(e.key), e.bpm ? `${e.bpm} bpm` : ''].filter(Boolean).join(' · ');
+
+// ---------- addresses ----------
+/** A song page's address (`/song/queen--bohemian-rhapsody/`): a folder, which every static host serves as it is. */
+export const songPath = (id: string): string => `/song/${encodeURIComponent(id)}/`;
+/** The song id an address names (`/song/<id>/`, the trailing slash optional), or null; a malformed escape is taken as typed. */
+export function songIdFromPath(path: string): string | null {
+  const m = /^\/song\/([^/]+)\/?$/.exec(path);
+  if (!m) return null;
+  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+}
+/** The slug of an artist page (`The Beatles` is `the-beatles`); a name with no Latin letter or digit is named by its hash. */
+export function artistSlug(name: string): string {
+  const slug = name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return slug || `a-${fnv1a(name).toString(36)}`;
+}
+/** An artist page's address, from the artist as shown (see `displayArtist`). */
+export const artistPath = (name: string): string => `/artist/${artistSlug(name)}/`;

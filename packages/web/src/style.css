@@ -477,6 +477,14 @@ strudel-editor { display: block; }
 .lede a { color: var(--fg); text-decoration-color: var(--line-2); text-underline-offset: 3px; }
 .lede code { font-family: var(--mono); font-size: 0.9em; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
 .cta-row { display: flex; align-items: center; justify-content: center; gap: var(--s4); margin: var(--s5) 0; flex-wrap: wrap; }
+/* A song's code as its page serves it, before the editor loads (see prerender.ts). */
+.code-static { margin: 0; padding: var(--s4) var(--s5); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--panel); color: var(--muted); font: 12.5px/1.6 var(--mono); white-space: pre; overflow: auto; max-height: 480px; }
+.song.loading .code-static ~ .code-skel { display: none; }
+.more { margin-top: var(--s6); }
+.more-title { font-size: 17px; font-weight: 650; margin: 0 0 var(--s3); color: var(--muted); }
+.more-title a { color: var(--fg); text-decoration: none; }
+.more-title a:hover { text-decoration: underline; }
+.more .examples { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 .examples { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s3); text-align: left; }
 .examples.pending { visibility: hidden; }
 .ex { display: flex; align-items: center; gap: var(--s3); padding: 10px var(--s3); border-radius: var(--r-md); background: var(--panel); border: 1px solid var(--line); text-decoration: none; min-height: 64px; transition: background 0.15s, border-color 0.15s, transform 0.15s var(--ease); min-width: 0; }
@@ -610,3 +618,21 @@ strudel-editor { display: block; }
 
 .ex-tile { overflow: hidden; }
 .ex-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Artist pages and the A–Z index (see prerender.ts): plain pages that link into the app. */
+.plain-search { flex: 1; max-width: 420px; margin-left: auto; }
+.plain-search input { width: 100%; height: 40px; padding: 0 var(--s4); border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: inherit; }
+.plain-search input:focus { outline: none; box-shadow: var(--ring); }
+.plain-page { width: min(var(--content), 100% - 2 * var(--gutter)); margin: var(--s6) auto var(--s7); }
+.plain-page h1 { font-size: clamp(28px, 4vw, 44px); letter-spacing: -0.02em; margin: var(--s2) 0 var(--s3); }
+.plain-page .lede { color: var(--muted); margin: 0 0 var(--s5); }
+.crumbs { color: var(--muted-2); font-size: 13px; }
+.crumbs a { color: var(--muted); }
+.letters { display: flex; flex-wrap: wrap; gap: var(--s1); margin: 0 0 var(--s5); }
+.letters a, .letters span { min-width: 34px; padding: 6px 8px; text-align: center; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--panel); color: var(--fg); text-decoration: none; font-weight: 600; font-size: 13px; }
+.letters span[aria-current] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.artist-list { list-style: none; padding: 0; margin: 0; columns: 3 220px; column-gap: var(--s5); }
+.artist-list li { break-inside: avoid; padding: 3px 0; }
+.artist-list a { color: var(--fg); text-decoration: none; }
+.artist-list a:hover { text-decoration: underline; }
+.artist-list .n { color: var(--muted-2); font-size: 12px; margin-left: 4px; }

@@ -1,7 +1,7 @@
 /**
  * Opening a song: skeleton, fetch + parse, compile, hero (art, tint, chips), options, recompile on change.
  */
-import { loadSong, render, barRange, gmLabel, chordSummary, type IndexEntry, type Song, type CompileOptions, type Timeline } from '@strudelify/core';
+import { loadSong, render, barRange, gmLabel, chordSummary, normaliseText, type IndexEntry, type Song, type CompileOptions, type Timeline } from '@strudelify/core';
 import { lookupArt } from './art.js';
 import { el, setStatus, showBanner, hideBanner, toast, prefersReducedMotion } from './dom.js';
 import { state } from './state.js';
@@ -14,8 +14,9 @@ import { closeSearch, rememberRecent } from './search.js';
 import {
   esc, fmt, songTint, initial, displayArtist, keyName, prefersFlats, structureSections, structureChords,
   albumLine, titleSize, barCapOptions, dominantHsl, respellChordLine, respellKeyLine, replaceChordLine, midiKey, chartShift, shiftTonic,
-  partList, deriveForm, leadName, pageTitle, ALL_BARS,
+  partList, deriveForm, leadName, pageTitle, ALL_BARS, songPath, artistPath, artistSlug,
 } from './ui.js';
+import { artistSongCard, moreByArtist } from './landing.js';
 
 export function showSection(which: 'song' | 'empty' | 'notfound') {
   el.song.hidden = which !== 'song';
@@ -227,10 +228,25 @@ export async function prefetchArt(entry: Pick<IndexEntry, 'id' | 'title' | 'arti
   rememberTint(entry.id, await tintFor(entry, hasCover(info) ? info.art : undefined));
 }
 
+/**
+ * The artist's other songs under the song, and the way to the artist's page. A name with no Latin letter is not
+ * in the search's artist index: its songs are found by their artist page's slug.
+ */
+function renderMore(entry: IndexEntry, artist: string) {
+  const slug = artistSlug(artist);
+  const group = state.artistIndex.get(normaliseText(artist))?.entries
+    ?? state.index?.entries.filter((e) => artistSlug(displayArtist(e.artist)) === slug) ?? [];
+  const songs = moreByArtist(entry, group);
+  el.more.hidden = !songs.length;
+  el.moreArtist.textContent = artist;
+  el.moreArtist.href = artistPath(artist);
+  el.moreSongs.innerHTML = songs.map(artistSongCard).join('');
+}
+
 // ---------- open ----------
 /**
  * Open a song. Picking one from search or a link pushes a history entry, so Back returns to the previous
- * song or the landing page; opening from the hash (boot, Back/Forward) leaves history alone.
+ * song or the landing page; opening from the address (boot, Back/Forward) leaves history alone.
  */
 export async function choose(entry: IndexEntry) {
   if (state.loadingId === entry.id) return;
@@ -244,11 +260,12 @@ export async function choose(entry: IndexEntry) {
   el.melody.checked = true;
   showSkeleton(entry); // synchronously, before the (async) hard stop: the page shows the new song at once
   const artist = displayArtist(entry.artist);
+  renderMore(entry, artist);
   // Resolve artwork alongside the MIDI and editor downloads, not after compilation.
   void lookupArt(entry.id, artist, entry.title, { year: entry.year });
   document.title = pageTitle(entry.title, artist);
-  const hash = `#${encodeURIComponent(entry.id)}`;
-  if (location.hash !== hash) history.pushState(null, '', hash);
+  const path = songPath(entry.id);
+  if (location.pathname !== path) history.pushState(null, '', path);
   rememberRecent(entry.id);
   window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   await stop(true);

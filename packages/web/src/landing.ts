@@ -4,8 +4,8 @@
  * plugin in vite.config.ts, which bakes the song count and fallback cards into index.html at dev/build time.
  * Keep this module free of DOM access.
  */
-import type { IndexEntry } from '@strudelify/core';
-import { esc, displayArtist, byPopularity, canonicalArtists, setArtistAliases } from './ui.js';
+import { normaliseText, type IndexEntry } from '@strudelify/core';
+import { esc, displayArtist, byPopularity, canonicalArtists, setArtistAliases, songPath, rowFacts } from './ui.js';
 import { songTint, initial } from './tint.js';
 import { SPOTIFY_POPULAR_IDS } from './popular-ids.js';
 
@@ -57,19 +57,38 @@ const cardArtist = (e: CardEntry) => e.display ?? displayArtist(e.artist);
 /** Card subtitle: artist and year, the two things a listener knows a song by (the dataset is not one of them). */
 export const cardSubtitle = (e: CardEntry) => [cardArtist(e), e.year].filter(Boolean).join(' · ');
 
-/** Example-card HTML shared by the landing page, the not-found page and the baked index.html. */
-export function exampleCard(e: CardEntry): string {
-  return `<a class="ex" href="#${encodeURIComponent(e.id)}" style="--tile:${songTint(e)}" title="${esc(`${e.title} — ${cardArtist(e)}`)}">` +
+function card(e: CardEntry, subtitle: string): string {
+  return `<a class="ex" href="${songPath(e.id)}" style="--tile:${songTint(e)}" title="${esc(`${e.title} — ${cardArtist(e)}`)}">` +
     `<span class="ex-tile" aria-hidden="true">${esc(initial(e.title))}</span>` +
-    `<span class="ex-text"><span class="ex-t">${esc(e.title)}</span><span class="ex-a">${esc(cardSubtitle(e))}</span></span></a>`;
+    `<span class="ex-text"><span class="ex-t">${esc(e.title)}</span><span class="ex-a">${esc(subtitle)}</span></span></a>`;
+}
+/** Example-card HTML shared by the landing page, the not-found page and the baked index.html. */
+export const exampleCard = (e: CardEntry): string => card(e, cardSubtitle(e));
+/** A card in a list of one artist's songs (an artist page, "More by"): the song's year, key and tempo stand where the artist would repeat. */
+export const artistSongCard = (e: CardEntry & Pick<IndexEntry, 'key' | 'bpm'>): string => card(e, rowFacts(e) || cardSubtitle(e));
+
+/** Songs a song page suggests by the same artist. */
+export const MORE_COUNT = 8;
+/**
+ * Up to `limit` other songs of `group` (the artist's songs), most popular first, one per title: alternate
+ * transcriptions of the song on the page, or of another, are not suggested twice.
+ */
+export function moreByArtist<E extends Pick<IndexEntry, 'id' | 'title' | 'popularity'>>(entry: Pick<IndexEntry, 'id' | 'title'>, group: readonly E[], limit = MORE_COUNT): E[] {
+  const seen = new Set([normaliseText(entry.title)]);
+  return byPopularity(group).filter((e) => {
+    const title = normaliseText(e.title);
+    if (e.id === entry.id || seen.has(title)) return false;
+    seen.add(title);
+    return true;
+  }).slice(0, limit);
 }
 
 /** Count catalogue entries: alternate transcriptions do not constitute distinct songs. */
 export const browseLabel = (count: number | null) => (count !== null ? `Browse ${count.toLocaleString('en-US')} library ${count === 1 ? 'entry' : 'entries'}` : 'Browse songs');
 export const searchPlaceholder = (count: number | null) => (count !== null ? `Search ${count.toLocaleString('en-US')} library ${count === 1 ? 'entry' : 'entries'}` : 'Search a song or artist');
 
-/** The `<a class="ex" href="#id">` cards of an HTML document, in order (their ids). */
-export const exampleIds = (html: string): string[] => [...html.matchAll(/<a class="ex" href="#([^"]+)"[^>]*>[\s\S]*?<\/a>/g)].map((m) => decodeURIComponent(m[1]));
+/** The `<a class="ex" href="/song/id/">` cards of an HTML document, in order (their ids). */
+export const exampleIds = (html: string): string[] => [...html.matchAll(/<a class="ex" href="\/song\/([^"/]+)\/"[^>]*>[\s\S]*?<\/a>/g)].map((m) => decodeURIComponent(m[1]));
 
 /**
  * index.html with the database's facts baked in: the song count in the CTA and the search placeholder, and each
@@ -85,7 +104,7 @@ export function bakeLanding(html: string, entries: readonly IndexEntry[] | null)
   // Artists spelled the way the browser shows them once the index is in.
   setArtistAliases(canonicalArtists(entries));
   const byId = new Map(entries.map((e) => [e.id, e]));
-  out = out.replace(/<a class="ex" href="#([^"]+)"[^>]*>[\s\S]*?<\/a>/g, (_card, id: string) => {
+  out = out.replace(/<a class="ex" href="\/song\/([^"/]+)\/"[^>]*>[\s\S]*?<\/a>/g, (_card, id: string) => {
     const e = byId.get(decodeURIComponent(id));
     return e ? exampleCard(e) : '';
   });

@@ -4,7 +4,7 @@
  * no page or console errors, no horizontal scroll at 390/768/1440, the landing page baked with the index's
  * song count, one identity colour per song (landing card = search row), canonical artist names in search
  * rows, chord-lane labels without a trailing ellipsis, the readout agreeing with the highlighted block, and
- * no trace of the previous song while the next one loads (hash change and search Enter, on a throttled
+ * no trace of the previous song while the next one loads (address change and search Enter, on a throttled
  * connection, with a resize in between). Exits 1 on any failure.
  *   node tools/ui-check.mjs
  */
@@ -12,6 +12,8 @@ import puppeteer from 'puppeteer-core';
 
 const BASE = process.env.STRUDELIFY_URL ?? 'http://127.0.0.1:5173';
 const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+/** Third-party artwork lookups (see packages/web/src/art.ts). */
+const ART_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(itunes\.apple\.com|deezer\.com|musicbrainz\.org|coverartarchive\.org)\//;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const failures = [];
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) failures.push(what); };
@@ -20,9 +22,21 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: true,
 try {
   const page = await browser.newPage();
   const errors = [];
+  // Artwork services turn away bursts of lookups (iTunes answers 403); the page then shows the song's tile, so a
+  // refused lookup is noted, not failed.
+  const artRefused = new Set();
+  const isArt = (url) => ART_HOSTS.test(url ?? '');
   page.on('pageerror', (e) => errors.push(`pageerror ${e}`));
-  page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(`console.${m.type()} ${m.text()}`); });
-  page.on('response', (r) => { if (r.status() >= 400) errors.push(`HTTP ${r.status()} ${r.url()}`); });
+  page.on('console', (m) => {
+    if (m.type() !== 'error' && m.type() !== 'warning') return;
+    if (/^Failed to load resource/.test(m.text()) && isArt(m.location()?.url)) return;
+    errors.push(`console.${m.type()} ${m.text()}`);
+  });
+  page.on('response', (r) => {
+    if (r.status() < 400) return;
+    if (isArt(r.url()) && [403, 429, 503].includes(r.status())) artRefused.add(new URL(r.url()).host);
+    else errors.push(`HTTP ${r.status()} ${r.url()}`);
+  });
   const cdp = await page.target().createCDPSession();
   await cdp.send('Network.enable');
   const throttle = (on) => cdp.send('Network.emulateNetworkConditions', on
@@ -67,7 +81,7 @@ try {
   for (const [w, h] of [[1440, 900], [768, 1024], [390, 844]]) {
     await page.setViewport({ width: w, height: h, isMobile: w < 768, hasTouch: w < 768 });
     for (const id of ['pink-floyd--another-brick-in-the-wall-part-2', 'james-brown--i-dont-mind', 'steve-miller-band--the-joker']) {
-      await page.goto(`${BASE}/#${id}`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
+      await page.goto(`${BASE}/song/${id}/`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
       const s = await state();
       check(s.scrollW === s.innerW, `${w}px ${id}: no horizontal scroll (${s.scrollW}/${s.innerW})`);
       check(!s.labels.some((l) => l.includes('…')), `${w}px ${id}: no ellipsis in lane labels`);
@@ -78,13 +92,24 @@ try {
 
   // Stale state while the next song loads.
   await page.setViewport({ width: 1440, height: 900 });
-  await page.goto(`${BASE}/#pink-floyd--another-brick-in-the-wall-part-2`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
+  // An old link to /#<id> opens the song at its own address.
+  await page.goto(`${BASE}/#james-brown--i-dont-mind`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
+  const legacy = await page.evaluate(() => ({ path: location.pathname, hash: location.hash, title: document.getElementById('title')?.textContent }));
+  check(legacy.path === '/song/james-brown--i-dont-mind/' && !legacy.hash && legacy.title === "I Don't Mind", `old /#id link: moved to ${legacy.path}${legacy.hash}`);
+  // A song suggests the artist's other songs, which open inside the app.
+  const more = await page.evaluate(() => ({ shown: !document.getElementById('more')?.hidden, cards: document.querySelectorAll('#more-songs .ex').length, artist: document.getElementById('more-artist')?.getAttribute('href') }));
+  check(more.shown && more.cards > 0 && more.artist === '/artist/james-brown/', `more by the artist: ${more.cards} cards, ${more.artist}`);
+  // /?q= opens the search with its text.
+  await page.goto(`${BASE}/?q=beatles`, { waitUntil: 'networkidle0' }); await sleep(600);
+  const q = await page.evaluate(() => ({ value: document.getElementById('q')?.value, rows: document.querySelectorAll('#results [role="option"]').length }));
+  check(q.value === 'beatles' && q.rows > 0, `/?q=beatles: ${q.rows} results`);
+  await page.goto(`${BASE}/song/pink-floyd--another-brick-in-the-wall-part-2/`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
   await page.evaluate(() => { document.getElementById('track').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); });
   await throttle(true);
-  await page.evaluate(() => { location.hash = '#led-zeppelin--stairway-to-heaven'; });
-  await sleep(150); const h1 = await state(); check(h1.loading && h1.title === 'Stairway To Heaven', 'hash change: new title with the skeleton within 150 ms'); noStale(h1, 'hash +150 ms');
-  await sleep(400); noStale(await state(), 'hash +550 ms');
-  await page.setViewport({ width: 1200, height: 900 }); await sleep(300); noStale(await state(), 'hash, resized while loading');
+  await page.evaluate(() => { history.pushState(null, '', '/song/led-zeppelin--stairway-to-heaven/'); dispatchEvent(new PopStateEvent('popstate')); });
+  await sleep(150); const h1 = await state(); check(h1.loading && h1.title === 'Stairway To Heaven', 'address change: new title with the skeleton within 150 ms'); noStale(h1, 'address +150 ms');
+  await sleep(400); noStale(await state(), 'address +550 ms');
+  await page.setViewport({ width: 1200, height: 900 }); await sleep(300); noStale(await state(), 'address, resized while loading');
   await throttle(false); await waitSong(); await sleep(400);
   const lz = await state(); check(lz.title === 'Stairway To Heaven' && lz.lanes > 0 && lz.bar.startsWith('bar 1 /'), `loaded: ${lz.title} ${lz.bar}`);
   await throttle(true);
@@ -95,6 +120,7 @@ try {
   // (The website opens a song on its Main loop, a few bars of the chart.)
   const jb = await state(); check(jb.lanes > 0 && /^bar 1 \/ \d+$/.test(jb.bar), `loaded: ${jb.title} ${jb.bar}`);
   check(!errors.length, `song switching: no errors${errors.length ? '\n  ' + errors.join('\n  ') : ''}`);
+  if (artRefused.size) console.log(`note artwork lookups refused by ${[...artRefused].join(', ')} (rate limit); the page showed tiles instead`);
 } finally { await browser.close(); }
 console.log(failures.length ? `\n${failures.length} failure(s)` : '\nall checks passed');
 process.exit(failures.length ? 1 : 0);

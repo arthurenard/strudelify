@@ -1,9 +1,14 @@
 import { defineConfig, type Plugin } from 'vite';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
+import { Worker } from 'node:worker_threads';
+import type { IndexEntry } from '@strudelify/core';
 import { bakeLanding } from './src/landing.js';
+import { songPath, setArtistAliases, canonicalArtists } from './src/ui.js';
+import { homePage, songPage, notFoundPage, artists, artistPage, artistsPage, sitemap, robots, compact, LETTERS } from './src/prerender.js';
 
-const DB = path.resolve(__dirname, '..', 'data', 'public', 'db');
+const DB = path.resolve(import.meta.dirname, '..', 'data', 'public', 'db');
 
 /**
  * Bake the database's facts into index.html (song count, fallback example cards' years and tile colours).
@@ -57,10 +62,80 @@ function securityPlugin(): Plugin {
   };
 }
 
+/**
+ * The site's address for canonical links, Open Graph and the sitemap: SITE_URL, or the production address the
+ * host provides (Vercel's project domain, Netlify's site URL). Unknown, those are left out of the pages.
+ */
+function siteUrl(): string | null {
+  const env = process.env;
+  const url = env.SITE_URL
+    || (env.VERCEL_PROJECT_PRODUCTION_URL && `https://${env.VERCEL_PROJECT_PRODUCTION_URL}`)
+    || (env.NETLIFY === 'true' && env.URL);
+  if (!url) return null;
+  if (!/^https?:\/\/[^/]+/.test(url)) throw new Error(`SITE_URL must be an address like https://example.com, not "${url}"`);
+  return url.replace(/\/+$/, '');
+}
+
+/** Every song's Main loop code, compiled in worker threads (a song whose code fails maps to null). */
+async function compileLoops(entries: IndexEntry[]): Promise<Map<string, string | null>> {
+  const workers = Math.max(1, Math.min(8, os.availableParallelism() - 1));
+  const shares = Array.from({ length: workers }, (_, w) => entries.filter((_, i) => i % workers === w)).filter((s) => s.length);
+  const results = await Promise.all(shares.map((share) => new Promise<[string, string | null][]>((resolve, reject) => {
+    const worker = new Worker(path.resolve(import.meta.dirname, 'scripts/loop-worker.mjs'), { workerData: { db: DB, entries: share } });
+    worker.once('message', resolve);
+    worker.once('error', reject);
+    worker.once('exit', (code) => { if (code) reject(new Error(`A song-page worker exited with code ${code}`)); });
+  })));
+  return new Map(results.flat());
+}
+
+/**
+ * The pages search engines and link previews read (see prerender.ts), written after the build: the home page's
+ * head, a page per song (the app opened on it, with its Main loop code) and per artist, the A–Z index, the
+ * sitemap, robots.txt, the 404 page and the icon files (packages/web/static).
+ */
+function prerenderPlugin(): Plugin {
+  let outDir = '';
+  return {
+    name: 'strudelify-prerender',
+    apply: 'build',
+    configResolved(config) { outDir = path.resolve(config.root, config.build.outDir); },
+    async closeBundle() {
+      const started = Date.now();
+      const site = siteUrl();
+      const entries: IndexEntry[] = JSON.parse(fs.readFileSync(path.join(DB, 'index.json'), 'utf8'));
+      setArtistAliases(canonicalArtists(entries));
+      const write = (file: string, text: string) => {
+        fs.mkdirSync(path.dirname(path.join(outDir, file)), { recursive: true });
+        fs.writeFileSync(path.join(outDir, file), text);
+      };
+      const shell = fs.readFileSync(path.join(outDir, 'index.html'), 'utf8');
+      const css = /<link rel="stylesheet"[^>]*href="([^"]+)"/.exec(shell)?.[1];
+      if (!css) this.error('The built index.html links no stylesheet.');
+      write('index.html', homePage(shell, site));
+      write('404.html', notFoundPage(shell));
+      const codes = await compileLoops(entries);
+      const groups = artists(entries);
+      const songsOf = new Map(groups.flatMap((g) => g.entries.map((e) => [e.id, g.entries] as const)));
+      for (const e of entries) write(`song/${e.id}/index.html`, compact(songPage(shell, e, songsOf.get(e.id) ?? [], { code: codes.get(e.id) ?? undefined }, site)));
+      for (const g of groups) write(`artist/${g.slug}/index.html`, compact(artistPage(g, css, site)));
+      write('artists/index.html', artistsPage(groups, css, site));
+      for (const letter of LETTERS) write(`artists/${letter}/index.html`, artistsPage(groups, css, site, letter));
+      write('robots.txt', robots(site));
+      if (site) write('sitemap.xml', sitemap(site, ['/', '/artists/', ...LETTERS.map((l) => `/artists/${l}/`), ...groups.map((g) => `/artist/${g.slug}/`), ...entries.map((e) => songPath(e.id))]));
+      const icons = path.resolve(import.meta.dirname, 'static');
+      for (const file of fs.readdirSync(icons)) fs.copyFileSync(path.join(icons, file), path.join(outDir, file));
+      const failed = [...codes.values()].filter((c) => c === null).length;
+      this.info?.(`prerendered ${entries.length} song and ${groups.length} artist pages in ${((Date.now() - started) / 1000).toFixed(1)} s${failed ? ` (${failed} without code)` : ''}`);
+      if (!site) console.warn('[strudelify-prerender] SITE_URL is not set: pages have no canonical links, Open Graph addresses or sitemap.');
+    },
+  };
+}
+
 export default defineConfig({
   // The song database is built into packages/data/public/db and served as static files.
-  publicDir: path.resolve(__dirname, '..', 'data', 'public'),
-  plugins: [landingPlugin(), securityPlugin(), {
+  publicDir: path.resolve(import.meta.dirname, '..', 'data', 'public'),
+  plugins: [landingPlugin(), securityPlugin(), prerenderPlugin(), {
     name: 'strudelify-database-check',
     apply: 'build',
     buildStart() {

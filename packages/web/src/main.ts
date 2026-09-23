@@ -1,17 +1,17 @@
 /**
- * Boot, hash routing, global keyboard shortcuts and the landing page. The rest lives in
+ * Boot, routing, global keyboard shortcuts and the landing page. The rest lives in
  * search.ts (index + palette), song.ts (open + hero + options), player.ts (transport), timeline.ts (lanes)
  * and code.ts (editor + actions); state.ts holds the shared state and dom.ts the element handles.
  */
 import { lookupThumbnail, peekArt, thumbnailUrl, type ArtInfo } from './art.js';
 import { el, prefersReducedMotion } from './dom.js';
 import { state } from './state.js';
-import { getIndex, onIndex, onChoose, onPreview, focusSearch, closeSearch, entryById } from './search.js';
+import { getIndex, onIndex, onChoose, onPreview, focusSearch, closeSearch, entryById, searchFor } from './search.js';
 import { exampleCard, browseLabel, searchPlaceholder, pickLandingExamples, LANDING_POOL_ID, type LandingEntry, type CardEntry } from './landing.js';
 import { choose, showSection, prefetchArt } from './song.js';
 import { play, stop, seek, currentBar, rewind } from './player.js';
 import { bindTimeline } from './timeline.js';
-import { displayArtist, tidyHits, idWords } from './ui.js';
+import { displayArtist, tidyHits, idWords, songPath, songIdFromPath } from './ui.js';
 
 bindTimeline({ seek, currentBar, toggle: () => { if (state.started) void stop(); else void play(); } });
 onChoose(choose);
@@ -83,7 +83,7 @@ function hydrateExamples(pool: readonly CardEntry[]) {
   revealExamples();
   const jobs: (() => Promise<void>)[] = [];
   for (const a of Array.from(el.examples.querySelectorAll<HTMLAnchorElement>('.ex'))) {
-    const e = byId.get(decodeURIComponent(a.getAttribute('href')?.slice(1) ?? ''));
+    const e = byId.get(songIdFromPath(a.getAttribute('href') ?? '') ?? '');
     if (!e) { a.hidden = true; continue; }
     const renderCover = (info: ArtInfo) => {
       if (!info.art || info.kind !== 'track') return;
@@ -125,16 +125,23 @@ async function leaveSong() {
   state.loadingId = null;
   closeSearch();
 }
-/** The song id in the address: the hash, decoded; a malformed escape is taken as typed, never an uncaught error. */
-function hashId(): string {
-  const raw = location.hash.slice(1);
-  try { return decodeURIComponent(raw); } catch { return raw; }
+/**
+ * The song the address names: `/song/<id>/` (see `songPath`). An older link to `/#<id>` is moved to its song
+ * address on the way ("#main" is the skip link's target, not a song).
+ */
+function routedId(): string | null {
+  const id = songIdFromPath(location.pathname);
+  if (id || location.pathname !== '/' || location.hash.length < 2 || location.hash === '#main') return id;
+  let legacy = location.hash.slice(1);
+  try { legacy = decodeURIComponent(legacy); } catch { /* taken as typed */ }
+  history.replaceState(null, '', songPath(legacy));
+  return legacy;
 }
-async function openFromHash() {
-  const id = hashId();
-  // "#main" is the skip link's target, not a song (and an older link may still carry it).
-  if (id === 'main') return;
+async function route() {
+  const id = routedId();
   if (!id) {
+    // Another address is a page of its own (an artist's songs): the app leaves it as it is.
+    if (location.pathname !== '/') return;
     if (state.current || state.loadingId || !el.notFound.hidden) {
       await leaveSong();
       showSection('empty');
@@ -158,13 +165,26 @@ async function openFromHash() {
   showSection('notfound');
   document.title = 'Song not found · Strudelify';
 }
-window.addEventListener('hashchange', () => { openFromHash().catch(() => { /* the banner shows the error */ }); });
-onIndex(() => { openFromHash().catch(() => { /* the banner shows the error */ }); });
+window.addEventListener('popstate', () => { route().catch(() => { /* the banner shows the error */ }); });
+onIndex(() => { route().catch(() => { /* the banner shows the error */ }); });
+/** A plain click on a link to a song or to the home page moves within the app instead of reloading it. */
+document.addEventListener('click', (e) => {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+  if (!a || a.target || a.hasAttribute('download') || a.origin !== location.origin) return;
+  if (a.pathname !== '/' && !songIdFromPath(a.pathname)) return;
+  e.preventDefault();
+  if (a.pathname + a.search !== location.pathname + location.search) history.pushState(null, '', a.pathname + a.search);
+  route().catch(() => { /* the banner shows the error */ });
+});
 /** Run `fn` once the browser has nothing more urgent to do (after the landing page is drawn), or after `timeout` ms. */
 function whenIdle(fn: () => void, timeout = 3000) {
   if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(fn, { timeout });
   else setTimeout(fn, 1500);
 }
 // A song link needs the index now; the landing page only needs it for search, so it waits for an idle moment.
-if (hashId() && hashId() !== 'main') getIndex().catch(() => { revealExamples(); });
+// `/?q=text` (the site's search from a search engine or another page) opens the search with that text.
+const query = new URLSearchParams(location.search).get('q')?.trim();
+if (routedId()) getIndex().catch(() => { revealExamples(); });
+else if (query) searchFor(query);
 else whenIdle(() => { getIndex({ quiet: true }).catch(() => { revealExamples(); /* the banner shows the error; the cards stay */ }); });
