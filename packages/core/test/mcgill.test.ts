@@ -58,11 +58,11 @@ describe('parseMcgill', () => {
     const six = parseMcgill(SAMPLE.replace('# metre: 4/4', '# metre: 6/8'), 't3');
     // 10 bars of 6 eighths in 20 s = 180 eighths/min = 90 quarter bpm; one bar = 3 quarters -> 30 bars/min
     expect(six.meta.bpm).toBe(90);
-    expect(compile(six)).toContain('setcpm(30.00)');
+    expect(compile(six)).toContain('setcpm(90/3)');
   });
   it('compiles to an arrange() of per-bar patterns', () => {
     const code = compile(song);
-    expect(code).toContain('setcpm(30.00)');
+    expect(code).toContain('setcpm(120/4)');
     expect(code).toContain('[2, "<C F>"]');
     expect(code).toContain('[4, "<[C@3 Gm] [F@2 Em@2] [Dm@2 G@2] C>"]');
     expect(code).toContain('[4, "<~ Am7 ~ Am7>"]');

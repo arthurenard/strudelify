@@ -15,7 +15,6 @@ export function prepareArrangement(source: Song): Song {
   // Prefer a shared musical grid; source-detail mode retains microtiming and expressive controls.
   const grid = [16, 24, 32, 48].find(g => attacks.filter(at => Math.abs(Math.round(at * g) / g - at) * length * 60 / source.meta.bpm <= .035).length >= attacks.length * .9) ?? 32;
   const step = length / grid;
-  let merged = 0, removed = 0;
   const tracks: Track[] = instrumental.map(t => {
     const velocity = Math.min(1, Math.max(.1, Math.round(median(t.notes.map(n => n.velocity)) * 10) / 10));
     const volumes = t.notes.map(n => n.volume ?? t.volume ?? .8);
@@ -23,11 +22,11 @@ export function prepareArrangement(source: Song): Song {
     const pan = Math.round(median(t.notes.map(n => n.pan ?? t.pan ?? .5)) * 10) / 10;
     const groups = new Map<string, NoteEvent>();
     for (const n of t.notes) {
-      if (n.duration <= 0 || n.velocity <= 0 || (n.volume ?? t.volume ?? .8) <= 0) { removed++; continue; }
+      if (n.duration <= 0 || n.velocity <= 0 || (n.volume ?? t.volume ?? .8) <= 0) continue;
       const start = Math.min(end - step, Math.max(0, Math.round((n.start - origin) / step) * step));
       const duration = Math.min(end - start, Math.max(step, Math.round(n.duration / step) * step));
       const key = `${start}:${n.pitch}`, previous = groups.get(key);
-      if (previous) { previous.duration = Math.max(previous.duration, duration); merged++; }
+      if (previous) previous.duration = Math.max(previous.duration, duration);
       else groups.set(key, { pitch: n.pitch, start, duration, velocity });
     }
     const notes = [...groups.values()].sort((a, b) => a.start - b.start || a.pitch - b.pitch);
@@ -60,11 +59,10 @@ export function prepareArrangement(source: Song): Song {
     omitted.push(t.name || `guitar program ${t.program}`);
     return notes.length ? [{ ...t, notes }] : [];
   });
-  const song: Song = { ...source, meta: { ...source.meta, barOffset: 0, arrangementBars: range.totalBars, remarks: [
+  const song: Song = { ...source, meta: { ...source.meta, barOffset: 0, arrangementBars: range.totalBars, grid, remarks: [
     ...(source.meta.remarks ?? []),
-    `Full arrangement: all ${range.totalBars} bars retained; ${grid}-step rhythmic grid, steady part dynamics and natural drum decay. Source detail keeps the original performance.`,
-    ...(merged || removed ? [`Cleaned ${merged} coincident unison attacks and ${removed} empty note events.`] : []),
-    ...(omitted.length ? [`Matching guitar doubles merged; unique fills and solos retained: ${omitted.join(', ')}.`] : []),
+    `Full arrangement: all ${range.totalBars} bars on a ${grid}-step grid, one level per part, drums with their natural decay. Source detail keeps the original performance.`,
+    ...(omitted.length ? [`Guitar parts that double another keep only their own notes (fills, solos): ${omitted.join(', ')}.`] : []),
   ] }, tracks: kept, sections: [] };
   song.sections = detectSectionsFromMidi(song);
   return song;

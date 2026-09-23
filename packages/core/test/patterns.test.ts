@@ -1,90 +1,128 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
 import { compile, barRange } from '../src/strudel.js';
-import { loadSong } from '../src/load.js';
-import type { Song, NoteEvent } from '../src/types.js';
+import { riffLabel, OVERLAP_BEATS } from '../src/patterns.js';
+import type { Song, Track, NoteEvent } from '../src/types.js';
 // @ts-expect-error Shared Node-only runtime harness.
 import { evaluatePattern } from '../../../tools/strudel-runtime.mjs';
-const n = (pitch: number, start: number, duration: number): NoteEvent => ({ pitch, start, duration, velocity: 0.8 });
-const song = (notes: NoteEvent[]): Song => ({ meta: { id: 'patterns', title: 'Patterns', artist: 'Test', bpm: 120, beatsPerBar: 4, beatUnit: 4, sources: ['midi'] }, sections: [], tracks: [{ name: 'Guitar', program: 27, role: 'chords', notes }] });
-const code = (s: Song) => compile(s, { timing: 'patterns', maxBars: 10000, maxTracks: 1000 });
-const events = (s: Song) => evaluatePattern(code(s)).queryArc(0, barRange(s, 10000)!.nBars).filter((e: any) => e.hasOnset());
-function pitch(note: string | number | undefined) {
-  if (note === undefined || typeof note === 'number') return note;
-  const m = /^([a-g])([#b]*)(-?\d+)$/i.exec(note)!;
-  return (Number(m[3]) + 1) * 12 + 'c d ef g a b'.indexOf(m[1].toLowerCase()) + [...m[2]].reduce((n, x) => n + (x === '#' ? 1 : -1), 0);
-}
-function normalized(es: any[]) {
-  const groups = new Map<string, any[]>();
-  for (const e of es) {
-    const k = JSON.stringify([e.value.s, e.value.n, pitch(e.value.note)]);
-    const group = groups.get(k) ?? [];
-    group.push({ start: Number(e.whole.begin), duration: e.value.duration ?? Number(e.whole.end.sub(e.whole.begin)) * (e.value.clip ?? 1), velocity: e.value.velocity, gain: e.value.gain, pan: e.value.pan });
-    groups.set(k, group);
-  }
-  for (const group of groups.values()) group.sort((a, b) => a.start - b.start || a.duration - b.duration);
-  return groups;
-}
 
-describe('editable Strudel phrases', () => {
-  it('keeps weighted repetitions at the intended onsets', () => {
-    const s = song([n(60, 0, 0.75), n(60, 0.75, 0.25), n(60, 1, 0.5), n(60, 1.5, 0.5), n(60, 2, 0.5), n(64, 2.5, 0.5), n(64, 3, 0.5), n(67, 3.5, 0.5)]);
-    expect(events(s).map((e: any) => Number(e.whole.begin) * 4)).toEqual(s.tracks[0].notes.map(n => n.start));
+const n = (pitch: number, start: number, duration: number, velocity = 0.8): NoteEvent => ({ pitch, start, duration, velocity });
+const part = (notes: NoteEvent[], program = 0, role: Track['role'] = 'chords', name = 'Keys'): Track => ({ name, program, role, notes });
+const song = (...tracks: Track[]): Song => ({ meta: { id: 'p', title: 'Patterns', artist: 'Test', bpm: 120, beatsPerBar: 4, beatUnit: 4, sources: ['midi'] }, sections: [], tracks });
+const full = (s: Song) => compile(s, { timing: 'patterns', maxBars: 10000, maxTracks: 1000 });
+const loop = (s: Song) => compile(s, { form: 'loop', timing: 'patterns' });
+/** Every onset in `bars` bars of the code: [note or sound, start and length in beats]. */
+function played(code: string, bars: number): [string, number, number][] {
+  return evaluatePattern(code).queryArc(0, bars).filter((e: any) => e.hasOnset())
+    .map((e: any) => [String(e.value.note ?? e.value.s), Number(e.whole.begin) * 4, Number(e.duration) * 4] as [string, number, number])
+    .sort((a: any, b: any) => a[1] - b[1] || a[0].localeCompare(b[0]));
+}
+/** The generated code of the part called `name`, from its comment to its last line. */
+const partOf = (code: string, name: string) => code.slice(code.lastIndexOf('//', code.indexOf(`const ${name} =`)), code.indexOf('\n\n', code.indexOf(`const ${name} =`)));
+
+describe('editable patterns', () => {
+  it('writes each note for its steps and fills the gaps with rests, with no number on a note', () => {
+    const s = song(part([n(60, 0, 1), n(64, 2, 1), n(67, 3, 0.5)]));
+    const code = full(s);
+    expect(code).toContain('note("c4@2 ~@2 e4@2 g4 ~")');
+    expect(code).not.toMatch(/[a-g]#?\d:[\d.]/);
+    expect(played(code, 1)).toEqual([['c4', 0, 1], ['e4', 2, 1], ['g4', 3, 0.5]]);
   });
-  it('keeps repetitions inside their bar when making multi-bar riffs', () => {
-    const notes = Array.from({ length: 4 }, (_, b) => Array.from({ length: b % 2 ? 8 : 4 }, (_, i) => n(60 + b % 2, b * 4 + i * (b % 2 ? 0.5 : 1), 0.25))).flat();
-    const s = song(notes);
-    expect(events(s)).toHaveLength(notes.length);
-    expect(events(s).map((e: any) => Number(e.whole.begin) * 4).sort((a: number, b: number) => a - b)).toEqual(notes.map(n => n.start));
+
+  it('writes notes struck together for the same length as a chord', () => {
+    const code = full(song(part([n(60, 0, 2), n(64, 0, 2), n(67, 0, 2), n(62, 2, 2)])));
+    expect(code).toContain('note("[c4,e4,g4] d4")');
   });
-  it('factors chord voicings without losing pitches or independent releases', () => {
-    const s = song([n(48, 0, 0.5), n(55, 0, 0.5), n(60, 0, 0.5), n(50, 1, 2), n(57, 1, 2), n(62, 1, 2)]);
-    expect(code(s)).toContain('.transpose("0,7,12")');
-    expect(events(s).map((e: any) => pitch(e.value.note)).sort((a: number, b: number) => a - b)).toEqual([48, 50, 55, 57, 60, 62]);
-    expect(events(s).map((e: any) => e.value.duration).sort()).toEqual([0.125, 0.125, 0.125, 0.5, 0.5, 0.5]);
+
+  it('puts a note still sounding when the next one starts into a second voice, after the main line', () => {
+    const s = song(part([n(48, 0, 4), n(64, 1, 1), n(67, 2, 1)]));
+    const code = full(s);
+    expect(code).toContain('note("~ e4 g4 ~, c3")');
+    expect(played(code, 1)).toEqual([['c3', 0, 4], ['e4', 1, 1], ['g4', 2, 1]]);
   });
-  it('keeps arbitrary source names from shadowing n() or generated riff names', () => {
-    const s = song([n(60, 0, 1), n(60, 4, 1), n(60, 8, 1)]);
-    s.tracks[0].name = 'n';
-    s.tracks.push({ ...s.tracks[0], name: 'part_n_riff1' });
-    expect(events(s)).toHaveLength(6);
+
+  it('trims a note that runs only slightly into the next one instead of opening a voice', () => {
+    const code = full(song(part([n(36, 0, 2.25), n(43, 2, 2)], 33, 'bass', 'Bass')));
+    expect(code).toContain('note("c2 g2")');
+    expect(played(code, 1).map((e) => e[2])).toEqual([2, 2]);
+    expect(OVERLAP_BEATS).toBe(0.25);
   });
-  it('excludes vocals and respects instrumental-lead and excerpt choices', () => {
-    const s = song([n(60, 0, 32)]);
-    s.tracks.push({ ...s.tracks[0], name: 'Vocal', vocal: true }, { ...s.tracks[0], name: 'Lead', role: 'melody' });
-    const c = compile(s, { timing: 'patterns', melody: false, maxBars: 1 });
-    const es = evaluatePattern(c).queryArc(0, 1);
-    expect(es).toHaveLength(1);
-    expect(es[0].value.duration).toBeUndefined(); // Full-bar note uses legato(1).
-    expect(Number(es[0].whole.end)).toBe(1);
+
+  it('holds a note across the bar line in a riff of several bars, at its full length', () => {
+    const notes = [n(57, 0, 8), n(60, 0, 8), n(64, 0, 8), n(55, 8, 4), n(59, 8, 4), n(62, 8, 4), n(57, 12, 8), n(60, 12, 8), n(64, 12, 8)];
+    const code = full(song(part(notes, 48, 'chords', 'Strings')));
+    expect(code).toContain('A: "[a3,c4,e4]/2"');
+    expect(code).toContain('"<A@2 B A@2>".pickRestart(');
+    expect(played(code, 5).filter((e) => e[0] === 'a3')).toEqual([['a3', 0, 8], ['a3', 12, 8]]);
   });
-  for (const file of ['smells-like-teen-spirit.mid', 'love-me-do.mid']) it(`preserves every instrument event in ${file}, within the disclosed timing tolerance`, async () => {
-    const manifest = JSON.parse(fs.readFileSync(new URL('../../data/curated/manifest.json', import.meta.url), 'utf8'));
-    const review = manifest.entries.find((e: any) => e.file === file);
-    const data = fs.readFileSync(new URL(`../../data/curated/${file}`, import.meta.url));
-    const s = await loadSong({ ...review, title: file, artist: 'Test', sources: ['midi'], files: { midi: file } }, async () => data);
-    const bars = barRange(s, 10000)!.nBars;
-    const source = evaluatePattern(compile(s, { timing: 'source', maxBars: 10000, maxTracks: 1000 }));
-    const editable = evaluatePattern(code(s));
-    const original = normalized(source.queryArc(0, bars).filter((e: any) => e.hasOnset()));
-    const actual = normalized(editable.queryArc(0, bars).filter((e: any) => e.hasOnset()));
-    expect([...actual.keys()].sort()).toEqual([...original.keys()].sort());
-    const secondsPerBar = s.meta.beatsPerBar * 4 / s.meta.beatUnit * 60 / s.meta.bpm;
-    for (const [k, expected] of original) {
-      const got = actual.get(k)!;
-      expect(got.length, k).toBe(expected.length);
-      expected.forEach((e, i) => {
-        expect(Math.abs(got[i].start - e.start) * secondsPerBar, `${k} event ${i} onset`).toBeLessThan(0.01501);
-        expect(Math.abs(got[i].duration - e.duration) * secondsPerBar, `${k} event ${i} duration`).toBeLessThan(0.01501);
-        for (const control of ['velocity', 'gain', 'pan']) expect(got[i][control], control).toBeCloseTo(e[control], 5);
-      });
-    }
-    const next = normalized(editable.queryArc(bars, bars + 1).filter((e: any) => e.hasOnset()).map((e: any) => ({ ...e, whole: { begin: e.whole.begin.sub(bars), end: e.whole.end.sub(bars) } })));
-    expect(next).toEqual(normalized(editable.queryArc(0, 1).filter((e: any) => e.hasOnset())));
-    if (file.startsWith('smells')) {
-      // Compact full arrangements have their own size and playback regression tests.
-      expect(code(s)).not.toMatch(/timecat\(|pure\(/);
-      expect(code(s)).toContain('bass_riff1');
-    }
+
+  it('names each distinct bar once, in order of appearance, and plays the riffs in order', () => {
+    const bar = (b: number, pitch: number) => [n(pitch, b * 4, 1), n(pitch + 7, b * 4 + 1, 1), n(pitch + 12, b * 4 + 2, 2)];
+    const order = [0, 0, 5, 0, 7, 7, 5, 0, 0, 5, 7, 0, 5, 5];
+    const s = song(part(order.flatMap((step, b) => bar(b, 36 + step)), 33, 'bass', 'Bass'));
+    const code = full(s);
+    expect(code).toContain('const bass = note("<A@2 B A C@2 B A@2 B C A B@2>".pickRestart({');
+    expect(code).toContain('A: "c2 g2 c3@2", B: "f2 c3 f3@2", C: "g2 d3 g3@2",');
+    expect(played(code, order.length)).toHaveLength(s.tracks[0].notes.length);
+  });
+
+  it('labels riffs A to Z, then AA, AB..., never like a note name', () => {
+    expect([0, 25, 26, 27, 51, 52, 701, 702].map(riffLabel)).toEqual(['A', 'Z', 'AA', 'AB', 'AZ', 'BA', 'ZZ', 'AAA']);
+  });
+
+  it('writes a short part as one sequence of bars', () => {
+    const s = song(part([n(60, 0, 4), n(62, 4, 4), n(62, 8, 4), n(64, 12, 2)]));
+    expect(full(s)).toContain('note("<c4 d4!2 [e4 ~]>")');
+  });
+
+  it('writes drums as each sound with its rhythm, one part per sound', () => {
+    const kit = part([n(36, 0, 0.1), n(36, 1.5, 0.1), n(36, 2, 0.1), n(38, 1, 0.1), n(38, 3, 0.1), n(42, 0, 0.1), n(44, 2, 0.1)], -1, 'drums', 'Kit');
+    const code = full(song(kit));
+    expect(code).toContain('const kick = s("bd").struct("x ~@2 x!2 ~@3")');
+    expect(code).toContain('const snare = s("sd").struct("~ x ~ x")');
+    // Closed and pedal hi-hat play the same sample: one part.
+    expect(code).toContain('const hihat = s("hh").struct("x!2")');
+    expect(played(code, 1).filter((e) => e[0] === 'bd').map((e) => e[1])).toEqual([0, 1.5, 2]);
+    expect(code).not.toContain('pedal_hat');
+  });
+
+  it('gives each part one level, velocity included, and a loop\'s ghost notes a softer part of their own', () => {
+    const hats = Array.from({ length: 16 }, (_, i) => n(42, i / 2, 0.1, i % 2 ? 0.3 : 0.9));
+    const code = loop(song(part(hats, -1, 'drums', 'Kit')));
+    expect(code).toContain('const hihat = s("hh").struct("x!4")');
+    expect(code).toContain('const hihat_soft = s("hh").struct("~ x ~ x ~ x ~ x")');
+    const gain = (name: string) => Number(/\.gain\(([\d.]+)\)/.exec(partOf(code, name))![1]);
+    expect(gain('hihat_soft')).toBeCloseTo(gain('hihat') / 2, 1);
+    expect(code).toContain('ghost notes are separate "_soft" parts');
+  });
+
+  it('writes a loop with a note held over its bar line as one pattern, a line per bar when long', () => {
+    const bass = part([n(36, 0, 3), n(43, 3.5, 1), n(41, 5, 3)], 33, 'bass', 'Bass');
+    const code = loop(song(bass, part([n(60, 0, 1), n(60, 4, 1)])));
+    expect(partOf(code, 'bass')).toContain('const bass = note("[c2@6 ~ g2@2 ~ f2@6]/2")');
+    expect(played(code, 2).filter((e) => e[0] !== 'c4')).toEqual([['c2', 0, 3], ['g2', 3.5, 1], ['f2', 5, 3]]);
+    // A run of sixteenths in every bar and a note held over each bar line: too long for one line. The run is
+    // the main voice, a line per bar; the held note, still sounding when the next run starts, is a second voice.
+    const busy = part(Array.from({ length: 4 }, (_, b) => [...Array.from({ length: 12 }, (_, i) => n(48 + (i % 5), b * 4 + i / 4, 0.25)), n(43, b * 4 + 3, 2)]).flat(), 33, 'bass', 'Bass');
+    expect(partOf(loop(song(busy)), 'bass')).toContain([
+      'const bass = note(`[',
+      '  c3 c#3 d3 d#3 e3 c3 c#3 d3 d#3 e3 c3 c#3 ~@4',
+      '  c3 c#3 d3 d#3 e3 c3 c#3 d3 d#3 e3 c3 c#3 g2@4,',
+      '  ~@3 g2@2',
+      '  ~@3',
+      ']/2`)',
+    ].join('\n'));
+  });
+
+  it('keeps source names from shadowing the functions the code uses', () => {
+    const s = song(part([n(60, 0, 1), n(60, 4, 1), n(60, 8, 1)], 0, 'other', 'n'), part([n(64, 0, 1)], 0, 'other', 'note'));
+    const code = full(s);
+    expect(played(code, 3)).toHaveLength(4);
+  });
+
+  it('excludes vocals and respects the melody choice', () => {
+    const s = song(part([n(60, 0, 32)], 0, 'chords'), { ...part([n(80, 0, 32)], 53, 'melody', 'Vocal'), vocal: true }, part([n(72, 0, 32)], 73, 'melody', 'Lead'));
+    const code = compile(s, { timing: 'patterns', melody: false, maxBars: 1 });
+    expect(played(code, 1).map((e) => e[0])).toEqual(['c4']);
+    expect(barRange(s, 1)!.nBars).toBe(1);
   });
 });

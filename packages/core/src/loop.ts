@@ -102,13 +102,16 @@ export function selectLoop(source: Song, opts: CompileOptions = {}): LoopSelecti
     track.notes = [...attacks.values()].sort((a, b) => a.start - b.start || a.pitch - b.pitch);
   }
   const omittedTracks = excerpt.length - selected.length;
-  const song: Song = { meta: { ...source.meta, barOffset: 0, remarks: [
-    `Main loop: source bars ${range.firstBar + best.first + 1}–${range.firstBar + best.first + best.bars}; ${best.repeats} matching passages found. This is an excerpt, not the full song.`,
+  const omittedDrums = drumWeights.size - drumVoices.length;
+  const ghosts = selected.some(t => new Set(t.notes.map(n => n.velocity)).size > 1);
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const song: Song = { meta: { ...source.meta, barOffset: 0, grid, remarks: [
+    `Main loop: bars ${range.firstBar + best.first + 1}–${range.firstBar + best.first + best.bars} of the song${best.repeats > 1 ? `, a passage it plays ${best.repeats} times` : ''}. An excerpt, not the full song.`,
     ...(source.meta.remarks ?? []).filter(r => r.startsWith('Transcription provider:')),
     ...(regrouped ? [`Source metre ${originalMeter} regrouped on a 4/4 editing grid for this short excerpt.`] : []),
-    `Simplified automatically on a ${grid}-step bar grid; articulation and dynamics are reduced for editing.`,
-    ...(omittedTracks ? [`${omittedTracks} secondary instrumental parts omitted from the compact loop.`] : []),
-    ...(drumWeights.size > drumVoices.length ? [`${drumWeights.size - drumVoices.length} secondary percussion voices omitted from the compact loop.`] : []),
+    `Notes on a ${grid}-step grid, each part at one level${ghosts ? '; ghost notes are separate "_soft" parts' : ''}.`,
+    ...(omittedTracks ? [`${plural(omittedTracks, 'quieter instrumental part')} left out of the loop.`] : []),
+    ...(omittedDrums ? [`${plural(omittedDrums, 'rarer percussion sound')} left out of the loop.`] : []),
   ] }, tracks: selected, sections: [] };
   song.sections = detectSectionsFromMidi(song);
   // A rest at the end still belongs to the loop. Store the chosen length explicitly.

@@ -11,6 +11,8 @@ export interface SongMeta {
   arrangementBars?: number;
   /** Explicit period of an automatically selected excerpt, including its trailing rest. */
   loopBars?: number;
+  /** Steps per bar that a Main loop or Full arrangement quantised its notes to (onsets and lengths). */
+  grid?: number;
   /** Explicit reviewed drum sound profile; otherwise use the default bank. */
   drumKit?: 'acoustic';
   id: string;

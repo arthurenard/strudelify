@@ -1,7 +1,7 @@
 import type { CompileOptions } from '../src/strudel.js';
 import { describe, it, expect } from 'vitest';
 import vm from 'node:vm';
-import { compile as compileSource, noteName, timeline, chordSummary, chooseGrid, songGrid, gridCandidates, gainsFor, panFor, selectTracks, mixParts, barRange, PAN_WIDTH_LEAD, VOCAL_LEAD_FLOOR, BACKING_VOCAL_RATIO, INSTRUMENT_LEAD_FLOOR, LEAD_OVERLAP_SHARE, LEAD_FLOOR_MIN_COVERAGE } from '../src/strudel.js';
+import { compile as compileSource, noteName, timeline, chordSummary, chooseGrid, songGrid, gridCandidates, gainsFor, panFor, selectTracks, mixParts, barRange, PAN_WIDTH_LEAD, VOCAL_LEAD_FLOOR, INSTRUMENT_LEAD_FLOOR, LEAD_OVERLAP_SHARE, LEAD_FLOOR_MIN_COVERAGE } from '../src/strudel.js';
 import { AUDIBLE_LEVEL, percShare } from '../src/gm.js';
 import { hash2code, shareUrl } from '../src/share.js';
 import type { Song, Track, NoteEvent } from '../src/types.js';
@@ -55,7 +55,7 @@ describe('compile (MIDI tracks)', () => {
   });
   const code = compile(song());
   it('sets one cycle per bar', () => {
-    expect(code).toContain('setcpm(30.00)');
+    expect(code).toContain('setcpm(120/4)');
   });
   it('quantises notes to a 16-cell grid with elongation and rests', () => {
     expect(code).toContain('const melody = note("<[c4@4 e4@4 g4@8]!2 [[c4,e4]@8 ~@8]>")');
@@ -371,7 +371,7 @@ describe('header remarks', () => {
   it('lists analysis notes as comments', () => {
     const s = song();
     s.meta.remarks = ['pitch bends are ignored'];
-    expect(compile(s)).toContain('// note: pitch bends are ignored\nsetcpm(30.00)');
+    expect(compile(s)).toContain('// note: pitch bends are ignored\nsetcpm(120/4)');
   });
 });
 
@@ -386,7 +386,7 @@ describe('length cap', () => {
     // A song only a few bars over the cap is rendered whole (5% tolerance, at least 2 bars).
     expect(barRange(s, 290)).toEqual({ firstBar: 0, nBars: 300, totalBars: 300 });
     expect(barRange(s, 280)).toEqual({ firstBar: 0, nBars: 280, totalBars: 300 });
-    expect(barRange(s, 16).nBars).toBe(16);
+    expect(barRange(s, 16)!.nBars).toBe(16);
     // In 2/4 the same cap allows twice the bars: 200 bars of 4/4 is 800 beats.
     const half: Song = { ...s, meta: { ...s.meta, beatsPerBar: 2 } };
     expect(barRange(half)).toEqual({ firstBar: 0, nBars: 400, totalBars: 600 });

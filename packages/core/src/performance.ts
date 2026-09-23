@@ -3,7 +3,7 @@ import { ACOUSTIC_DRUMS } from './acoustic-drums.js';
 import type { Song, Track, NoteEvent } from './types.js';
 import { barLength, barStart, barIndex, partName } from './midi.js';
 import { gmName, drumName, percName, percTrim, PERC_SAMPLES, NOMINAL_VOLUME } from './gm.js';
-import { barRange, ident, noteName, soundFor, type CompileOptions } from './strudel.js';
+import { barRange, capTracks, noteName, soundFor, uniqueNames, EARLY_BEATS, type CompileOptions } from './strudel.js';
 
 // Integer timing weights keep Strudel's rational arithmetic bounded (100 million units per bar).
 const UNITS = 100_000_000;
@@ -19,7 +19,10 @@ function pattern(notes: NoteEvent[], song: Song, firstBar: number, bars: number,
     gain: Number(number((n.volume ?? 1) * (drum && song.meta.drumKit === 'acoustic' ? ACOUSTIC_DRUMS[n.pitch]?.gain ?? 1 : 1))),
     pan: Number(number(n.pan ?? 0.5)),
   });
-  const included = notes.filter(n => n.start >= barStart(song.meta, firstBar) && n.start < end);
+  // A note just ahead of the first downbeat plays on it, ending when it did (see `barRange`).
+  const downbeat = barStart(song.meta, firstBar);
+  const included = notes.filter(n => n.start >= downbeat - EARLY_BEATS && n.start < end)
+    .map(n => n.start >= downbeat ? n : { ...n, start: downbeat, duration: Math.max(1e-8, n.duration - (downbeat - n.start)) });
   const first = included[0] ? controls(included[0]) : { duration: 1, velocity: 1, gain: 1, pan: 0.5 };
   const keys = ['duration', 'velocity', 'gain', 'pan'] as const;
   const varying = keys.filter(key => included.some(n => controls(n)[key] !== first[key]));
@@ -73,17 +76,17 @@ export function compilePerformance(song: Song, opts: Required<CompileOptions>): 
   if (!range) return ['silence'];
   const { firstBar, nBars } = range;
   const selected = song.tracks.filter(t => !t.vocal && (opts.melody || t.role !== 'melody'));
-  const pitched = selected.filter(t => t.role !== 'drums').slice(0, opts.maxTracks);
+  const pitched = capTracks(selected.filter(t => t.role !== 'drums'), opts.maxTracks);
   const lines = ['// Instrumental transcription: detected vocal parts omitted.', '// Original note onsets, durations and velocities; no rhythmic quantisation.', ''];
   if (song.meta.drumKit === 'acoustic') lines.push('// Acoustic drums: recorded VCSL percussion; cymbal/tom variants are approximations.', '');
   const removed = song.tracks.filter(t => t.vocal);
   if (removed.length) lines.push(`// Omitted vocals: ${removed.map(t => partName(t.name) || gmName(t.program)).join(', ')}`, '');
   if (pitched.length < selected.filter(t => t.role !== 'drums').length) lines.push('// Track cap omits some instrumental parts.', '');
   const names: string[] = [];
-  const used = new Set<string>();
-  const emit = (t: Track, notes: NoteEvent[], base: string, sound?: string, trim = 1) => {
+  const uniqueName = uniqueNames();
+  const emit = (t: Track, notes: NoteEvent[], base: string, sound?: string, trim = 1, fallback?: string) => {
     if (!notes.length) return;
-    const root = ident(base), name = (() => { let n = root, i = 2; while (used.has(n)) n = `${root}_${i++}`; used.add(n); return n; })();
+    const name = uniqueName(base, fallback);
     names.push(name);
     // Preserve relative channel levels, without boosting quiet instrumental lines.
     const gain = trim * 0.8;
@@ -94,7 +97,8 @@ export function compilePerformance(song: Song, opts: Required<CompileOptions>): 
   for (const t of pitched) {
     // Absolute onset controller levels preserve unmuting even when the track's median is zero.
     const notes = t.notes.map(n => ({ ...n, volume: (n.volume ?? t.volume ?? NOMINAL_VOLUME) ** 2, pan: n.pan ?? t.pan }));
-    emit(t, notes, t.role === 'bass' ? 'bass' : partName(t.name) || gmName(t.program).replace('gm_', ''), soundFor(t, opts.melodySound).sound);
+    const patch = gmName(t.program).replace('gm_', '');
+    emit(t, notes, t.role === 'bass' ? 'bass' : partName(t.name) || patch, soundFor(t, opts.melodySound).sound, 1, patch);
   }
   for (const t of selected.filter(t => t.role === 'drums')) {
     const groups = new Map<string, NoteEvent[]>();

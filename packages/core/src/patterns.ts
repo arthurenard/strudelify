@@ -1,226 +1,389 @@
-/** Editable Strudel: small mini-notation phrases, reused explicitly in a full arrangement. */
+/**
+ * Editable Strudel for the Main loop and the Full arrangement: every part is plain mini-notation on the
+ * grid its notes were quantised to (`SongMeta.grid`), with no number on any note.
+ *
+ * - A note lasts its steps (`c3@3` is three steps long) and rests fill the gaps (`c3 ~ e3`).
+ * - Notes struck together for the same length are a chord (`[c3,e3,g3]`). A note still sounding when
+ *   the next one starts goes to another voice (`c3@4, ~ e3 g3 ~`), and one held across a bar line
+ *   makes a riff of several bars (`[...]/2`), so every note keeps its length: the soundfonts stop a
+ *   note dead when it ends. Only a note that overlaps the next one or the bar line by no more than
+ *   `OVERLAP_BEATS` is trimmed (a legato bass note is not a second voice), and past `MAX_VOICES`
+ *   voices or `MAX_RIFF_BARS` bars a note is cut where it would need one more.
+ * - A short part is one sequence of bars (`note("<[c3 e3] [g3 b3]!3>")`). A longer one names each
+ *   distinct bar once (riffs A, B, C...) and plays them in order with `pickRestart`, so editing a riff
+ *   changes every repeat.
+ * - Drums are one part per sound, its rhythm a step grid given with `struct`
+ *   (`s("bd").struct("x ~@2 x!2 ~@3")`): a sample plays to its end whatever the step, so only the onsets
+ *   are written.
+ * - Each part has one level (`gain`, velocity included); notes at a second, softer level (a loop's
+ *   ghost notes) are a separate `_soft` part.
+ */
 import type { Song, Track, NoteEvent } from './types.js';
-import { barLength, barStart, partName } from './midi.js';
-import { gmName, drumName, percName, percTrim, NOMINAL_VOLUME } from './gm.js';
+import { barLength, partName } from './midi.js';
+import { gmName, gmLabel, drumName, percName, percTrim, PERC_SAMPLES, NOMINAL_VOLUME } from './gm.js';
 import { ACOUSTIC_DRUMS } from './acoustic-drums.js';
-import { barRange, ident, noteName, soundFor, type CompileOptions } from './strudel.js';
+import { barRange, capTracks, noteName, soundFor, uniqueNames, type CompileOptions } from './strudel.js';
 
-const num = (x: number) => String(Number(x.toFixed(6)));
-const gcd = (a: number, b: number): number => b ? gcd(b, a % b) : a;
-// Prefer musical fractions only within 15 ms of the source. Source detail remains available for unquantized timing.
-function tidy(beat: number, bpm: number): number {
-  for (const d of [1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 120, 192, 240, 480, 960]) {
-    const rounded = Math.round(beat * d) / d;
-    if (Math.abs(rounded - beat) <= bpm / 4000) return rounded;
-  }
-  return beat;
-}
-interface Bar { body: string; call: string; suffix: string }
-const key = (b: Bar) => JSON.stringify(b);
-function repetitions(tokens: string[]): string {
-  const out: string[] = [];
-  for (let i = 0; i < tokens.length;) {
-    let j = i + 1; while (tokens[j] === tokens[i] && !tokens[i].includes('@')) j++;
-    out.push(j - i > 1 ? `${tokens[i]}!${j - i}` : tokens[i]); i = j;
-  }
-  return out.join(' ');
-}
-function expression(bars: Bar[]): string {
-  if (bars.every(b => b.body === '~')) return 'silence';
-  if (bars.length > 1 && bars.every(b => key(b) === key(bars[0]))) return expression([bars[0]]);
-  const b = bars[0];
-  const body = bars.length === 1 ? b.body : `<${repetitions(bars.map(b => `[${b.body}]`))}>`;
-  const quote = b.call === 'mini' ? "'" : '"';
-  return `${b.call}(${quote}${body}${quote})${b.suffix}`;
-}
+/** Line length the generated code wraps at; a riff is never split, so a dense one can run longer. */
+const WIDTH = 120;
+/** A part with more runs of bars than this, or with a riff longer than a bar, names its riffs. */
+const INLINE_RUNS = 8;
+/** A note may run this far (beats) into the next note or bar, and no more than a third of its length, and be trimmed rather than need a voice or a longer riff. */
+export const OVERLAP_BEATS = 1 / 4;
+/** Longest riff (bars) that held notes make; a note held past it is cut at its end. */
+export const MAX_RIFF_BARS = 8;
+/** Most voices a riff is written in; a note that would need another cuts the voice that frees first. */
+export const MAX_VOICES = 5;
+/** Grid of a song prepared without one (steps per bar). */
+const DEFAULT_GRID = 48;
 
-function renderBars(t: Track, song: Song, firstBar: number, nBars: number, token: (n: NoteEvent) => string, compact = false, cleaned = false) {
-  const length = barLength(song.meta), from = barStart(song.meta, firstBar), end = barStart(song.meta, firstBar + nBars);
-  const notes = t.notes.filter(n => n.start >= from && n.start < end).map(n => ({ ...n,
-    start: compact || cleaned ? n.start : Math.min(end - 1e-7, Math.max(from, tidy(n.start - from, song.meta.bpm) + from)),
-    duration: compact || cleaned ? n.duration : Math.max(1e-7, tidy(n.duration, song.meta.bpm)),
-  }));
-  const controls = (n: NoteEvent) => ({
-    velocity: num(n.velocity), gain: num((n.volume ?? t.volume ?? NOMINAL_VOLUME) ** 2 * 0.8), pan: num(n.pan ?? t.pan ?? 0.5),
-  });
-  const keys = ['velocity', 'gain', 'pan'] as const;
-  const first = notes[0] ? controls(notes[0]) : { velocity: '1', gain: '1', pan: '0.5' };
-  const varying = keys.filter(k => notes.some(n => controls(n)[k] !== first[k]));
-  const setters = keys.filter(k => !varying.includes(k)).map(k => `.${k}(${first[k]})`).join('');
-  const buckets = Array.from({ length: nBars }, () => [] as NoteEvent[]);
-  for (const n of notes) buckets[Math.min(nBars - 1, Math.floor((n.start - from) / length))].push(n);
-  const shape = (g: NoteEvent[]) => g.map(n => n.pitch - Math.min(...g.map(n => n.pitch))).sort((a, b) => a - b).join(',');
-  const sameControls = (g: NoteEvent[]) => g.every(n => num(n.duration) === num(g[0].duration) && JSON.stringify(controls(n)) === JSON.stringify(controls(g[0])));
-  const allGroups = new Map<number, NoteEvent[]>();
-  if (compact) for (const n of notes) { const g = allGroups.get(n.start) ?? []; g.push(n); allGroups.set(n.start, g); }
-  const onsets = [...allGroups.keys()].sort((a, b) => a - b);
-  const loopLegato = compact && onsets.every((at, i) => {
-    const stop = Math.min(onsets[i + 1] ?? end, from + (Math.floor((at - from) / length) + 1) * length);
-    return allGroups.get(at)!.every(n => Math.abs(n.duration - (stop - at)) < 1e-6);
-  });
-  const loopUniform = compact && notes.every(n => num(Math.min(n.duration, end - n.start) / length) === num(Math.min(notes[0].duration, end - notes[0].start) / length));
-  const groupsAcrossLoop = [...allGroups.values()];
-  const loopVoicing = compact && groupsAcrossLoop.length > 0 && groupsAcrossLoop.every(g => g.length > 1 && sameControls(g) && shape(g) === shape(groupsAcrossLoop[0]));
-  const bars: Bar[] = buckets.map((ns, b) => {
-    if (!ns.length) return { body: '~', call: t.role === 'drums' ? 'n' : 'note', suffix: '.legato(1)' };
-    // 960,000 units per bar is only a numeric representation, not a rhythmic grid.
-    const units = 960_000, groups = new Map<number, NoteEvent[]>();
-    for (const n of ns) {
-      const at = Math.min(units - 1, Math.max(0, Math.round((n.start - from - b * length) / length * units)));
-      const group = groups.get(at) ?? []; group.push(n); groups.set(at, group);
-    }
-    const starts = [...groups.keys()].sort((a, b) => a - b);
-    const spans = starts.map((s, i) => (starts[i + 1] ?? units) - s);
-    // Factor repeated chord voicings into one root pattern and a transposition stack.
-    let voicing = '';
-    const chordGroups = [...groups.values()];
-    if (t.role !== 'drums' && (!compact || loopVoicing) && chordGroups.every(g => g.length > 1)) {
-      if (chordGroups.every(g => shape(g) === shape(chordGroups[0]) && sameControls(g))) {
-        voicing = `.transpose("${shape(chordGroups[0])}")`;
-        for (const [at, g] of groups) groups.set(at, [g.reduce((a, b) => a.pitch <= b.pitch ? a : b)]);
-      }
-    }
-    const durations = ns.map(n => num(Math.min(n.duration, end - n.start) / length));
-    const uniform = compact ? loopUniform : durations.every(d => d === durations[0]);
-    const legato = compact ? loopLegato : starts.every((s, i) => groups.get(s)!.every(n => Math.abs(Math.min(n.duration, end - n.start) / length - spans[i] / units) < 1e-6));
-    // Drum samples in a live-coding loop use their natural decay; MIDI key-release lengths
-    // (often several bars for percussion) are not useful rhythmic instructions.
-    const naturalDrums = (compact || cleaned) && t.role === 'drums';
-    const explicit = !naturalDrums && !legato && !uniform;
-    const mapped = explicit || varying.length > 0;
-    const weights = [...spans, ...(starts[0] ? [starts[0]] : [])];
-    const divisor = weights.reduce(gcd);
-    const parts: string[] = [];
-    if (starts[0]) parts.push(starts[0] === divisor ? '~' : `~@${starts[0] / divisor}`);
-    starts.forEach((s, i) => {
-      const values = groups.get(s)!.map(n => [token(n), ...(explicit ? [num(Math.min(n.duration, end - n.start) / length)] : []), ...varying.map(k => controls(n)[k])].join(':'));
-      const value = values.length > 1 ? `[${values.join(',')}]` : values[0];
-      parts.push(value + (spans[i] === divisor ? '' : `@${spans[i] / divisor}`));
-    });
-    const mapping = [t.role === 'drums' ? 'n' : 'note', ...(explicit ? ['duration'] : []), ...varying];
-    const suffix = (mapped ? `.as([${mapping.map(k => "'" + k + "'").join(', ')}])` : '') + (naturalDrums ? '' : legato ? '.legato(1)' : uniform ? `.duration(${durations[0]})` : '') + voicing;
-    return { body: repetitions(parts), call: mapped ? 'mini' : t.role === 'drums' ? 'n' : 'note', suffix };
-  });
-  // A short loop uses one pattern per part; rests use the same controls as its sounding bars.
-  const sounding = bars.find(b => b.body !== '~');
-  if (compact && sounding) for (const bar of bars) if (bar.body === '~') { bar.call = sounding.call; bar.suffix = sounding.suffix; }
-  return { bars, setters };
+/** One part as the code shows it: its hits on the grid, and how it sounds. */
+interface Layer {
+  name: string;
+  comment: string;
+  /** A drum part's sample (its hits are written `x`); none for a pitched part. */
+  drum?: string;
+  hits: Hit[];
+  /** `.s(...)`, `.gain(...)`, `.pan(...)`. */
+  tail: string;
 }
-
-/** Greedy phrase dictionary: name repeated 1–4-bar phrases; inline one-off fills. */
-function arrangePhrases(bars: Bar[], name: string, used: Set<string>, compact = false, maxPhrase = 4) {
-  const definitions: string[] = [], rows: { count: number; ref: string; start: number }[] = [];
-  const dictionary = new Map<string, string>();
-  const signatures = bars.map(key);
-  const occurrences = new Map<string, { count: number; end: number }>();
-  for (let n = 1; n <= maxPhrase; n++) for (let i = 0; i + n <= bars.length; i++) {
-    const signature = signatures.slice(i, i + n).join('\n');
-    const prior = occurrences.get(signature);
-    if (!prior || i >= prior.end) occurrences.set(signature, { count: (prior?.count ?? 0) + 1, end: i + n });
-  }
-  for (let i = 0; i < bars.length;) {
-    if (bars[i].body === '~') {
-      let j = i + 1; while (j < bars.length && bars[j].body === '~') j++;
-      rows.push({ count: j - i, ref: 'silence', start: i }); i = j; continue;
-    }
-    let size = 1, best = 0;
-    for (let n = 1; n <= maxPhrase && i + n <= bars.length; n++) {
-      const phrase = bars.slice(i, i + n);
-      if (!phrase.every(b => b.call === phrase[0].call && b.suffix === phrase[0].suffix)) continue;
-      const matches = occurrences.get(signatures.slice(i, i + n).join('\n'))?.count ?? 0;
-      const saving = (matches - 1) * (expression(phrase).length - name.length - 10);
-      if (matches > 1 && saving > best) { size = n; best = saving; }
-    }
-    const phrase = bars.slice(i, i + size), signature = expression(phrase);
-    let ref = dictionary.get(signature);
-    if (!ref && best > 0) {
-      let id = dictionary.size + 1;
-      while (used.has(`${name}_riff${id}`)) id++;
-      ref = `${name}_riff${id}`;
-      used.add(ref);
-      dictionary.set(signature, ref);
-      definitions.push(`const ${ref} = ${expression(phrase)}`);
-    }
-    ref ??= expression(phrase);
-    const last = rows[rows.length - 1];
-    if (last?.ref === ref) last.count += size;
-    else rows.push({ count: size, ref, start: i });
-    i += size;
-  }
-  const layout: string[] = [];
-  let line = '  ';
-  for (const row of rows) {
-    const item = `[${row.count}, ${row.ref}],`;
-    if (line.length > 2 && line.length + item.length > 100) { layout.push(line.trimEnd()); line = '  '; }
-    line += item + ' ';
-  }
-  if (line.trim()) layout.push(line.trimEnd());
-  if (compact) {
-    const refs = [...new Set(rows.map(r => r.ref))].filter(ref => ref !== 'silence');
-    const labels = refs.map((_, i) => String.fromCharCode(97 + i % 26) + (i >= 26 ? Math.floor(i / 26) : ''));
-    const sequence = rows.map(r => (r.ref === 'silence' ? '~' : labels[refs.indexOf(r.ref)]) + (r.count === 1 ? '' : `@${r.count}`)).join(' ');
-    const defined = new Map(definitions.map(def => { const at = def.indexOf(' = '); return [def.slice(6, at), def.slice(at + 3)]; }));
-    const rawDrums = bars.every(b => b.body === '~' || b.call === 'n' && !b.suffix);
-    const entries: string[] = []; let row = '  ';
-    for (const [i, ref] of refs.entries()) {
-      const value = defined.get(ref) ?? ref;
-      const item = `${labels[i]}: ${rawDrums ? value.replace(/^n\("(.*)"\)$/, '"$1"') : value},`;
-      if (row.length > 2 && row.length + item.length > 100) { entries.push(row.trimEnd()); row = '  '; }
-      row += item + ' ';
-    }
-    if (row.trim()) entries.push(row.trimEnd());
-    return { definitions: [], arrangement: `mini('<${sequence}>').pickRestart({\n${entries.join('\n')}\n})${rawDrums ? '.n()' : ''}` };
-  }
-  return { definitions, arrangement: `arrange(\n${layout.join('\n')}\n)` };
+/** A note or drum hit: start and length in grid steps from the first bar, and its mini-notation token. */
+interface Hit { at: number; length: number; token: string; pitch: number }
+/** A span of whole bars and its voices' mini-notation, each as one line of tokens per bar they start in (no voice: a rest). */
+interface Unit { bars: number; voices: string[][] }
+interface Frame {
+  grid: number;
+  bars: number;
+  /** Steps a note may overlap the next note or bar and be trimmed (see `OVERLAP_BEATS`). */
+  tolerance: number;
+  /** Notation the parts use, for the legend. */
+  seen: { chords: boolean; voices: boolean; long: boolean };
 }
 
 export function compilePatterns(song: Song, opts: Required<CompileOptions>): string[] {
   const range = barRange(song, opts.maxBars);
   if (!range) return ['silence'];
-  const selected = song.tracks.filter(t => !t.vocal && (opts.melody || t.role !== 'melody'));
-  const lines = [opts.form === 'loop' ? '// Automatic main loop: edit these patterns to start live coding.' : '// Live coding: edit a riff once to change every repeat.', opts.form === 'loop' ? '// Full arrangement keeps the variations; Source detail keeps the unrounded events.' : opts.simplify ? '// Full form on a musical grid; Source detail retains the original timing, dynamics and doubled parts.' : '// Timing cleaned within 15 ms; choose Source detail for the unrounded events.', ''];
-  const names: string[] = [], used = new Set<string>();
-  const emit = (t: Track, base: string, token: (n: NoteEvent) => string, sound: string) => {
-    if (!t.notes.length) return;
-    let name = ident(base), i = 2; while (used.has(name)) name = `${ident(base)}_${i++}`; used.add(name);
-    const { bars, setters } = renderBars(t, song, range.firstBar, range.nBars, token, opts.form === 'loop', opts.simplify);
-    if (bars.every(b => b.body === '~')) return;
-    const compact = opts.form === 'loop';
-    const compatible = bars.every(b => b.call === bars[0].call && b.suffix === bars[0].suffix);
-    const { definitions, arrangement } = compact && compatible
-      ? { definitions: [], arrangement: expression(bars) }
-      : arrangePhrases(bars, name, used, opts.simplify, opts.simplify && t.role === 'drums' ? 1 : 4);
-    names.push(name);
-    lines.push(...(definitions.length ? [`// ${partName(t.name) || base}: reusable phrases`, ...definitions] : []), ...(opts.simplify ? [`const ${name} = ${arrangement}${setters}${sound}`, ''] : [`// ${t.role} · ${base}`, `const ${name} = ${arrangement}`, `  ${setters}${sound}`, '']));
-  };
-  for (const t of selected.filter(t => t.role !== 'drums').slice(0, opts.maxTracks)) {
-    const sound = soundFor(t, opts.melodySound).sound;
-    emit(t, t.role === 'bass' ? 'bass' : opts.simplify ? gmName(t.program).replace(/^gm_/, '') : partName(t.name) || gmName(t.program).replace(/^gm_/, ''), n => noteName(n.pitch), `.s('${sound}')`);
+  const grid = song.meta.grid ?? DEFAULT_GRID;
+  const step = barLength(song.meta) / grid;
+  const frame: Frame = { grid, bars: range.nBars, tolerance: Math.max(1, Math.floor(OVERLAP_BEATS / step + 1e-9)), seen: { chords: false, voices: false, long: false } };
+  const name = uniqueNames();
+  const selected = song.tracks.filter((t) => !t.vocal && (opts.melody || t.role !== 'melody'));
+  const layers: Layer[] = [];
+  for (const t of capTracks(selected.filter((t) => t.role !== 'drums'), opts.maxTracks)) {
+    const patch = gmName(t.program).replace(/^gm_/, '');
+    const base = t.role === 'bass' ? 'bass' : patch;
+    const named = partName(t.name);
+    const comment = `${t.role} · ${gmLabel(t.program)}${named && named.toLowerCase() !== gmLabel(t.program) ? ` · "${named}"` : ''}`;
+    const sound = `.s("${soundFor(t, opts.melodySound).sound}")`;
+    levels(t.notes).forEach((notes, i) => layers.push({
+      name: name(i ? `${base}_soft` : base, patch),
+      comment: i ? `${comment} · soft notes` : comment,
+      hits: hits(notes, step, frame, (n) => noteName(n.pitch)),
+      tail: `${sound}${mix(notes[0].velocity, t)}`,
+    }));
   }
-  for (const t of selected.filter(t => t.role === 'drums')) {
-    // GM keys that select the very same sample are a single voice in the editable mix.
-    const rendered = new Set<string>();
-    for (const pitch of [...new Set(t.notes.map(n => n.pitch))].sort((a, b) => a - b)) {
-      const acoustic = song.meta.drumKit === 'acoustic' ? ACOUSTIC_DRUMS[pitch] : undefined;
-      const perc = percName(pitch);
-      const sample = acoustic?.sample ?? perc?.sample ?? drumName(pitch);
-      if (!sample) continue;
-      const index = acoustic?.index ?? Number(perc?.token.split(':')[1] ?? 0);
-      const trim = acoustic?.gain ?? (perc ? percTrim(perc.sample) : 1);
-      const voice = `${sample}:${index}:${trim}`;
-      if (opts.simplify && rendered.has(voice)) continue;
-      rendered.add(voice);
-      const equivalent = (p: number) => {
-        if (!opts.simplify) return p === pitch;
-        const a = song.meta.drumKit === 'acoustic' ? ACOUSTIC_DRUMS[p] : undefined, b = percName(p);
-        return `${a?.sample ?? b?.sample ?? drumName(p)}:${a?.index ?? Number(b?.token.split(':')[1] ?? 0)}:${a?.gain ?? (b ? percTrim(b.sample) : 1)}` === voice;
-      };
-      const hits = t.notes.filter(n => equivalent(n.pitch));
-      const unique = opts.simplify ? [...new Map(hits.map(n => [n.start, { ...n, pitch }])).values()] : hits;
-      const label = ({ 35: 'kick', 36: 'kick', 38: 'snare', 40: 'snare', 42: 'closed_hat', 44: 'pedal_hat', 46: 'open_hat', 49: 'crash', 51: 'ride' } as Record<number, string>)[pitch] ?? `percussion_${pitch}`;
-      emit({ ...t, name: label, notes: unique }, label, () => String(index), `.s('${sample}')${trim === 1 ? '' : `.mul(gain(${trim}))`}`);
+  for (const t of selected.filter((t) => t.role === 'drums')) {
+    // GM keys that play the very same sample are one sound in the editable mix.
+    const sounds = new Map<string, { voice: DrumVoice; notes: NoteEvent[] }>();
+    for (const n of [...t.notes].sort((a, b) => a.pitch - b.pitch)) {
+      const voice = drumVoice(n.pitch, song.meta.drumKit);
+      if (!voice) continue;
+      const key = `${voice.token}:${voice.trim}`;
+      (sounds.get(key) ?? sounds.set(key, { voice, notes: [] }).get(key)!).notes.push(n);
+    }
+    for (const { voice, notes } of sounds.values()) {
+      levels(notes).forEach((ns, i) => layers.push({
+        name: name(i ? `${voice.name}_soft` : voice.name),
+        comment: `drums · ${voice.name.replace(/_/g, ' ')}${i ? ' · soft notes' : ''}`,
+        drum: voice.token,
+        hits: hits(ns, step, frame, () => 'x'),
+        tail: mix(ns[0].velocity, t, voice.trim),
+      }));
     }
   }
-  lines.push('// Mix: mute a part here, or change its sound and effects above.', names.length ? opts.form === 'loop' || opts.simplify ? `stack(${names.join(', ')})` : `stack(\n  ${names.join(',\n  ')}\n)` : 'silence');
+  const parts = layers.map((l) => {
+    let units = l.drum ? drumUnits(l.hits, frame) : noteUnits(l.hits, frame, MAX_RIFF_BARS);
+    // A loop is a few bars: when a note is held over its bar line, the whole loop is one riff, a line per bar.
+    if (opts.form === 'loop' && units.some((u) => u.bars > 1)) units = noteUnits(l.hits, frame, frame.bars);
+    return { layer: l, units };
+  }).filter((p) => p.units.some((u) => u.voices.length));
+  if (!parts.length) return ['// No separate instrumental parts remain with these options.', 'silence'];
+  const code = parts.map((p) => partCode(p.layer, p.units));
+  const lines = [`// ${legend(frame.seen)}`];
+  if (code.some((c) => c.some((line) => line.includes('.pickRestart(')))) lines.push('// A part\'s distinct bars are riffs (A, B, C...) played in order: edit a riff to change every repeat.');
+  lines.push('');
+  for (const c of code) lines.push(...c, '');
+  const names = parts.map((p) => p.layer.name);
+  const stack = `stack(${names.join(', ')})`;
+  lines.push(...(stack.length <= WIDTH ? [stack] : ['stack(', ...wrap(names.map((n, i) => (i < names.length - 1 ? `${n},` : n)), '  '), ')']));
+  return lines;
+}
+
+/** The notation the code uses, explained in one comment line: steps and rests, then chords, voices and long riffs when present. */
+function legend(seen: Frame['seen']): string {
+  const bits = ['c3@3 lasts 3 steps', '~ is a rest'];
+  if (seen.chords) bits.push('[c3,e3] is a chord');
+  if (seen.voices) bits.push('"a, b" plays two voices at once');
+  if (seen.long) bits.push('[...]/2 spreads a riff over 2 bars');
+  return `Notation: ${bits.join(' · ')}.`;
+}
+
+// ---------- levels and mix ----------
+
+/** A part's notes by velocity, loudest first: one level in a Full arrangement, a second for a loop's ghost notes. */
+function levels(notes: NoteEvent[]): NoteEvent[][] {
+  const by = new Map<number, NoteEvent[]>();
+  for (const n of notes) (by.get(n.velocity) ?? by.set(n.velocity, []).get(n.velocity)!).push(n);
+  return [...by.entries()].sort((a, b) => b[0] - a[0]).map(([, ns]) => ns);
+}
+
+/** `.gain(...)` (velocity x channel level x `trim`, which the audio engine multiplies anyway) and `.pan(...)` off centre. */
+function mix(velocity: number, t: Track, trim = 1): string {
+  const gain = velocity * (t.volume ?? NOMINAL_VOLUME) ** 2 * 0.8 * trim;
+  const pan = t.pan ?? 0.5;
+  return `.gain(${round(gain)})${Math.abs(pan - 0.5) >= 0.05 ? `.pan(${round(pan)})` : ''}`;
+}
+const round = (x: number) => String(Math.round(x * 100) / 100);
+
+// ---------- drums ----------
+
+interface DrumVoice { token: string; trim: number; name: string }
+/** Part names for General MIDI percussion keys; hand percussion is named after its VCSL sample. */
+const KEY_NAMES: Record<number, string> = {
+  35: 'kick', 36: 'kick', 37: 'rim', 38: 'snare', 39: 'clap', 40: 'snare', 41: 'low_tom', 42: 'hihat', 43: 'low_tom', 44: 'pedal_hat',
+  45: 'mid_tom', 46: 'open_hat', 47: 'mid_tom', 48: 'high_tom', 49: 'crash', 50: 'high_tom', 51: 'ride', 52: 'china', 53: 'ride_bell',
+  54: 'tambourine', 55: 'splash', 56: 'cowbell', 57: 'crash', 59: 'ride', 70: 'shaker', 82: 'shaker',
+};
+/** The sample a percussion key plays (reviewed acoustic kit, VCSL hand percussion or the default kit), or null. */
+function drumVoice(pitch: number, kit: Song['meta']['drumKit']): DrumVoice | null {
+  const acoustic = kit === 'acoustic' ? ACOUSTIC_DRUMS[pitch] : undefined;
+  if (acoustic) return { token: `${acoustic.sample}:${acoustic.index}`, trim: acoustic.gain, name: KEY_NAMES[pitch] ?? acoustic.sample };
+  const perc = percName(pitch);
+  if (perc) return { token: perc.token, trim: percTrim(perc.sample), name: PERC_SAMPLES[perc.sample].label.replace(/\W+/g, '_') };
+  const sample = drumName(pitch);
+  return sample ? { token: sample, trim: 1, name: KEY_NAMES[pitch] ?? sample } : null;
+}
+
+// ---------- notes on the grid ----------
+
+/** Notes as hits on the grid, inside the rendered bars. */
+function hits(notes: NoteEvent[], step: number, f: Frame, token: (n: NoteEvent) => string): Hit[] {
+  const end = f.bars * f.grid;
+  const out: Hit[] = [];
+  for (const n of notes) {
+    const at = Math.max(0, Math.round(n.start / step));
+    if (at >= end) continue;
+    out.push({ at, length: Math.min(end - at, Math.max(1, Math.round(n.duration / step))), token: token(n), pitch: n.pitch });
+  }
+  return out.sort((a, b) => a.at - b.at || a.pitch - b.pitch);
+}
+
+/** May a note of `length` steps lose `excess` steps (it overlaps the next note or bar by no more than that)? */
+const trimmable = (excess: number, length: number, f: Frame) => excess <= f.tolerance && excess * 3 <= length;
+
+/** A pitched part as units of whole bars: one bar, or several while notes are held across bar lines (up to `longest`). */
+function noteUnits(all: Hit[], f: Frame, longest: number): Unit[] {
+  const byBar = Array.from({ length: f.bars }, () => [] as Hit[]);
+  for (const h of all) byBar[Math.floor(h.at / f.grid)].push(h);
+  const units: Unit[] = [];
+  for (let b = 0; b < f.bars;) {
+    let end = b + 1;
+    for (let i = b; i < end; i++) {
+      for (const h of byBar[i]) {
+        const over = h.at + h.length - end * f.grid;
+        if (over > 0 && !trimmable(over, h.length, f)) end = Math.min(f.bars, b + longest, Math.ceil((h.at + h.length) / f.grid));
+      }
+    }
+    // Notes still held past the longest riff: end it at the bar line where cutting them loses least.
+    const cut = (e: number) => byBar.slice(b, e).flat().reduce((sum, h) => sum + Math.max(0, h.at + h.length - e * f.grid), 0);
+    if (end === b + longest && cut(end) > 0) {
+      for (let e = end - 1; e > b; e--) if (cut(e) < cut(end)) end = e;
+    }
+    const span = (end - b) * f.grid;
+    const inside = byBar.slice(b, end).flat().map((h) => ({ ...h, at: h.at - b * f.grid, length: Math.min(h.length, span - (h.at - b * f.grid)) }));
+    const voiced = voices(inside, span, f).map((v) => sequence(v, span, f.grid));
+    if (voiced.length > 1) f.seen.voices = true;
+    if (end - b > 1) f.seen.long = true;
+    units.push({ bars: end - b, voices: voiced });
+    b = end;
+  }
+  return units;
+}
+
+/**
+ * A drum sound as one unit per bar, a step grid: each hit one step of the bar's finest spacing, rests
+ * between (`x ~ x x`). A sample plays to its end whatever the step, so only the onsets matter.
+ */
+function drumUnits(all: Hit[], f: Frame): Unit[] {
+  const byBar = Array.from({ length: f.bars }, () => new Set<number>());
+  for (const h of all) byBar[Math.floor(h.at / f.grid)].add(h.at % f.grid);
+  return byBar.map((bar) => {
+    const at = [...bar].sort((a, b) => a - b);
+    const step = at.reduce(gcd, f.grid);
+    return { bars: 1, voices: at.length ? [sequence(at.map((x) => ({ at: x, length: step, token: 'x' })), f.grid, f.grid)] : [] };
+  });
+}
+
+interface Item { at: number; length: number; tones: Map<string, number> }
+/** An item's mini-notation: its note, or its notes as a chord from the lowest up. */
+function token(tones: Map<string, number>): string {
+  const names = [...tones].sort((a, b) => a[1] - b[1]).map(([n]) => n);
+  return names.length > 1 ? `[${names.join(',')}]` : names[0];
+}
+const lowest = (it: Item) => Math.min(...it.tones.values());
+
+/**
+ * A unit's notes as voices that never overlap. Notes struck together for the same length (or within the
+ * overlap tolerance of the longest, which the chord takes) are one chord item. The items that end by the
+ * next onset (trimmed by up to the tolerance) are the main line, one voice; the items still sounding
+ * then are held notes, each in the other voice nearest in pitch that is free, or a new one. With
+ * `MAX_VOICES` open, a held note cuts the voice that frees first, or joins its chord when both start
+ * together.
+ */
+function voices(notes: Hit[], span: number, f: Frame): { at: number; length: number; token: string }[][] {
+  const byStart = new Map<number, Hit[]>();
+  for (const n of notes) (byStart.get(n.at) ?? byStart.set(n.at, []).get(n.at)!).push(n);
+  const onsets = [...byStart.keys()].sort((a, b) => a - b);
+  const line: Item[] = [], held: Item[] = [];
+  onsets.forEach((at, k) => {
+    const next = onsets[k + 1] ?? span;
+    const chords: Item[] = [];
+    for (const n of [...byStart.get(at)!].sort((a, b) => b.length - a.length || a.pitch - b.pitch)) {
+      const c = chords.find((c) => trimmable(c.length - n.length, c.length, f));
+      if (c) c.tones.set(n.token, n.pitch);
+      else chords.push({ at, length: Math.min(n.length, span - at), tones: new Map([[n.token, n.pitch]]) });
+    }
+    for (const c of chords) if (c.length > next - at && trimmable(c.length - (next - at), c.length, f)) c.length = next - at;
+    // The main line takes the fullest chord that ends by the next onset; the rest are held notes.
+    const ends = chords.filter((c) => c.length <= next - at).sort((a, b) => b.tones.size - a.tones.size || b.length - a.length);
+    if (ends.length) line.push(ends[0]);
+    held.push(...chords.filter((c) => c !== ends[0]));
+  });
+  const out: Item[][] = line.length ? [line] : [];
+  const end = (v: Item[]) => v[v.length - 1].at + v[v.length - 1].length;
+  const others = () => out.filter((v) => v !== line);
+  for (const item of held) {
+    const free = others().filter((v) => end(v) <= item.at);
+    const distance = (v: Item[]) => Math.abs(lowest(v[v.length - 1]) - lowest(item));
+    const pick = free.length ? free.reduce((a, b) => (distance(b) < distance(a) ? b : a))
+      : others().find((v) => trimmable(end(v) - item.at, v[v.length - 1].length, f))
+      ?? (out.length >= MAX_VOICES && others().length ? others().reduce((a, b) => (end(b) < end(a) ? b : a)) : undefined);
+    if (!pick) { out.push([item]); continue; }
+    const last = pick[pick.length - 1];
+    if (last.at === item.at) {
+      for (const [n, pitch] of item.tones) last.tones.set(n, pitch);
+      last.length = Math.max(last.length, item.length);
+      continue;
+    }
+    if (end(pick) > item.at) last.length = item.at - last.at;
+    pick.push(item);
+  }
+  if (out.some((v) => v.some((it) => it.tones.size > 1))) f.seen.chords = true;
+  return out.map((v) => v.map((it) => ({ at: it.at, length: it.length, token: token(it.tones) })));
+}
+
+/**
+ * One voice over `span` steps: each item for its length, rests in the gaps, weights in the largest whole
+ * step. Returned as one line of tokens per bar they start in (a note at the end of a line may be held
+ * into the next bar).
+ */
+function sequence(items: { at: number; length: number; token: string }[], span: number, grid: number): string[] {
+  const steps: { token: string; at: number; w: number }[] = [];
+  let pos = 0;
+  for (const it of items) {
+    if (it.at > pos) steps.push({ token: '~', at: pos, w: it.at - pos });
+    steps.push({ token: it.token, at: it.at, w: it.length });
+    pos = it.at + it.length;
+  }
+  if (pos < span) steps.push({ token: '~', at: pos, w: span - pos });
+  if (steps.length === 1) return [steps[0].token];
+  const unit = steps.reduce((g, st) => gcd(g, st.w), 0);
+  const bars: string[][] = [];
+  for (let i = 0; i < steps.length;) {
+    const { token, at, w } = steps[i];
+    const bar = Math.floor(at / grid);
+    let j = i + 1;
+    while (w === unit && j < steps.length && steps[j].token === token && steps[j].w === unit && Math.floor(steps[j].at / grid) === bar) j++;
+    (bars[bar] ??= []).push(j - i > 1 ? `${token}!${j - i}` : w === unit ? token : `${token}@${w / unit}`);
+    i = j;
+  }
+  return bars.filter(Boolean).map((tokens) => tokens.join(' '));
+}
+const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+
+// ---------- layout ----------
+
+/** Riff labels: A..Z, then AA, AB... (never a note name). */
+export function riffLabel(i: number): string {
+  let s = '';
+  for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s;
+  return s;
+}
+
+/** A unit's mini-notation on one line: its voices (`a, b`), spread over its bars (`[...]/2`); a rest is `~`. */
+function mini(u: Unit): string {
+  if (!u.voices.length) return '~';
+  const body = u.voices.map((v) => v.join(' ')).join(', ');
+  if (u.bars === 1) return body;
+  return /^\[?[^\s[\]]+\]?$/.test(body) ? `${body}/${u.bars}` : `[${body}]/${u.bars}`;
+}
+
+/**
+ * A part's code. One unit throughout: that unit, on one line or (spanning bars) a line per bar. A few
+ * runs of single bars: one sequence of bars. Otherwise the distinct units are riffs picked in order.
+ */
+function partCode(layer: Layer, units: Unit[]): string[] {
+  const runs: { unit: Unit; count: number }[] = [];
+  for (const u of units) {
+    const last = runs[runs.length - 1];
+    if (last && mini(last.unit) === mini(u)) last.count++; else runs.push({ unit: u, count: 1 });
+  }
+  const head = `// ${layer.comment}`;
+  const call = `const ${layer.name} = ${layer.drum ? `s("${layer.drum}").struct` : 'note'}(`;
+  if (runs.length === 1) {
+    const [u] = units;
+    const line = `${call}"${mini(u)}")`;
+    if (u.bars === 1 || line.length <= WIDTH) return [head, ...fit(line, layer.tail)];
+    const body = u.voices.flatMap((v, i) => v.map((bar, k) => `  ${bar}${k === v.length - 1 && i < u.voices.length - 1 ? ',' : ''}`));
+    return [head, `${call}\`[`, ...body, `]/${u.bars}\`)${layer.tail}`];
+  }
+  if (runs.length <= INLINE_RUNS && units.every((u) => u.bars === 1)) {
+    const steps = runs.map(({ unit, count }) => {
+      if (!unit.voices.length) return count > 1 ? `~@${count}` : '~';
+      const one = /^[\w#:.-]+$/.test(mini(unit)) ? mini(unit) : `[${mini(unit)}]`; // `f#3!8` is eight notes in a bar, not eight bars
+      return count > 1 ? `${one}!${count}` : one;
+    });
+    const line = `${call}"<${steps.join(' ')}>")`;
+    if (line.length <= WIDTH) return [head, ...fit(line, layer.tail)];
+    return [head, `${call}\`<`, ...steps.map((st) => `  ${st}`), `>\`)${layer.tail}`];
+  }
+  const labels = new Map<string, string>();
+  for (const u of units) if (u.voices.length && !labels.has(mini(u))) labels.set(mini(u), riffLabel(labels.size));
+  const order = runs.map(({ unit, count }) => {
+    const label = unit.voices.length ? labels.get(mini(unit))! : '~';
+    const cycles = count * unit.bars;
+    return cycles > 1 ? `${label}@${cycles}` : label;
+  });
+  const oneLine = `${call}"<${order.join(' ')}>".pickRestart({`;
+  const lines = [head, ...(oneLine.length <= WIDTH ? [oneLine] : [`${call}\`<`, ...wrap(order, '  '), '>`.pickRestart({'])];
+  lines.push(...wrap([...labels].map(([body, label]) => `${label}: "${body}",`), '  '));
+  lines.push(`}))${layer.tail}`);
+  return lines;
+}
+
+/** `code` with `tail` appended, on its own line when both do not fit. */
+function fit(code: string, tail: string): string[] {
+  return `${code}${tail}`.length <= WIDTH ? [`${code}${tail}`] : [code, `  ${tail}`];
+}
+
+/** Items joined by spaces into lines of at most `WIDTH` characters, each starting with `indent`. */
+function wrap(items: string[], indent: string): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const item of items) {
+    if (line && indent.length + line.length + 1 + item.length > WIDTH) { lines.push(indent + line); line = item; }
+    else line = line ? `${line} ${item}` : item;
+  }
+  if (line) lines.push(indent + line);
   return lines;
 }

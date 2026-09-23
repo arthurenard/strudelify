@@ -4,11 +4,12 @@ import { compile, timeline, barRange } from '../src/strudel.js';
 import { prepareArrangement } from '../src/arrangement.js';
 import { loadSong } from '../src/load.js';
 import { gmName, percName, drumName } from '../src/gm.js';
+import { OVERLAP_BEATS } from '../src/patterns.js';
 import { ACOUSTIC_DRUMS } from '../src/acoustic-drums.js';
 import type { Song } from '../src/types.js';
 // @ts-expect-error Shared Node-only runtime harness.
 import { evaluatePattern, queryPattern } from '../../../tools/strudel-runtime.mjs';
-const options = { timing: 'patterns', simplify: true, maxBars: 10000, maxTracks: 1000 } as const;
+const options = { timing: 'patterns', maxBars: 10000, maxTracks: 1000 } as const;
 const fixture = (): Song => ({meta:{id:'test',title:'Test',artist:'Test',bpm:120,beatsPerBar:4,beatUnit:4,sources:['midi']},sections:[],tracks:[{name:'Guitar',role:'chords',program:27,notes:[0,4,12,16,20,28].map((start,i)=>({pitch:60+i%2,start,duration:1,velocity:.8}))}]});
 function midi(value: string | number) {
   if (typeof value === 'number') return value;
@@ -55,31 +56,38 @@ it('combines equivalent kick and crash samples without double-triggering them',(
   expect(es.map((e:any)=>e.value.s).sort()).toEqual(['bassdrum1','sus_cymbal2']);
   expect(es.every((e:any)=>e.value.duration===undefined)).toBe(true);
 });
-for (const file of ['smells-like-teen-spirit.mid','love-me-do.mid']) it(`plays every cleaned pitched attack across the complete ${file}`,async()=>{
+for (const file of ['smells-like-teen-spirit.mid','love-me-do.mid']) it(`plays every cleaned pitched note across the complete ${file}, each for its length`,async()=>{
   const manifest=JSON.parse(fs.readFileSync(new URL('../../data/curated/manifest.json',import.meta.url),'utf8'));
   const entry=manifest.entries.find((e:any)=>e.file===file);
   const song=await loadSong({...entry,title:file,artist:'Test',sources:['midi'],files:{midi:file}},async()=>fs.readFileSync(new URL(`../../data/curated/${file}`,import.meta.url)));
   const prepared=prepareArrangement(song), code=compile(song,options), pattern=evaluatePattern(code), bars=timeline(song,options).bars;
   expect(bars).toBe(barRange(song,10000)!.nBars);
   const length=prepared.meta.beatsPerBar*4/prepared.meta.beatUnit;
+  // A note may lose or gain up to OVERLAP_BEATS, and no more than a third of itself, where it overlaps the next one.
+  const close=(got:number,want:number)=>got===want||(Math.abs(got-want)<=OVERLAP_BEATS/length+1e-9&&Math.abs(got-want)*3<=want+1e-9);
+  let exact=0,all=0;
   for (let b=0;b<bars;b++) {
     const es=onsets(pattern,b,b+1);
-    const actual=es.filter((e:any)=>e.value.note!==undefined).map((e:any)=>JSON.stringify([e.value.s,midi(e.value.note),(Number(e.whole.begin)).toFixed(6), (e.value.duration ?? Number(e.whole.end.sub(e.whole.begin))*(e.value.clip??1)).toFixed(6)])).sort();
-    const expected=prepared.tracks.filter(t=>t.role!=='drums').flatMap(t=>t.notes.filter(n=>n.start/length>=b&&n.start/length<b+1).map(n=>JSON.stringify([gmName(t.program),n.pitch,(n.start/length).toFixed(6),(n.duration/length).toFixed(6)]))).sort();
-    expect(actual,`bar ${b+1}`).toEqual(expected);
+    const key=(x:[string,number,string,number])=>x.slice(0,3).join('|');
+    const actual=es.filter((e:any)=>e.value.note!==undefined).map((e:any)=>[e.value.s,midi(e.value.note),Number(e.whole.begin).toFixed(6),Number(e.duration)] as [string,number,string,number]).sort((x:any,y:any)=>key(x).localeCompare(key(y)));
+    const expected=prepared.tracks.filter(t=>t.role!=='drums').flatMap(t=>t.notes.filter(n=>n.start/length>=b&&n.start/length<b+1).map(n=>[gmName(t.program),n.pitch,(n.start/length).toFixed(6),Math.min(n.duration/length,bars-n.start/length)] as [string,number,string,number])).sort((x,y)=>key(x).localeCompare(key(y)));
+    expect(actual.map(key),`bar ${b+1}`).toEqual(expected.map(key));
+    actual.forEach((a:[string,number,string,number],i:number)=>{ all++; if(Math.abs(a[3]-expected[i][3])<1e-9) exact++; expect(close(a[3],expected[i][3]),`${key(a)} lasts ${a[3]}, not ${expected[i][3]}`).toBe(true); });
     const drums = prepared.tracks.filter(t=>t.role==='drums').flatMap(t=>t.notes.filter(n=>n.start/length>=b&&n.start/length<b+1).map(n=>{
       const acoustic = ACOUSTIC_DRUMS[n.pitch], perc = percName(n.pitch);
       return JSON.stringify([acoustic?.sample ?? perc?.sample ?? drumName(n.pitch), acoustic?.index ?? Number(perc?.token.split(':')[1] ?? 0), (n.start/length).toFixed(6)]);
     }));
-    const playedDrums = es.filter((e:any)=>e.value.note===undefined).map((e:any)=>JSON.stringify([e.value.s, Number(e.value.n), Number(e.whole.begin).toFixed(6)])).sort();
+    const playedDrums = es.filter((e:any)=>e.value.note===undefined).map((e:any)=>JSON.stringify([e.value.s, Number(e.value.n ?? 0), Number(e.whole.begin).toFixed(6)])).sort();
     expect(playedDrums,`drums at bar ${b+1}`).toEqual([...new Set(drums)].sort());
     expect(es.every((e:any)=>['gain','velocity','duration','pan'].every(k=>e.value[k]===undefined||Number.isFinite(e.value[k])))).toBe(true);
   }
   expect(snapshot(pattern,bars,bars+8)).toEqual(snapshot(pattern,0,8));
+  expect(exact/all).toBeGreaterThan(0.97);
   if(file.startsWith('smells')) {
     expect(bars).toBe(131);
-    expect(code.length).toBeLessThan(11000);
+    expect(code.length).toBeLessThan(8500);
     expect(code.split('\n').length).toBeLessThan(140);
+    expect(code).not.toMatch(/[a-g]#?\d:[\d.]|\.as\(|mini\(/);
     expect(code).toContain('pickRestart');
     expect(code).not.toContain('gm_lead_2_sawtooth');
     const es=onsets(pattern,0,bars);

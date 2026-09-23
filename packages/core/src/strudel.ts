@@ -1,9 +1,10 @@
 /**
- * Song -> Strudel code. Source-performance rendering is the default (performance.ts):
- * exact note onsets, independent releases, per-note velocity and onset controller state.
- * Detected vocals are excluded from both rendering modes. The optional `timing: 'grid'`
- * path below produces shorter, quantised notation with the historical mixing heuristics.
- * Chord-only material remains explicitly generated accompaniment.
+ * Song -> Strudel code. Source-performance rendering is the API default (performance.ts): exact note
+ * onsets, independent releases, per-note velocity and onset controller state. `timing: 'patterns'` is
+ * the editable code (patterns.ts): the Main loop, or the whole song as a Full arrangement on a grid.
+ * Detected vocals are excluded from every rendering. The optional `timing: 'grid'` path below produces
+ * shorter, quantised notation with the historical mixing heuristics. Chord-only material remains
+ * explicitly generated accompaniment.
  */
 import { selectLoop } from './loop.js';
 import { prepareArrangement } from './arrangement.js';
@@ -15,11 +16,13 @@ import { gmName, gmLabel, drumName, percName, percTrim, percTrimDb, percShare, P
 import { pitchClass, voicingSafe } from './chords.js';
 
 export interface CompileOptions {
-  /** Clean timing, duplicate attacks and dynamics across the full song for editing. Default false. */
-  simplify?: boolean;
-  /** Full arrangement (API default), or an automatically selected short instrumental loop. */
+  /** The whole song (API default), or an automatically selected short instrumental loop. */
   form?: 'song' | 'loop';
-  /** Source timing (API default), editable reusable patterns, or legacy grid notation. Vocals are always omitted. */
+  /**
+   * Source timing (API default: every event as the file plays it), editable patterns (the Main loop, or
+   * the whole song as a Full arrangement on a grid, see patterns.ts), or legacy grid notation. Vocals are
+   * always omitted.
+   */
   timing?: 'source' | 'grid' | 'patterns';
   /** Include instrumental melody parts. Detected vocals are always excluded. Default true. */
   melody?: boolean;
@@ -173,7 +176,8 @@ function trackBars(notes: NoteEvent[], meta: SongMeta, firstBar: number, nBars: 
   for (let b = 0; b < nBars; b++) {
     const b0 = barStart(meta, firstBar + b);
     const b1 = b0 + bar;
-    while (idx < notes.length && notes[idx].start < b0) idx++;
+    // A note just ahead of the first downbeat plays on it (see `barRange`).
+    while (idx < notes.length && notes[idx].start < b0 - (b === 0 ? EARLY_BEATS : 0)) idx++;
     const inBar: NoteEvent[] = [];
     for (let k = idx; k < notes.length && notes[k].start < b1; k++) inBar.push(notes[k]);
     bars.push(barToMini(inBar, b0, bar, grid, label));
@@ -258,14 +262,15 @@ export function panFor(pan: number | undefined, width = PAN_WIDTH): number | und
 /** Longest identifier made from a track name: the leading words that fit, so "Electric Guitar (Distortion) Rhythm" is `electric_guitar`. */
 const IDENT_MAX = 24;
 
+/** Words a part may not be called: JavaScript keywords and the Strudel functions the generated code uses. */
+const RESERVED_NAMES = new Set(('await break case catch class const continue debugger default delete do else enum export extends false finally for function if implements import in instanceof interface let new null package private protected public return static super switch this throw true try typeof var void while with yield arguments eval note n s chord arrange stack silence setcpm mini m pure timecat gain undefined infinity nan').split(' '));
+
 /**
  * A JavaScript identifier for a part: the leading words of its name that fit `IDENT_MAX`, minus
  * the ordinal or count a name may open with ("1st Guitar" and "12 String" are `guitar` and
  * `string`); when no word survives (a name in another script, punctuation) the patch's label
  * (`fallback`) names the part instead, so no part is ever `t_` or `t_1946`.
  */
-const RESERVED_NAMES = new Set(('await break case catch class const continue debugger default delete do else enum export extends false finally for function if implements import in instanceof interface let new null package private protected public return static super switch this throw true try typeof var void while with yield arguments eval note n s chord arrange stack silence setcpm mini m pure timecat gain undefined infinity nan').split(' '));
-
 export function ident(s: string, fallback = 'part'): string {
   const words = s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
   while (words.length && /^\d/.test(words[0])) words.shift();
@@ -276,15 +281,49 @@ export function ident(s: string, fallback = 'part'): string {
   return fallback !== s ? ident(fallback) : 'part';
 }
 
+/**
+ * Unique identifiers for the parts of one file: `ident(base, fallback)`, then `_2`, `_3`... on a
+ * clash. `used` holds every name taken so far (a renderer adds its riff names to it too).
+ */
+export function uniqueNames(used = new Set<string>()): (base: string, fallback?: string) => string {
+  return (base, fallback) => {
+    const root = ident(base, fallback);
+    let name = root;
+    for (let k = 2; used.has(name); k++) name = `${root}_${k}`;
+    used.add(name);
+    return name;
+  };
+}
+
+/** The song as the options render it: the selected main loop, the full arrangement on a grid (editable patterns), or the source as it is. */
+function prepare(song: Song, opts: CompileOptions): Song {
+  if (opts.form === 'loop') return selectLoop(song, opts).song;
+  return opts.timing === 'patterns' ? prepareArrangement(song) : song;
+}
+
+/** Everything one set of options produces, with the loop or arrangement selected once: the code, its timeline, and the song they render. */
+export interface Rendering { code: string; timeline: Timeline; song: Song }
+export function render(song: Song, opts: CompileOptions = {}): Rendering {
+  const prepared = prepare(song, opts);
+  return { code: compilePrepared(prepared, opts), timeline: timelineOf(prepared, opts), song: prepared };
+}
+
 export function compile(song: Song, opts: CompileOptions = {}): string {
-  if (opts.form === 'loop') song = selectLoop(song, opts).song;
-  else if (opts.simplify) song = prepareArrangement(song);
+  return compilePrepared(prepare(song, opts), opts);
+}
+
+/** `setcpm`'s argument: beats per minute over beats per bar (`120/4`), one cycle being one bar. */
+function tempo(meta: SongMeta): string {
+  const fmt = (x: number) => String(Math.round(x * 1000) / 1000);
+  return `${fmt(meta.bpm)}/${fmt(barLength(meta))}`;
+}
+
+function compilePrepared(song: Song, opts: CompileOptions): string {
   const melody = opts.melody ?? true;
   const melodySound = opts.melodySound ?? DEFAULT_MELODY_SOUND;
   const maxTracks = opts.maxTracks ?? DEFAULT_MAX_TRACKS;
   const maxBars = opts.maxBars ?? DEFAULT_MAX_BARS;
   const { meta } = song;
-  const cpm = cyclesPerMinute(meta);
   const key = meta.tonic ? `${meta.tonic} ${meta.mode ?? ''}`.trim() : 'unknown';
   const remarks = [...(meta.remarks ?? [])];
   const range = song.tracks.length ? barRange(song, maxBars) : null;
@@ -294,10 +333,12 @@ export function compile(song: Song, opts: CompileOptions = {}): string {
     `// ${meta.bpm} bpm, ${meta.beatsPerBar}/${meta.beatUnit}, key ${key}. Source: ${meta.sources.join(' + ')}.`,
     `// Generated by strudelify. One cycle = one bar.`,
     ...remarks.map((r) => `// note: ${r}`),
-    `setcpm(${cpm.toFixed(8).replace(/0{1,6}$/, '')})`,
+    `setcpm(${tempo(meta)})`,
     '',
   ].map(line => line.startsWith('//') ? line.replace(/[\r\n\u2028\u2029]/g, ' ') : line);
-  if (song.tracks.length) return header.concat((opts.timing === 'patterns' ? compilePatterns : opts.timing === 'grid' ? compileTracks : compilePerformance)(song, { melody, melodySound, maxTracks, maxBars, timing: opts.timing ?? 'source', form: opts.form ?? 'song', simplify: opts.simplify ?? false })).join('\n');
+  if (song.tracks.length) return header.concat((opts.timing === 'patterns' ? compilePatterns : opts.timing === 'grid' ? compileTracks : compilePerformance)(song, { melody, melodySound, maxTracks, maxBars, timing: opts.timing ?? 'source', form: opts.form ?? 'song' })).join('\n');
+  // A file whose every part was dropped (effects patches only) has no chords either: nothing to play, and no groove made up for it.
+  if (!song.sections.some((s) => s.chords.length)) return header.concat(['// No instrumental parts or chord chart to render.', 'silence']).join('\n');
   return header.concat(compileSections(song)).join('\n');
 }
 
@@ -359,6 +400,22 @@ export function selectTracks(song: Song, max: number, melody: boolean): Track[] 
   const rest = audible.filter((t) => !guaranteed.includes(t))
     .sort((a, b) => weights.get(b)! * (b.role === 'chords' ? CHORDS_BONUS : 1) - weights.get(a)! * (a.role === 'chords' ? CHORDS_BONUS : 1));
   return guaranteed.concat(rest).slice(0, Math.max(0, max));
+}
+
+/**
+ * The pitched parts the source and pattern renderers keep when there are more than `max`: the
+ * melody parts and the main bass are guaranteed, the other slots go to the parts heard most (with
+ * `selectTracks`' bounded bonus for harmony). Unlike `selectTracks` nothing is judged inaudible:
+ * those renderers keep every part while the cap allows. The kept parts stay in their order.
+ */
+export function capTracks(pitched: Track[], max: number): Track[] {
+  if (pitched.length <= max) return pitched;
+  const weights = new Map(pitched.map((t) => [t, musicalWeight(t)]));
+  const bass = pitched.filter((t) => t.role === 'bass').sort((a, b) => weights.get(b)! - weights.get(a)!)[0];
+  const rank = (t: Track) => (t.role === 'melody' ? 2 : t === bass ? 1 : 0);
+  const heard = (t: Track) => weights.get(t)! * (t.role === 'chords' ? CHORDS_BONUS : 1);
+  const kept = new Set([...pitched].sort((a, b) => rank(b) - rank(a) || heard(b) - heard(a)).slice(0, Math.max(0, max)));
+  return pitched.filter((t) => kept.has(t));
 }
 
 interface Frame { meta: SongMeta; firstBar: number; nBars: number }
@@ -628,14 +685,7 @@ function compileTracks(song: Song, o: Required<CompileOptions>): string[] {
   if (!range) return ['silence'];
   const frame: Frame = { meta: song.meta, firstBar: range.firstBar, nBars: range.nBars };
 
-  const used = new Set<string>();
-  const uniqueName = (base: string, fallback?: string) => {
-    const root = ident(base, fallback);
-    let name = root;
-    for (let k = 2; used.has(name); k++) name = `${root}_${k}`;
-    used.add(name);
-    return name;
-  };
+  const uniqueName = uniqueNames();
   const grid = songGrid(song.tracks, song.meta);
   const parts: RenderedPart[] = [];
   for (const t of selectTracks(song, o.maxTracks, o.melody)) {
@@ -784,16 +834,25 @@ function grooveFor(beatsPerBar: number, beatUnit: number): string {
 }
 
 /**
+ * How far (beats) ahead of a downbeat the first note may come and still open the song on that downbeat:
+ * a band that starts a touch early (a few milliseconds in many MIDI files) does not open on a bar of
+ * silence. Renderers play such a note on the downbeat (see `barRange`).
+ */
+export const EARLY_BEATS = 1 / 8;
+
+/**
  * First rendered bar, number of rendered bars and the song's total bars for a MIDI song (leading
  * silence trimmed). `maxBars` counts bars of 4/4, so the cap is a length in beats whatever the metre.
+ * The first bar is the one the first note sounds in, or the next when that note is within
+ * `EARLY_BEATS` of its downbeat.
  */
 export function barRange(song: Song, maxBars = DEFAULT_MAX_BARS): { firstBar: number; nBars: number; totalBars: number } | null {
   if (song.meta.loopBars) return { firstBar: 0, nBars: song.meta.loopBars, totalBars: song.meta.loopBars };
   let first = Infinity, last = 0;
   for (const t of song.tracks) for (const n of t.notes) { first = Math.min(first, n.start); last = Math.max(last, n.start + n.duration); }
   if (!isFinite(first)) return null;
-  const firstBar = song.meta.arrangementBars ? 0 : barIndex(song.meta, first);
-  const lastBar = barIndex(song.meta, last - 1e-6); // a note ending exactly on a bar line does not open a new bar
+  const firstBar = song.meta.arrangementBars ? 0 : barIndex(song.meta, first + EARLY_BEATS);
+  const lastBar = Math.max(firstBar, barIndex(song.meta, last - 1e-6)); // a note ending exactly on a bar line does not open a new bar
   const totalBars = song.meta.arrangementBars ?? lastBar - firstBar + 1;
   const cap = Math.max(1, Math.round(maxBars * 4 / barLength(song.meta)));
   // A song that barely exceeds the cap is rendered whole rather than losing its last bars.
@@ -816,8 +875,10 @@ export interface Timeline {
 
 /** Everything a UI needs to draw a seekable timeline that matches `compile()`'s output. */
 export function timeline(song: Song, opts: CompileOptions = {}): Timeline {
-  if (opts.form === 'loop') song = selectLoop(song, opts).song;
-  else if (opts.simplify) song = prepareArrangement(song);
+  return timelineOf(prepare(song, opts), opts);
+}
+
+function timelineOf(song: Song, opts: CompileOptions): Timeline {
   const cpm = cyclesPerMinute(song.meta);
   const secondsPerBar = 60 / cpm;
   const bpb = song.meta.beatsPerBar;

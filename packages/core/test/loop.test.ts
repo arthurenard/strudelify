@@ -54,7 +54,7 @@ describe('automatic main loops', () => {
       expect(new Set(track.notes.map(n => n.velocity)).size).toBeLessThanOrEqual(2);
       expect(track.notes.every(n => n.volume === undefined && n.pan === undefined)).toBe(true);
     }
-    expect(compile(source, { form: 'loop', timing: 'patterns' })).toContain('Simplified automatically');
+    expect(compile(source, { form: 'loop', timing: 'patterns' })).toMatch(/Notes on a \d+-step grid, each part at one level/);
     expect(compile(source, { timing: 'source' })).not.toContain('Main loop:');
   });
   it('does not invent accompaniment when only vocal parts exist', () => {
