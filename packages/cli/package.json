@@ -1,6 +1,8 @@
 {
   "name": "strudelify",
   "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
   "type": "module",
   "bin": {
     "strudelify": "./dist/main.js"
@@ -11,5 +13,8 @@
   "dependencies": {
     "@strudelify/core": "*",
     "commander": "^14.0.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

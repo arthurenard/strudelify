@@ -1,6 +1,7 @@
 {
   "name": "@strudelify/data",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "private": true,
   "scripts": {
@@ -10,5 +11,8 @@
   },
   "dependencies": {
     "@strudelify/core": "*"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

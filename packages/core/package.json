@@ -1,6 +1,7 @@
 {
   "name": "@strudelify/core",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,5 +16,8 @@
   },
   "dependencies": {
     "@tonejs/midi": "^2.0.28"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
