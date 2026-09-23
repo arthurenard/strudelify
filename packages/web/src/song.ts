@@ -7,7 +7,7 @@ import { el, setStatus, showBanner, hideBanner, toast, prefersReducedMotion } fr
 import { state } from './state.js';
 import { saveRow } from './store.js';
 import { loadRepl } from './repl.js';
-import { stop, refresh } from './player.js';
+import { stop, refresh, currentBar } from './player.js';
 import { renderTimeline, updatePosition, clearTimeline } from './timeline.js';
 import { showCode, clearCode, hasEdits, editorCode, restoreEdits } from './code.js';
 import { closeSearch, rememberRecent } from './search.js';
@@ -46,7 +46,7 @@ function options(): CompileOptions {
   return { form: el.codeStyle.value === 'loop' ? 'loop' : 'song', timing: el.codeStyle.value === 'source' ? 'source' : 'patterns', melody: el.melody.checked, maxTracks: Number.MAX_SAFE_INTEGER, maxBars: Number(el.maxBars.value) || ALL_BARS };
 }
 /** Stands in until the first compile fills the song's timeline in. */
-const NO_TIMELINE: Timeline = { bars: 0, cpm: 0, secondsPerBar: 0, chords: [], sections: [] };
+const NO_TIMELINE: Timeline = { bars: 0, from: 0, cpm: 0, secondsPerBar: 0, chords: [], sections: [] };
 
 /** Instrumental leads can be toggled; detected vocals are always omitted. Charts have no MIDI options. */
 function applyOptionVisibility(song: Song) {
@@ -287,6 +287,9 @@ export function recompile() {
   const cur = state.current;
   if (!cur) return;
   const edits = cur.code && hasEdits() ? editorCode() : null;
+  // Where the song is now, in bars of the whole song (a Main loop sits somewhere in it), to carry on from there;
+  // a song compiled for the first time starts at its first bar.
+  const songBar = cur.tl === NO_TIMELINE ? null : cur.tl.from + (state.started ? Math.floor(currentBar()) : state.pausedBar);
   const opts = options();
   el.optBars.hidden = opts.form === 'loop' || !cur.song.tracks.length;
   const { song } = cur;
@@ -343,9 +346,10 @@ export function recompile() {
   renderTimeline();
   el.totalTime.textContent = fmt(cur.tl.bars * cur.tl.secondsPerBar);
   el.track.setAttribute('aria-valuemax', String(Math.max(0, cur.tl.bars - 1)));
-  state.pausedBar = Math.min(state.pausedBar, Math.max(0, cur.tl.bars - 1));
-  // Playing: the new code is swapped in where the song is; paused: the playhead stays where it was.
-  if (state.started) void refresh();
-  else updatePosition(state.pausedBar, true);
+  // The same place in the song under the new options: a bar outside a Main loop falls on its bar of the loop's phrase.
+  const bars = Math.max(1, cur.tl.bars);
+  const bar = songBar === null ? 0 : ((songBar - cur.tl.from) % bars + bars) % bars;
+  if (state.started) void refresh(bar);
+  else { state.pausedBar = bar; updatePosition(bar, true); }
 }
 for (const input of [el.melody, el.maxBars, el.codeStyle]) input.addEventListener('change', recompile);

@@ -22,7 +22,9 @@ import type { Song, Track, NoteEvent } from './types.js';
 import { barLength, partName } from './midi.js';
 import { gmName, gmLabel, drumName, percName, percTrim, PERC_SAMPLES, NOMINAL_VOLUME } from './gm.js';
 import { ACOUSTIC_DRUMS } from './acoustic-drums.js';
-import { barRange, capTracks, noteName, soundFor, uniqueNames, type CompileOptions } from './strudel.js';
+import { detectChord } from './detect.js';
+import { pcName } from './chords.js';
+import { barRange, capTracks, noteName, soundFor, spellsFlats, uniqueNames, type CompileOptions } from './strudel.js';
 
 /** Line length the generated code wraps at; a riff is never split, so a dense one can run longer. */
 const WIDTH = 120;
@@ -58,6 +60,8 @@ interface Frame {
   tolerance: number;
   /** Notation the parts use, for the legend. */
   seen: { chords: boolean; voices: boolean; long: boolean };
+  /** The key is spelled with flats: notes (`bb3`) and chord names (`Bb`) follow it. */
+  flats: boolean;
 }
 
 export function compilePatterns(song: Song, opts: Required<CompileOptions>): string[] {
@@ -65,7 +69,8 @@ export function compilePatterns(song: Song, opts: Required<CompileOptions>): str
   if (!range) return ['silence'];
   const grid = song.meta.grid ?? DEFAULT_GRID;
   const step = barLength(song.meta) / grid;
-  const frame: Frame = { grid, bars: range.nBars, tolerance: Math.max(1, Math.floor(OVERLAP_BEATS / step + 1e-9)), seen: { chords: false, voices: false, long: false } };
+  const flats = spellsFlats(song.meta);
+  const frame: Frame = { grid, bars: range.nBars, tolerance: Math.max(1, Math.floor(OVERLAP_BEATS / step + 1e-9)), seen: { chords: false, voices: false, long: false }, flats };
   const name = uniqueNames();
   const selected = song.tracks.filter((t) => !t.vocal && (opts.melody || t.role !== 'melody'));
   const layers: Layer[] = [];
@@ -78,7 +83,7 @@ export function compilePatterns(song: Song, opts: Required<CompileOptions>): str
     levels(t.notes).forEach((notes, i) => layers.push({
       name: name(i ? `${base}_soft` : base, patch),
       comment: i ? `${comment} · soft notes` : comment,
-      hits: hits(notes, step, frame, (n) => noteName(n.pitch)),
+      hits: hits(notes, step, frame, (n) => noteName(n.pitch, flats)),
       tail: `${sound}${mix(notes[0].velocity, t)}`,
     }));
   }
@@ -108,7 +113,7 @@ export function compilePatterns(song: Song, opts: Required<CompileOptions>): str
     return { layer: l, units };
   }).filter((p) => p.units.some((u) => u.voices.length));
   if (!parts.length) return ['// No separate instrumental parts remain with these options.', 'silence'];
-  const code = parts.map((p) => partCode(p.layer, p.units));
+  const code = parts.map((p) => partCode(p.layer, p.units, frame.flats));
   const lines = [`// ${legend(frame.seen)}`];
   if (code.some((c) => c.some((line) => line.includes('.pickRestart(')))) lines.push('// A part\'s distinct bars are riffs (A, B, C...) played in order: edit a riff to change every repeat.');
   lines.push('');
@@ -328,17 +333,52 @@ function mini(u: Unit): string {
   return /^\[?[^\s[\]]+\]?$/.test(body) ? `${body}/${u.bars}` : `[${body}]/${u.bars}`;
 }
 
+/** Most chord names a comment lists. */
+const MAX_CHORD_NAMES = 8;
+const LETTERS: Record<string, number> = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+/** MIDI number of a note name the writer made (`c#4`, `bb3`). */
+const midiOf = (name: string) => {
+  const m = /^([a-g])(#|b)?(-?\d+)$/.exec(name)!;
+  return (Number(m[3]) + 1) * 12 + LETTERS[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+};
+/**
+ * The chords a unit strikes, in order, named from their own notes (`[a3,d4,f4]` is Dm), a name once
+ * while it repeats. Single notes are not chords; a voicing no template fits has no name.
+ */
+function chordNames(u: Unit, flats: boolean): string[] {
+  const names: string[] = [];
+  for (const m of mini(u).matchAll(/\[([a-g][#b]?-?\d+(?:,[a-g][#b]?-?\d+)+)\]/g)) {
+    const pitches = m[1].split(',').map(midiOf);
+    const classes = [...new Set(pitches.map((p) => p % 12))];
+    const weights = new Array<number>(12).fill(0);
+    for (const pc of classes) weights[pc] = 1;
+    const bass = Math.min(...pitches) % 12;
+    // A root and its fifth alone (either way up) is a power chord (F5), not the major triad a template would
+    // guess; an inversion is named by its root, as the bass part plays the bass.
+    const fifth = classes.length === 2 ? classes.find((pc) => classes.includes((pc + 7) % 12)) : undefined;
+    const name = fifth !== undefined ? `${pcName(fifth, flats)}5`
+      : detectChord(weights, bass, flats)?.replace(/\/.*$/, '').replace('^7', 'maj7');
+    if (name && names[names.length - 1] !== name) names.push(name);
+  }
+  return names;
+}
+const listChords = (names: string[]) => (names.length > MAX_CHORD_NAMES ? [...names.slice(0, MAX_CHORD_NAMES), '…'] : names).join(' ');
+
 /**
  * A part's code. One unit throughout: that unit, on one line or (spanning bars) a line per bar. A few
- * runs of single bars: one sequence of bars. Otherwise the distinct units are riffs picked in order.
+ * runs of single bars: one sequence of bars. Otherwise the distinct units are riffs picked in order. The
+ * chords are named in comments: after each riff that has a line of its own, or, for a part written
+ * without riffs, in its heading.
  */
-function partCode(layer: Layer, units: Unit[]): string[] {
+function partCode(layer: Layer, units: Unit[], flats: boolean): string[] {
   const runs: { unit: Unit; count: number }[] = [];
   for (const u of units) {
     const last = runs[runs.length - 1];
     if (last && mini(last.unit) === mini(u)) last.count++; else runs.push({ unit: u, count: 1 });
   }
-  const head = `// ${layer.comment}`;
+  const progression: string[] = [];
+  for (const { unit } of runs) for (const c of chordNames(unit, flats)) if (progression[progression.length - 1] !== c) progression.push(c);
+  const head = `// ${layer.comment}${progression.length ? ` · ${listChords(progression)}` : ''}`;
   const call = `const ${layer.name} = ${layer.drum ? `s("${layer.drum}").struct` : 'note'}(`;
   if (runs.length === 1) {
     const [u] = units;
@@ -365,8 +405,13 @@ function partCode(layer: Layer, units: Unit[]): string[] {
     return cycles > 1 ? `${label}@${cycles}` : label;
   });
   const oneLine = `${call}"<${order.join(' ')}>".pickRestart({`;
-  const lines = [head, ...(oneLine.length <= WIDTH ? [oneLine] : [`${call}\`<`, ...wrap(order, '  '), '>`.pickRestart({'])];
-  lines.push(...wrap([...labels].map(([body, label]) => `${label}: "${body}",`), '  '));
+  const lines = [`// ${layer.comment}`, ...(oneLine.length <= WIDTH ? [oneLine] : [`${call}\`<`, ...wrap(order, '  '), '>`.pickRestart({'])];
+  // Short riffs pack several to a line; a riff on a line of its own names the chords it strikes after it.
+  const chords = new Map([...labels].map(([body, label]) => [`${label}: "${body}",`, chordNames(units.find((u) => mini(u) === body)!, flats)]));
+  for (const line of wrap([...chords.keys()], '  ')) {
+    const names = chords.get(line.trim());
+    lines.push(names?.length ? `${line} // ${listChords(names)}` : line);
+  }
   lines.push(`}))${layer.tail}`);
   return lines;
 }

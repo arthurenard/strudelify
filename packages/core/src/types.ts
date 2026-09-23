@@ -11,6 +11,8 @@ export interface SongMeta {
   arrangementBars?: number;
   /** Explicit period of an automatically selected excerpt, including its trailing rest. */
   loopBars?: number;
+  /** Where that excerpt starts in the song: a bar of the Full arrangement's timeline (0 is its first bar). */
+  loopFrom?: number;
   /** Steps per bar that a Main loop or Full arrangement quantised its notes to (onsets and lengths). */
   grid?: number;
   /** Explicit reviewed drum sound profile; otherwise use the default bank. */

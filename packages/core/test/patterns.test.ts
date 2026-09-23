@@ -91,7 +91,8 @@ describe('editable patterns', () => {
     expect(code).toContain('const hihat = s("hh").struct("x!4")');
     expect(code).toContain('const hihat_soft = s("hh").struct("~ x ~ x ~ x ~ x")');
     const gain = (name: string) => Number(/\.gain\(([\d.]+)\)/.exec(partOf(code, name))![1]);
-    expect(gain('hihat_soft')).toBeCloseTo(gain('hihat') / 2, 1);
+    // The soft level is the ghost notes' own (0.3 against 0.9).
+    expect(gain('hihat_soft') / gain('hihat')).toBeCloseTo(0.3 / 0.9, 1);
     expect(code).toContain('ghost notes are separate "_soft" parts');
   });
 
@@ -102,15 +103,34 @@ describe('editable patterns', () => {
     expect(played(code, 2).filter((e) => e[0] !== 'c4')).toEqual([['c2', 0, 3], ['g2', 3.5, 1], ['f2', 5, 3]]);
     // A run of sixteenths in every bar and a note held over each bar line: too long for one line. The run is
     // the main voice, a line per bar; the held note, still sounding when the next run starts, is a second voice.
-    const busy = part(Array.from({ length: 4 }, (_, b) => [...Array.from({ length: 12 }, (_, i) => n(48 + (i % 5), b * 4 + i / 4, 0.25)), n(43, b * 4 + 3, 2)]).flat(), 33, 'bass', 'Bass');
-    expect(partOf(loop(song(busy)), 'bass')).toContain([
-      'const bass = note(`[',
-      '  c3 c#3 d3 d#3 e3 c3 c#3 d3 d#3 e3 c3 c#3 ~@4',
-      '  c3 c#3 d3 d#3 e3 c3 c#3 d3 d#3 e3 c3 c#3 g2@4,',
-      '  ~@3 g2@2',
-      '  ~@3',
-      ']/2`)',
-    ].join('\n'));
+    const run = (b: number) => Array.from({ length: 12 }, (_, i) => n(48 + (i % 5), b * 4 + i / 4, 0.25));
+    const busy = part(Array.from({ length: 8 }, (_, b) => [...run(b), n(43, b * 4 + 3, b < 7 ? 2 : 1)]).flat(), 33, 'bass', 'Bass');
+    const lines = partOf(loop(song(busy)), 'bass').split('\n');
+    expect(lines[1]).toBe('const bass = note(`[');
+    expect(lines.slice(2, 10)).toEqual([...Array(7).fill('  c3 c#3 d3 d#3 e3 c3 c#3 d3 d#3 e3 c3 c#3 ~@4'), '  c3 c#3 d3 d#3 e3 c3 c#3 d3 d#3 e3 c3 c#3 g2@4,']);
+    expect(lines[10]).toBe('  ~@3 g2@2');
+    expect(lines[lines.length - 1]).toMatch(/^\]\/8`\)\.s\("gm_electric_bass_finger"\)/);
+    expect(played(loop(song(busy)), 8)).toHaveLength(busy.notes.length);
+  });
+
+  it('spells notes the way the key does: flats in a flat key, sharps otherwise', () => {
+    const notes = [n(58, 0, 1), n(61, 1, 1), n(63, 2, 1), n(66, 3, 1)];
+    const flat = { ...song(part(notes)), meta: { ...song().meta, tonic: 'A#', mode: 'major' as const } };
+    expect(full(flat)).toContain('note("bb3 db4 eb4 gb4")');
+    expect(full({ ...flat, meta: { ...flat.meta, tonic: 'D', mode: 'minor' as const } })).toContain('note("bb3 db4 eb4 gb4")');
+    expect(full({ ...flat, meta: { ...flat.meta, tonic: 'E', mode: 'major' as const } })).toContain('note("a#3 c#4 d#4 f#4")');
+    expect(played(full(flat), 1).map((e) => e[0])).toEqual(['bb3', 'db4', 'eb4', 'gb4']);
+  });
+
+  it('names the chords a riff on its own line strikes, power chords and inversions by their root', () => {
+    const stabs = (b: number, chord: number[]) => Array.from({ length: 6 }, (_, i) => chord.map((p) => n(p, b * 4 + i * 0.5 + (i % 2) * 0.25, 0.25))).flat();
+    const bars = [[57, 62, 65], [55, 60, 64], [57, 62], [53, 57, 60, 64]];
+    const s = song(part(Array.from({ length: 12 }, (_, b) => stabs(b, bars[b % 4])).flat(), 27, 'chords', 'Guitar'));
+    const code = full(s);
+    expect(code).toMatch(/A: "\[a3,d4,f4\][^\n]*", \/\/ Dm$/m); // an inversion is named by its root
+    expect(code).toMatch(/B: "\[g3,c4,e4\][^\n]*", \/\/ C$/m);
+    expect(code).toMatch(/C: "\[a3,d4\][^\n]*", \/\/ D5$/m); // a fifth upside down is still a power chord
+    expect(code).toMatch(/D: "\[f3,a3,c4,e4\][^\n]*", \/\/ Fmaj7$/m);
   });
 
   it('keeps source names from shadowing the functions the code uses', () => {

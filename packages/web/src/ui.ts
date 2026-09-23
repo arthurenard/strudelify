@@ -1,7 +1,7 @@
 /**
  * Pure helpers for the web UI (no DOM), so they can be unit-tested.
  */
-import { normaliseText, isDuplicateTitle, estimateKey, pcName, pitchClass, type IndexEntry, type SearchHit, type Section, type TimelineSection } from '@strudelify/core';
+import { normaliseText, isDuplicateTitle, estimateKey, pcName, pitchClass, flatName, spellTonic, prefersFlats, type IndexEntry, type SearchHit, type Section, type TimelineSection } from '@strudelify/core';
 
 export function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -260,27 +260,7 @@ export function dominantHsl(data: Uint8ClampedArray | Uint8Array): string | null
   return `hsl(${h} ${s}% ${l}%)`;
 }
 
-const SHARP_TO_FLAT: Record<string, string> = { 'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb' };
-/** Respell a sharp note name with a flat (`A#` → `Bb`); naturals and flats pass through. */
-export function flatName(note: string): string { return SHARP_TO_FLAT[note] ?? note; }
-
-/**
- * Conventional spelling of a key's tonic: the parsers name pitch classes with sharps, but B♭ major
- * is not written A♯ major. Sharp majors become their flat twins except F♯ (6 sharps either way);
- * sharp minors keep the sharp except D♯/A♯ minor, which are written E♭/B♭ minor.
- */
-export function spellTonic(tonic: string, mode: 'major' | 'minor' = 'major'): string {
-  if (mode === 'minor') return tonic === 'D#' || tonic === 'A#' ? flatName(tonic) : tonic;
-  return tonic === 'F#' ? tonic : flatName(tonic);
-}
-
-/** Whether chords in this key are conventionally spelled with flats (F, B♭, E♭ ... majors and their relative minors). */
-export function prefersFlats(tonic: string | undefined, mode: 'major' | 'minor' = 'major'): boolean {
-  if (!tonic) return false;
-  const t = spellTonic(tonic, mode);
-  if (t.endsWith('b')) return true;
-  return mode === 'major' ? t === 'F' : ['D', 'G', 'C', 'F'].includes(t);
-}
+export { flatName, spellTonic, prefersFlats };
 
 const accidental = (a: string | undefined) => (a === '#' ? '♯' : a === 'b' ? '♭' : '');
 function prettyNote(letter: string, acc: string | undefined, flats: boolean): string {

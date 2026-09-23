@@ -18,7 +18,10 @@ export function setStarted(v: boolean) {
   el.play.title = v ? 'Pause (Space)' : 'Play (Space)';
   el.timeline.classList.toggle('playing', v);
 }
+/** New code is being swapped in while playing (see `refresh`): the scheduler's pause and restart are not the user's. */
+let swapping = false;
 editorEl.addEventListener('update', (e) => {
+  if (swapping) return;
   const st = (e as CustomEvent).detail as { started?: boolean };
   if (typeof st?.started === 'boolean' && st.started !== state.started) setStarted(st.started);
   // Strudel's own Ctrl+Enter starts the scheduler, but a pause left the AudioContext suspended: wake it, or nothing is heard.
@@ -85,16 +88,29 @@ export async function play(fromBar?: number) {
   } finally { el.play.removeAttribute('aria-busy'); }
 }
 
-/** New code while playing (an option changed): swap it in without stopping, and load what it adds. */
-export async function refresh() {
-  const cur = state.current;
-  if (!ed() || !cur || !state.started) return;
+/**
+ * New code while playing (an option changed): carry on from `bar` of the new code. The scheduler pauses
+ * while the code evaluates and the sounds it adds load (a long program blocks the page for a moment, and a
+ * running scheduler would skip notes meanwhile), then starts again at `bar`.
+ */
+export async function refresh(bar: number) {
+  const e = ed(), cur = state.current;
+  if (!e || !cur || !state.started) return;
+  swapping = true;
   try {
+    e.repl.scheduler.pause();
     const pattern = await evaluateEditor();
-    if (state.current === cur) void warmRest(cur, pattern, Math.floor(currentBar()));
+    if (state.current !== cur || !state.started) return;
+    await warmSounds(pattern, bar, Math.min(cur.tl.bars, bar + WARM_BARS), cur.tl.cpm / 60).catch(() => {});
+    if (state.current !== cur || !state.started) return;
+    await e.repl.start();
+    jump(bar);
+    void warmRest(cur, pattern, bar + WARM_BARS);
   } catch (err) {
+    swapping = false;
+    await stop();
     toast(`Could not play: ${(err as Error).message}`, 'error');
-  }
+  } finally { swapping = false; }
 }
 
 /** Hard stop: halt the scheduler and suspend the AudioContext so ringing notes are cut instantly. */

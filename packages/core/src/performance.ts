@@ -3,7 +3,7 @@ import { ACOUSTIC_DRUMS } from './acoustic-drums.js';
 import type { Song, Track, NoteEvent } from './types.js';
 import { barLength, barStart, barIndex, partName } from './midi.js';
 import { gmName, drumName, percName, percTrim, PERC_SAMPLES, NOMINAL_VOLUME } from './gm.js';
-import { barRange, capTracks, noteName, soundFor, uniqueNames, EARLY_BEATS, type CompileOptions } from './strudel.js';
+import { barRange, capTracks, noteName, soundFor, spellsFlats, uniqueNames, EARLY_BEATS, type CompileOptions } from './strudel.js';
 
 // Integer timing weights keep Strudel's rational arithmetic bounded (100 million units per bar).
 const UNITS = 100_000_000;
@@ -53,7 +53,7 @@ function pattern(notes: NoteEvent[], song: Song, firstBar: number, bars: number,
           const [sample, index] = token.split(':');
           return `pure(['${sample}', ${index}, ${suffix.join(', ')}])`;
         }
-        return `pure(['${noteName(n.pitch)}', ${suffix.join(', ')}])`;
+        return `pure(['${noteName(n.pitch, spellsFlats(song.meta))}', ${suffix.join(', ')}])`;
       });
       const value = values.length === 1 ? values[0] : `stack(${values.join(', ')})`;
       tokens.push(`[${number((starts[i + 1] ?? UNITS) - start)}, ${value}]`);

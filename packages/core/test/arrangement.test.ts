@@ -43,6 +43,19 @@ it('retains unique solo notes on a mostly doubled guitar track',()=>{
   song.tracks.push({...song.tracks[0],name:'Solo and double',program:30,notes});
   expect(prepareArrangement(song).tracks[1].notes).toMatchObject([{pitch:79,start:30}]);
 });
+it('keeps ghost notes as a second, softer level when they are a feature of the part',()=>{
+  const hits=(ghostEvery:number)=>Array.from({length:32},(_,i)=>({pitch:38,start:i,duration:.25,velocity:i%ghostEvery===1?.3:.9}));
+  const song=(notes:any[]):Song=>({meta:{id:'g',title:'G',artist:'G',bpm:120,beatsPerBar:4,beatUnit:4,sources:['midi']},sections:[],tracks:[{name:'Kit',role:'drums',program:-1,notes}]});
+  const busy=compile(song(hits(4)),options);
+  expect(busy).toContain('const snare_soft = s("sd")');
+  expect(busy).toContain('ghost notes are separate "_soft" parts');
+  const gain=(code:string,name:string)=>Number(new RegExp(`const ${name} = [^\\n]*\\.gain\\(([\\d.]+)\\)`).exec(code)![1]);
+  expect(gain(busy,'snare_soft')/gain(busy,'snare')).toBeCloseTo(.3/.9,1);
+  // One soft hit in 32 is not a feature of the part: it plays at the part's level.
+  const rare=compile(song(hits(32)),options);
+  expect(rare).not.toContain('_soft');
+  expect(rare).not.toContain('ghost notes');
+});
 it('keeps silent notes silent when a track later unmutes',()=>{
   const song=fixture(); song.tracks[0].notes.forEach((n,i)=>n.volume=i<4?0:.5);
   const es=onsets(evaluatePattern(compile(song,options)),0,8);

@@ -35,7 +35,7 @@ export function queryPattern(pattern, start, end) {
 
 /** Admission gate for automatically imported transcriptions; checks actual runtime events. */
 export function validatePattern(code, bars) {
-  if (!(bars > 0 && bars <= 4)) throw Error('Invalid main-loop period');
+  if (!(bars > 0 && bars <= 16)) throw Error('Invalid main-loop period');
   const pattern = evaluatePattern(code);
   const snapshot = start => queryPattern(pattern, start, start + bars).filter(e => e.hasOnset()).map(e => {
     for (const key of ['duration', 'velocity', 'gain', 'pan']) {

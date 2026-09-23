@@ -14,6 +14,7 @@ import type { Song, Track, NoteEvent, Section, SongMeta } from './types.js';
 import { barLength, barStart, barIndex, cyclesPerMinute, STUB_NOTES, meanVelocity, median, percentile, partName } from './midi.js';
 import { gmName, gmLabel, drumName, percName, percTrim, percTrimDb, percShare, PERC_SAMPLES, BASS_PROGRAMS, BASS_CAPABLE_PROGRAMS, BASS_FALLBACK_SOUND, BASS_PATCH_TOP, BASS_LEAD_SOUND, VOICE_BASS_SOUND, VOCAL_PROGRAMS, AUDIBLE_LEVEL, mixLevel, isAudible, isMuted } from './gm.js';
 import { pitchClass, voicingSafe } from './chords.js';
+import { prefersFlats } from './key.js';
 
 export interface CompileOptions {
   /** The whole song (API default), or an automatically selected short instrumental loop. */
@@ -44,9 +45,13 @@ export const DEFAULT_MAX_TRACKS = 12;
 export const DEFAULT_MAX_BARS = 200;
 
 const NOTE_NAMES = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
-export function noteName(midi: number): string {
-  return `${NOTE_NAMES[midi % 12]}${Math.floor(midi / 12) - 1}`;
+const FLAT_NOTE_NAMES = ['c', 'db', 'd', 'eb', 'e', 'f', 'gb', 'g', 'ab', 'a', 'bb', 'b'];
+/** Strudel's name for a MIDI note (`60` is `c4`), with flats (`bb3`) in a key spelled with flats (see `prefersFlats`). */
+export function noteName(midi: number, flats = false): string {
+  return `${(flats ? FLAT_NOTE_NAMES : NOTE_NAMES)[midi % 12]}${Math.floor(midi / 12) - 1}`;
 }
+/** Whether the song's notes are written with flats: its key is (see `prefersFlats`). */
+export const spellsFlats = (meta: SongMeta): boolean => prefersFlats(meta.tonic, meta.mode);
 
 /** Straight and triplet grids (cells per bar) for the metre: 4/4 -> 16 or 24, 6/8 -> 12 or 18, 3/4 -> 12 or 18. */
 export function gridCandidates(meta: SongMeta): { straight: number; triplet: number } {
@@ -477,7 +482,7 @@ function renderPitched(t: Track, f: Frame, melodySound: string, name: string, gr
   });
   const renderEnd = barStart(f.meta, f.firstBar + f.nBars);
   const bars = trackBars(t.notes, f.meta, f.firstBar, f.nBars, grid, (n) => {
-    const pitch = noteName(n.pitch);
+    const pitch = noteName(n.pitch, spellsFlats(f.meta));
     if (!explicitDurations) return pitch;
     const duration = Math.max(0.000001, Math.min(n.duration, renderEnd - n.start) / bar);
     return `${pitch}:${Number(duration.toFixed(6))}`;
@@ -781,9 +786,9 @@ export function splitSlash(symbol: string): { chord: string; bass: string } {
   return { chord: `${m[1]}${m[2]}`, bass: m[3] ?? m[1] };
 }
 
-/** Pitch-class name -> Strudel note name in octave 2, e.g. `Bb` -> `a#2`. */
+/** Pitch-class name -> Strudel note name in octave 2, spelled as given: `Bb` -> `bb2`, `A#` -> `a#2`. */
 export function bassNoteName(pc: string): string {
-  return `${noteName(pitchClass(pc) + 36)}`;
+  return noteName(pitchClass(pc) + 36, pc.includes('b'));
 }
 
 /** Split a section's chord events into per-bar mini-notation strings. */
@@ -864,6 +869,8 @@ export interface TimelineSection { label: string; startBar: number; bars: number
 export interface Timeline {
   /** Number of bars the generated code loops over. */
   bars: number;
+  /** The song bar (the Full arrangement's numbering, 0 first) that this timeline's first bar is: a Main loop's place in the song, 0 otherwise. */
+  from: number;
   /** Bars per minute, i.e. Strudel cycles per minute. */
   cpm: number;
   secondsPerBar: number;
@@ -888,7 +895,7 @@ function timelineOf(song: Song, opts: CompileOptions): Timeline {
     const firstBar = range?.firstBar ?? 0;
     const perBar = chordsPerBar(song.sections, bpb);
     const chords = Array.from({ length: bars }, (_, i) => perBar[firstBar + i] ?? null);
-    return { bars, cpm, secondsPerBar, chords, sections: [] };
+    return { bars, from: song.meta.loopFrom ?? 0, cpm, secondsPerBar, chords, sections: [] };
   }
   const chords: (string | null)[] = [];
   const sections: TimelineSection[] = [];
@@ -898,7 +905,7 @@ function timelineOf(song: Song, opts: CompileOptions): Timeline {
     sections.push({ label: sec.raw ?? sec.label, startBar: chords.length, bars: per.length });
     chords.push(...per);
   }
-  return { bars: chords.length, cpm, secondsPerBar, chords, sections };
+  return { bars: chords.length, from: song.meta.loopFrom ?? 0, cpm, secondsPerBar, chords, sections };
 }
 
 /** The chord sounding at the start of each bar, across the given sections in order. */

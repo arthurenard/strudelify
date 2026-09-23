@@ -1,14 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
-import { selectLoop } from '../src/loop.js';
+import { selectLoop, loopLength, LONGEST_SECONDS } from '../src/loop.js';
 import { compile, timeline, barRange } from '../src/strudel.js';
 import { loadSong } from '../src/load.js';
 import type { Song, NoteEvent } from '../src/types.js';
 // @ts-expect-error Node runtime harness.
 import { evaluatePattern, validatePattern } from '../../../tools/strudel-runtime.mjs';
 const note = (pitch: number, start: number, duration = .5): NoteEvent => ({ pitch, start, duration, velocity: .8 });
+/** A one-bar intro, then a two-bar figure played twelve times. */
 function fixture(): Song {
-  const notes = [note(72, 0), ...Array.from({ length: 4 }, (_, repeat) => [note(48, 8 + repeat * 8), note(50, 12 + repeat * 8)]).flat()];
+  const notes = [note(72, 0), ...Array.from({ length: 12 }, (_, repeat) => [note(48, 4 + repeat * 8), note(50, 8 + repeat * 8)]).flat()];
   return { meta: { id: 'any-id', title: 'Any title', artist: 'Any artist', bpm: 120, beatsPerBar: 4, beatUnit: 4, sources: ['midi'] }, sections: [], tracks: [
     { name: 'Bass', role: 'bass', program: 33, notes },
     { name: 'Guitar', role: 'chords', program: 27, notes: notes.map(n => ({ ...n, pitch: n.pitch + 12 })) },
@@ -16,24 +17,41 @@ function fixture(): Song {
   ] };
 }
 describe('automatic main loops', () => {
-  it('finds one repeated band passage, independent of song identity, without modifying the source', () => {
+  it('finds an eight-bar phrase the band repeats, independent of song identity, without modifying the source', () => {
     const source = fixture(), before = structuredClone(source), picked = selectLoop(source);
-    expect(picked).toMatchObject({ firstBar: 2, bars: 2, repeats: 4 });
+    expect(picked.bars).toBe(8);
+    expect(picked.firstBar).toBeGreaterThan(0); // not the intro
+    expect(picked.repeats).toBeGreaterThanOrEqual(2);
     expect(source).toEqual(before);
     expect(picked.song.tracks.map(t => t.name)).toEqual(['Bass', 'Guitar']);
-    expect(picked.song.tracks[0].notes.map(n => n.start)).toEqual([0, 4]);
+    expect(picked.song.tracks[0].notes.map(n => n.start)).toEqual([0, 4, 8, 12, 16, 20, 24, 28]);
     const renamed = structuredClone(source); renamed.meta.id = 'nirvana--smells-like-teen-spirit'; renamed.meta.title = 'Changed';
     expect(selectLoop(renamed).song.tracks).toEqual(picked.song.tracks);
   });
   it('retains the full selected period including trailing rests and repeats at that boundary', () => {
     const source = fixture(), opts = { form: 'loop', timing: 'patterns', maxBars: 1 } as const;
-    expect(timeline(source, opts).bars).toBe(2);
-    const events = evaluatePattern(compile(source, opts)).queryArc(0, 4).filter((e: any) => e.hasOnset());
-    expect(events.map((e: any) => Number(e.whole.begin)).sort()).toEqual([0, 0, 1, 1, 2, 2, 3, 3]);
-    expect(validatePattern(compile(source, opts), 2)).toBe(4);
+    expect(timeline(source, opts).bars).toBe(8);
+    const events = evaluatePattern(compile(source, opts)).queryArc(0, 16).filter((e: any) => e.hasOnset());
+    expect(events.map((e: any) => Number(e.whole.begin)).sort((a: number, b: number) => a - b)).toEqual(Array.from({ length: 16 }, (_, i) => [i, i]).flat());
+    expect(validatePattern(compile(source, opts), 8)).toBe(16);
     const selected = selectLoop(source).song;
-    selected.tracks.forEach(t => t.notes = t.notes.filter(n => n.start >= 4));
-    expect(barRange(selected)).toEqual({ firstBar: 0, nBars: 2, totalBars: 2 });
+    selected.tracks.forEach(t => t.notes = t.notes.filter(n => n.start < 16));
+    expect(barRange(selected)).toEqual({ firstBar: 0, nBars: 8, totalBars: 8 });
+  });
+  it('lasts a phrase: eight bars, sixteen when eight would be very short, four when very long', () => {
+    const meta = fixture().meta;
+    expect(loopLength(meta, 100)).toBe(8); // 16 s at 120 bpm
+    expect(loopLength({ ...meta, bpm: 180, beatsPerBar: 2 }, 100)).toBe(16); // 5.3 s for eight bars of 2/4
+    expect(loopLength({ ...meta, bpm: 40, beatsPerBar: 6 }, 100)).toBe(4); // 72 s for eight bars of 6/4
+    expect(loopLength(meta, 5)).toBe(5);
+  });
+  it('drops a note played a hair before the next downbeat instead of ending the loop on a blip', () => {
+    const source = fixture();
+    // Every figure's first note comes a thirty-second early, so the next phrase's first note falls just before the loop's end.
+    for (const t of source.tracks) t.notes = t.notes.map(n => (n.start >= 4 ? { ...n, start: n.start - 0.1 } : n));
+    const picked = selectLoop(source).song, end = picked.meta.loopBars! * 4;
+    for (const t of picked.tracks) expect(t.notes.every(n => n.start < end - 0.5)).toBe(true);
+    expect(picked.tracks[0].notes[0].start).toBe(0);
   });
   it('uses one direct pattern across changing gates, voicings and empty bars', () => {
     const source = fixture();
@@ -67,7 +85,7 @@ describe('automatic main loops', () => {
     const code = compile(source, { form: 'loop', timing: 'patterns' });
     expect(code).not.toContain('arrange(');
     expect(code).not.toContain('.duration(');
-    validatePattern(code, 2);
+    validatePattern(code, timeline(source, { form: 'loop' }).bars);
   });
   it('limits secondary pitched parts but keeps the bass', () => {
     const source = fixture();
@@ -82,12 +100,13 @@ describe('automatic main loops', () => {
     const selected = selectLoop(source).song;
     expect(selected.meta.beatsPerBar).toBe(4);
     expect(source.meta.beatsPerBar).toBe(149);
-    expect(timeline(source, { form: 'loop' }).bars).toBeLessThanOrEqual(4);
+    const loop = timeline(source, { form: 'loop' });
+    expect(loop.bars * loop.secondsPerBar).toBeLessThanOrEqual(LONGEST_SECONDS);
     expect(compile(source, { form: 'loop', timing: 'patterns' })).toContain('Source metre 149/4 regrouped');
   });
   it('bounds percussion complexity while retaining kick and snare', () => {
     const source = fixture();
-    source.tracks.push({ name: 'Kit', role: 'drums', program: -1, notes: Array.from({ length: 20 }, (_, i) => note(35 + i, 8)) });
+    source.tracks.push({ name: 'Kit', role: 'drums', program: -1, notes: Array.from({ length: 25 }, (_, b) => Array.from({ length: 20 }, (_, i) => note(35 + i, b * 4))).flat() });
     const drumNotes = selectLoop(source).song.tracks.filter(t => t.role === 'drums').flatMap(t => t.notes);
     expect(new Set(drumNotes.map(n => n.pitch)).size).toBeLessThanOrEqual(6);
     expect(drumNotes.some(n => n.pitch === 36)).toBe(true);
@@ -96,10 +115,10 @@ describe('automatic main loops', () => {
   it('selects a bounded chart chorus while keeping the full chart available', () => {
     const source = fixture(); source.tracks = []; source.meta.sources = ['mcgill'];
     source.sections = [{ label: 'verse', bars: 8, chords: [{ symbol: 'C', beats: 32 }] }, { label: 'chorus', bars: 8, chords: [{ symbol: 'F', beats: 16 }, { symbol: 'G', beats: 16 }] }];
-    expect(timeline(source, { form: 'loop' }).bars).toBe(4);
+    expect(timeline(source, { form: 'loop' }).bars).toBe(8);
     expect(timeline(source, { form: 'song' }).bars).toBe(16);
-    expect(selectLoop(source).song.sections[0].chords).toEqual([{ symbol: 'F', beats: 16 }]);
-    validatePattern(compile(source, { form: 'loop' }), 4);
+    expect(selectLoop(source).song.sections[0].chords).toEqual([{ symbol: 'F', beats: 16 }, { symbol: 'G', beats: 16 }]);
+    validatePattern(compile(source, { form: 'loop' }), 8);
   });
   it('rejects invalid and non-repeating imported output in the runtime gate', () => {
     expect(() => validatePattern('silence', 2)).toThrow('No playable');
@@ -110,7 +129,7 @@ describe('automatic main loops', () => {
     const source = fixture(); source.meta.title = 'A title\nthrow new Error("metadata escaped")';
     source.meta.artist = 'Composer\u2028throw new Error("artist escaped")';
     source.meta.remarks = ['Transcription provider: test\nthrow new Error("remark escaped")'];
-    validatePattern(compile(source, { form: 'loop', timing: 'patterns' }), 2);
+    validatePattern(compile(source, { form: 'loop', timing: 'patterns' }), timeline(source, { form: 'loop' }).bars);
   });
   it('automatically generates a small, executable Teen Spirit loop', async () => {
     const manifest = JSON.parse(fs.readFileSync(new URL('../../data/curated/manifest.json', import.meta.url), 'utf8'));
@@ -118,8 +137,9 @@ describe('automatic main loops', () => {
     const data = fs.readFileSync(new URL('../../data/curated/smells-like-teen-spirit.mid', import.meta.url));
     const source = await loadSong({ ...entry, title: 'Test', artist: 'Test', sources: ['midi'], files: { midi: 'test.mid' } }, async () => data);
     const opts = { form: 'loop', timing: 'patterns' } as const, code = compile(source, opts);
-    expect(code.length).toBeLessThan(2500);
-    expect(code.split('\n').length).toBeLessThan(45);
+    expect(code.length).toBeLessThan(4000);
+    expect(code.split('\n').length).toBeLessThan(80);
+    expect(timeline(source, opts).bars).toBe(8);
     expect(code).not.toMatch(/timecat\(|pure\(/);
     validatePattern(code, timeline(source, opts).bars);
   });
