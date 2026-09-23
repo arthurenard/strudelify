@@ -105,23 +105,20 @@ const WORDS: Record<string, string> = { n: 'and', ii: '2', iii: '3', iv: '4', pt
  * (R.E.M. -> rem, U.S.S.R. -> ussr), roman numerals and 'n' normalised.
  * With `typing`, a trailing single letter is kept as typed: the "n" of
  * "dont stop me n" is the start of "now", not "and", and the "r" of "guns n r"
- * is not glued to the "n" the way R.E.M. is.
+ * is not glued to the "n" the way R.E.M. is. A letter followed by punctuation
+ * is finished, whatever `typing` says: the "r." of "back in the u.s.s.r." ends
+ * the initials.
  */
 export function tokenize(text: string, typing = false): string[] {
-  const s = text
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[ßæœøðþłđı]/g, (c) => LATIN[c] ?? c)
-    .replace(/&/g, ' and ')
-    .replace(/['’`´]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
+  const folded = fold(text);
+  const s = folded.replace(/[^a-z0-9]+/g, ' ').trim();
   if (!s) return [];
+  // The last word is still being typed only when the text ends inside it.
+  const open = typing && /[a-z0-9]$/.test(folded);
   const raw = s.split(' ');
   const out: string[] = [];
   const single = (w: string) => w.length === 1 && w >= 'a' && w <= 'z';
-  const lastLetter = typing && single(raw[raw.length - 1]) ? raw.length - 1 : -1;
+  const lastLetter = open && single(raw[raw.length - 1]) ? raw.length - 1 : -1;
   for (let i = 0; i < raw.length; i++) {
     let w = raw[i];
     if (single(w) && i + 1 < raw.length && single(raw[i + 1]) && i + 1 !== lastLetter) {
@@ -129,9 +126,25 @@ export function tokenize(text: string, typing = false): string[] {
       while (j < raw.length && single(raw[j]) && j !== lastLetter) w += raw[j++];
       i = j - 1;
     }
-    out.push(typing && i === raw.length - 1 && single(w) ? w : (WORDS[w] ?? w));
+    out.push(open && i === raw.length - 1 && single(w) ? w : (WORDS[w] ?? w));
   }
   return out;
+}
+
+/** Lower-case ASCII with diacritics stripped, `&` spelled out and apostrophes removed; other punctuation stays. */
+function fold(text: string): string {
+  return text
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[ßæœøðþłđı]/g, (c) => LATIN[c] ?? c)
+    .replace(/&/g, ' and ')
+    .replace(/['’`´]/g, '');
+}
+
+/** Whether a query ends inside a word, which may still be being typed: not after a space or punctuation. */
+function endsInWord(query: string): boolean {
+  return /[a-z0-9]$/.test(fold(query));
 }
 
 /** Normalised form of a string: the tokens joined by single spaces. */
@@ -241,7 +254,9 @@ function spellingVariant(a: string, b: string): boolean {
  * "Dio Morto" / "Dio e Morto").
  */
 export function sameSongTitle(a: readonly string[], b: readonly string[]): boolean {
-  if (a.length !== b.length) return a.length > 0 && a.join('') === b.join('');
+  // A title with no Latin letters or digits has no tokens: nothing to compare.
+  if (!a.length || !b.length) return false;
+  if (a.length !== b.length) return a.join('') === b.join('');
   let differ = -1;
   for (let i = 0; i < a.length; i++) {
     if (a[i] === b[i]) continue;
@@ -265,6 +280,11 @@ function titleWords(title: string): string[] {
  * collapse duplicates into one row.
  */
 export function isDuplicateTitle(a: string, b: string): boolean {
+  // Titles in another script ("東京") have no tokens: only the same text is the same title.
+  if (!tokenize(a).length || !tokenize(b).length) {
+    const text = (s: string) => s.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+    return !!text(a) && text(a) === text(b);
+  }
   // Parenthetical part numbers identify separate works, not optional alternate titles.
   const numbers = (s: string) => tokenize(s).filter(t => /^\d+$/.test(t)).join(' ');
   if (numbers(a) !== numbers(b)) return false;
@@ -326,6 +346,8 @@ interface Doc {
   /** 0..1: how well known the artist's whole catalogue is (log of its summed popularity). */
   artistWeight: number;
   cover: boolean;
+  /** An imported score arrangement (PDMX), credited to its composer or, often, to whoever arranged it. */
+  arrangement: boolean;
 }
 
 /** Match kinds per term, best (lowest) wins when two query tokens reach the same term. */
@@ -546,6 +568,7 @@ export function createIndex(entries: IndexEntry[]): SongIndex {
       catalogue: 0,
       artistWeight: 0,
       cover: COVER_RE.test(e.artist),
+      arrangement: e.provenance?.provider === 'pdmx',
     };
     artistKeys.add(artistKey);
   }
@@ -1250,23 +1273,34 @@ export function createIndex(entries: IndexEntry[]): SongIndex {
   function resolve(query: string, limit = 6): Resolution {
     const hits = search(query, limit);
     if (!hits.length) return { kind: 'none', hits };
-    const typing = !/\s$/.test(query);
+    const typing = endsInWord(query);
     const toks = tokenize(query, typing);
     const best = hits[0];
     // A trailing single letter is a word still being typed ("hey j", "led z"): never guess
     // what it completes. A digit is a word ("mambo no 5"), so is a letter followed by a
-    // space, and so is a one-letter word of a title matched letter-perfect ("nothing
-    // compares 2 u", "canon in d").
+    // space or punctuation, and so is a one-letter word of a title matched letter-perfect
+    // ("nothing compares 2 u", "canon in d").
     const last = toks[toks.length - 1];
     if (toks.length > 1 && typing && last.length === 1 && last >= 'a' && last <= 'z' && best.match.title !== 'exact') return { kind: 'ambiguous', hits };
     // Half or more of what was typed is unexplained by the best hit: do not guess.
     if (best.match.coverage <= 0.5) return { kind: 'ambiguous', hits };
     const bestDoc = docOf(best);
+    // Search reads the first `MAX_TOKENS` words; a longer query resolves only when the best hit's
+    // title or artist has every word past them ("... metallica" after a twelve-word Bach title does not).
+    const words = stripBy(toks);
+    if (words.length > MAX_TOKENS) {
+      const known = new Set([...bestDoc.full, ...bestDoc.title, ...bestDoc.artistKey.split(' ')]);
+      if (!words.slice(MAX_TOKENS).every((w) => known.has(w))) return { kind: 'ambiguous', hits };
+    }
     // Duplicate transcriptions of one song: same artist and the same title up to one
     // misspelt word or its spacing ("Smell Like Teen Spirit", "Brickhouse"); never a
     // different part or number.
     const isDup = (h: SearchHit) => sameSong(docOf(h), bestDoc);
-    const others = hits.filter((h) => h !== best && !isDup(h));
+    const sameTitle = (h: SearchHit) => docOf(h).titleStr === bestDoc.titleStr;
+    // A score arrangement of the same title ("Wonderwall" arranged by ND+) is the same song
+    // arranged by someone, not a rival to a transcription of the recording.
+    const arrangedCopy = (h: SearchHit) => docOf(h).arrangement && !bestDoc.arrangement && sameTitle(h);
+    const others = hits.filter((h) => h !== best && !isDup(h) && !arrangedCopy(h));
     // Among duplicate transcriptions of the song, hand back the most transcribed one.
     let entry = best;
     for (const h of hits) if (h !== best && isDup(h) && (h.popularity ?? 0) > (entry.popularity ?? 0)) entry = h;
@@ -1274,7 +1308,6 @@ export function createIndex(entries: IndexEntry[]): SongIndex {
     const ambiguous = (): Resolution => ({ kind: 'ambiguous', hits });
     const pop = best.popularity ?? 0;
     const full = (h: SearchHit) => h.match.title === 'exact' || h.match.title === 'fuzzy';
-    const sameTitle = (h: SearchHit) => docOf(h).titleStr === bestDoc.titleStr;
     /** The hit reads the query as an artist's name (or a word of it), not as a title. */
     const artistReading = (h: SearchHit) => h.match.title === 'none' && h.match.artist !== 'none';
 
@@ -1348,14 +1381,4 @@ export function createIndex(entries: IndexEntry[]): SongIndex {
   }
 
   return { entries, search, resolve };
-}
-
-/**
- * The artist a result list is "about", if its top hit reads the query as an artist's
- * name (or a word of it) rather than as a title: the name to show as a catalogue
- * heading, and the artist whose songs lead the list. Null for title queries.
- */
-export function leadArtist(hits: SearchHit[]): string | null {
-  const top = hits[0];
-  return top && top.match.artist !== 'none' && top.match.title === 'none' ? top.artist : null;
 }

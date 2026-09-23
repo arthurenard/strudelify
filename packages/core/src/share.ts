@@ -11,6 +11,13 @@ export function hash2code(hash: string): string {
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
 
+/**
+ * The longest share link a browser is known to open: Chromium's URL limit (2 MiB). Firefox and
+ * Safari accept long links too, but a longer program cannot travel in the URL at all; it has to be
+ * downloaded and pasted instead.
+ */
+export const MAX_SHARE_URL = 2 * 1024 * 1024;
+
 export function shareUrl(code: string, base = 'https://strudel.cc/'): string {
   return `${base}#${code2hash(code)}`;
 }

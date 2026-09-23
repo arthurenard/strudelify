@@ -6,11 +6,11 @@ import { songFromMidi as parseMidi, scanChannelEvents, scanTrackNames, decodeTex
 import { compile as compileSource, barRange, selectTracks } from '../src/strudel.js';
 import { gmLabel } from '../src/gm.js';
 import type { NoteEvent } from '../src/types.js';
+import { PPQ, smf, rawNote } from './smf.js';
 
 const ns = ToneMidiNs as unknown as { Midi?: typeof MidiType; default?: { Midi?: typeof MidiType } };
 const Midi = (ns.Midi ?? ns.default?.Midi) as typeof MidiType;
 
-const PPQ = 480;
 const ID = { id: 't', title: 'T', artist: 'A' };
 
 it('keeps guitar swells whose expression rises after every note-on', () => {
@@ -51,34 +51,6 @@ function build(parts: Part[], extra?: (m: MidiType) => void): Uint8Array {
   return new Uint8Array(m.toArray());
 }
 
-/** Variable-length quantity. */
-function vlq(n: number): number[] {
-  const out = [n & 0x7f];
-  n >>= 7;
-  while (n > 0) { out.unshift((n & 0x7f) | 0x80); n >>= 7; }
-  return out;
-}
-
-/** Raw Standard MIDI File, format 1, from tracks given as absolute-tick events (`bytes` without delta). */
-function smf(tracks: { tick: number; bytes: number[] }[][]): Uint8Array {
-  const chunk = (id: string, body: number[]) => [...id].map((c) => c.charCodeAt(0)).concat([body.length >>> 24, (body.length >>> 16) & 255, (body.length >>> 8) & 255, body.length & 255], body);
-  const out = chunk('MThd', [0, 1, 0, tracks.length, PPQ >> 8, PPQ & 255]); // format 1, n tracks, division
-  for (const t of tracks) {
-    const events = [...t].sort((a, b) => a.tick - b.tick);
-    const body: number[] = [];
-    let last = 0;
-    for (const e of events) { body.push(...vlq(e.tick - last), ...e.bytes); last = e.tick; }
-    body.push(0, 0xff, 0x2f, 0);
-    out.push(...chunk('MTrk', body));
-  }
-  return new Uint8Array(out);
-}
-
-/** Note on/off pair as raw events. */
-function rawNote(channel: number, pitch: number, startBeat: number, durBeats: number, velocity = 100): { tick: number; bytes: number[] }[] {
-  const on = Math.round(startBeat * PPQ);
-  return [{ tick: on, bytes: [0x90 | channel, pitch, velocity] }, { tick: on + Math.round(durBeats * PPQ), bytes: [0x80 | channel, pitch, 0] }];
-}
 
 /** A bar of straight eighths on `pitch`, `bars` times. */
 function eighths(pitch: number, bars: number, from = 0): [number, number, number][] {

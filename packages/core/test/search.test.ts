@@ -2,11 +2,17 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createIndex, tokenize, normaliseText, editDistance, leadArtist, isDuplicateTitle, sameSongTitle, transcriptions } from '../src/search.js';
+import { createIndex, tokenize, normaliseText, editDistance, isDuplicateTitle, sameSongTitle, transcriptions } from '../src/search.js';
 import type { IndexEntry } from '../src/types.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DB_INDEX = path.resolve(HERE, '..', '..', 'data', 'public', 'db', 'index.json');
+/** The built catalogue, or null when there is none, or only a small fixture (tools/fixture-db.mjs): these tests expect the real one. */
+const REAL_ENTRIES: IndexEntry[] | null = (() => {
+  if (!fs.existsSync(DB_INDEX)) return null;
+  const entries: IndexEntry[] = JSON.parse(fs.readFileSync(DB_INDEX, 'utf8'));
+  return entries.length >= 1000 ? entries : null;
+})();
 
 function song(id: string, title: string, artist: string, popularity = 1, sources: IndexEntry['sources'] = ['midi']): IndexEntry {
   return { id, title, artist, sources, popularity, files: {} };
@@ -157,6 +163,8 @@ const SONGS: IndexEntry[] = [
 
 const index = createIndex(SONGS);
 const top = (q: string) => index.search(q, 5).map((h) => h.id);
+/** The artist whose catalogue a result list is, when its top hit reads the query as an artist's name, not a title. */
+const leadArtist = (hits: ReturnType<typeof index.search>) => (hits[0] && hits[0].match.artist !== 'none' && hits[0].match.title === 'none' ? hits[0].artist : null);
 
 describe('tokenize / normaliseText', () => {
   it('lower-cases, strips punctuation and diacritics', () => {
@@ -180,6 +188,12 @@ describe('tokenize / normaliseText', () => {
     expect(tokenize('r e m', true)).toEqual(['re', 'm']);
     expect(tokenize('r e m')).toEqual(['rem']);
     expect(tokenize('hey j', true)).toEqual(['hey', 'j']);
+  });
+  it('ends a typed word at punctuation', () => {
+    expect(tokenize('back in the u.s.s.r.', true)).toEqual(['back', 'in', 'the', 'ussr']);
+    expect(tokenize('help!', true)).toEqual(['help']);
+    expect(tokenize('dont stop me n.', true)).toEqual(['dont', 'stop', 'me', 'and']);
+    expect(tokenize('r.e.m', true)).toEqual(['re', 'm']);
   });
   it('joins runs of single letters and normalises roman numerals', () => {
     expect(tokenize('R.E.M.')).toEqual(['rem']);
@@ -659,6 +673,34 @@ describe('resolve', () => {
   it('never accepts a query ending in a single letter', () => {
     for (const q of ['led z', 'hey j', 'beatles h', 'stairway to h']) expect(index.resolve(q).kind, q).toBe('ambiguous');
   });
+  it('does not let a score arrangement of the same title make a recorded song ambiguous', () => {
+    const arranged: IndexEntry = { ...song('pdmx--5877761', 'wonderwall', 'ND+', 1), provenance: { provider: 'pdmx', url: 'https://musescore.com/score/5877761', license: 'CC0' } };
+    const withScore = createIndex([...SONGS, arranged]);
+    for (const q of ['wonderwall', 'wonderwal']) {
+      const r = withScore.resolve(q);
+      expect(r.kind, q).toBe('ok');
+      if (r.kind === 'ok') expect(r.entry.id).toBe('oasis--wonderwall');
+    }
+    // Named, the arrangement is found; two arrangements alone are still two candidates.
+    expect(withScore.search('wonderwall nd')[0].id).toBe('pdmx--5877761');
+    const two = createIndex([arranged, { ...arranged, id: 'pdmx--1', artist: 'Someone Else' }]);
+    expect(two.resolve('wonderwall').kind).toBe('ambiguous');
+  });
+  it('resolves a title typed in full with its closing punctuation', () => {
+    for (const q of ['back in the u.s.s.r.', 'Back in the U.S.S.R.', 'back in the ussr']) {
+      const r = index.resolve(q);
+      expect(r.kind, q).toBe('ok');
+      if (r.kind === 'ok') expect(r.entry.id).toBe('the-beatles--back-in-the-u-s-s-r');
+    }
+  });
+  it('does not ignore the words of a long query past the twelfth', () => {
+    const bach = 'Brandenburg Concerto No. 2 in F major, BWV 1047: III. Allegro assai';
+    const long = createIndex([...SONGS, song('bach--brandenburg-2-3', bach, 'Bach, Johann Sebastian', 2)]);
+    expect(tokenize(bach)).toHaveLength(12);
+    expect(long.resolve(bach).kind).toBe('ok');
+    expect(long.resolve(`${bach} bach`).kind).toBe('ok');
+    expect(long.resolve(`${bach} metallica`).kind).toBe('ambiguous');
+  });
   it('flags a typo that is as close to another full title', () => {
     const r = index.resolve('heros');
     expect(r.kind).toBe('ambiguous');
@@ -735,12 +777,17 @@ describe('resolve', () => {
   });
 });
 
-describe.skipIf(!fs.existsSync(DB_INDEX))('real database', () => {
-  const entries: IndexEntry[] = JSON.parse(fs.readFileSync(DB_INDEX, 'utf8'));
+describe.skipIf(!REAL_ENTRIES)('real database', () => {
+  // (A skipped block still runs its body while tests are collected.)
+  const entries = REAL_ENTRIES ?? [];
   it('builds quickly and answers quickly', () => {
-    const t0 = performance.now();
-    const real = createIndex(entries);
-    const build = performance.now() - t0;
+    // The fastest of three builds, so a busy machine does not fail the check; a slow algorithm still does.
+    let build = Infinity, real = createIndex(entries);
+    for (let i = 0; i < 3; i++) {
+      const t0 = performance.now();
+      real = createIndex(entries);
+      build = Math.min(build, performance.now() - t0);
+    }
     expect(build).toBeLessThan(300);
     const queries = ['the beatles', 'bohemian rapsody', 'yesterday', 'a', 's', 'the h', 'smells like teen spirit nirvana', 'love', 'stairway to heaven led zeppelin'];
     for (const q of queries) real.search(q);
@@ -828,6 +875,11 @@ describe('duplicate titles', () => {
     expect(isDuplicateTitle('Another Brick In The Wall (Part II)', 'Another Brick in the Wall, Part 2')).toBe(true);
     expect(isDuplicateTitle('I Got You (I Feel Good)', 'I Got You')).toBe(true);
   });
+  it('never calls two titles without Latin letters the same unless they are the same text', () => {
+    expect(isDuplicateTitle('東京', '大阪')).toBe(false);
+    expect(isDuplicateTitle('東京', ' 東京 ')).toBe(true);
+    expect(isDuplicateTitle('東京', 'Tokyo')).toBe(false);
+  });
   it('never merges a different number, numeral, short word or extra word', () => {
     expect(isDuplicateTitle('Another Brick in the Wall, Part 1', 'Another Brick in the Wall, Part 2')).toBe(false);
     expect(isDuplicateTitle('Another Brick in the Wall, Part I', 'Another Brick in the Wall, Part 2')).toBe(false);
@@ -845,7 +897,8 @@ describe('duplicate titles', () => {
   it('works on word lists too', () => {
     expect(sameSongTitle(['part', '1'], ['part', '2'])).toBe(false);
     expect(sameSongTitle(['brick', 'house'], ['brickhouse'])).toBe(true);
-    expect(sameSongTitle([], [])).toBe(true);
+    // No words (a title in another script) is not evidence of the same title.
+    expect(sameSongTitle([], [])).toBe(false);
     expect(sameSongTitle([], ['x'])).toBe(false);
   });
 });
@@ -945,8 +998,8 @@ describe('resolve: clearly the original among artists sharing a title', () => {
   });
 });
 
-describe.skipIf(!fs.existsSync(DB_INDEX))('real database: round 3', () => {
-  const entries: IndexEntry[] = JSON.parse(fs.readFileSync(DB_INDEX, 'utf8'));
+describe.skipIf(!REAL_ENTRIES)('real database: round 3', () => {
+  const entries = REAL_ENTRIES ?? [];
   const real = createIndex(entries);
   it('never substitutes another part of a suite', () => {
     expect(resolved(real, 'another brick in the wall part 1 pink floyd')).toBe('pink-floyd--another-brick-in-the-wall-part-1');

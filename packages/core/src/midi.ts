@@ -20,15 +20,15 @@
  * that are credits rather than parts ("Tracked by X", an e-mail address, the song's own title or
  * artist) or that have no letters are dropped (`partName`).
  *
- * Time: Strudel has one tempo, so note positions are real seconds re-expressed as beats of the
- * dominant tempo (`beatMap`). A section at another tempo keeps its real duration (a 2x section fits
- * two of its bars in one cycle); when its tempo is within 5% of a simple ratio of the dominant one
- * (2x, 3x, 1.5x, half) it is snapped to that exact ratio so its notes stay on the cell grid instead
- * of drifting off it; other tempo ramps become slight timing drift. A count-in or default-tempo
- * stretch shorter than two bars before the dominant tempo is squeezed to a whole number of cells so
- * the song's first downbeat lands on a cell. Bar 0 is phased (`barPhase`) to the file's bar lines
- * that fit the grid, so neither a pickup bar in another metre nor a count-in at another tempo
- * shifts every later downbeat off the cycle boundary.
+ * Time: Strudel has one tempo, so note positions are elapsed seconds re-expressed as beats of the
+ * dominant tempo (source timing, the default): a section at another tempo keeps its real duration.
+ * The optional grid analysis (`sourceTiming: false`) warps file beats instead (`beatMap`): a
+ * section whose tempo is within 5% of a simple ratio of the dominant one (2x, 3x, 1.5x, half) is
+ * snapped to that exact ratio so its notes stay on the cell grid instead of drifting off it, and a
+ * count-in or default-tempo stretch shorter than two bars before the dominant tempo is squeezed to a
+ * whole number of cells so the song's first downbeat lands on a cell. In both, bar 0 is phased
+ * (`barPhase`) to the file's bar lines that fit the grid, so neither a pickup bar in another metre
+ * nor a count-in at another tempo shifts every later downbeat off the cycle boundary.
  *
  * Parts: tracks merge per channel and program; effects patches, stray events after the song,
  * duplicate copies (including stereo doubles delayed by up to `MAX_DOUBLE_DELAY` seconds) and stubs
@@ -317,6 +317,12 @@ function soundMap(events: ChannelEvent[]): SoundMap {
   return { gm: kinds.has(Reset.GM), gs: kinds.has(Reset.GS), xg: kinds.has(Reset.XG) };
 }
 
+/**
+ * Per-channel controller timelines. `events` come in file order, track after track; they are merged
+ * by time the way a player merges tracks (events at the same tick keep their file order), so a
+ * program change on one track and a later one on another are in force in the order they sound, and
+ * the binary searches in `pointAt` see sorted lists.
+ */
 function channelStates(events: ChannelEvent[]): Map<number, ChannelState> {
   const map = new Map<number, ChannelState>();
   const rpn = new Map<number, { msb: number; lsb: number }>();
@@ -325,7 +331,7 @@ function channelStates(events: ChannelEvent[]): Map<number, ChannelState> {
     if (!s) map.set(ch, (s = { volume: [], expression: [], pan: [], sustain: [], programs: [], bank: [], transpose: [] }));
     return s;
   };
-  for (const e of events) {
+  for (const e of [...events].sort((a, b) => a.ticks - b.ticks)) {
     if (e.kind === 'reset' || e.kind === 'rhythm') continue;
     const s = get(e.channel);
     if (e.kind === 'program') { s.programs.push({ ticks: e.ticks, value: e.number }); continue; }
@@ -368,6 +374,11 @@ function pointAt(points: Point[], ticks: number): Point | undefined {
 function bankAt(st: ChannelState, ticks: number): number {
   const pc = pointAt(st.programs, ticks);
   return valueAt(st.bank, pc ? pc.ticks : ticks, 0);
+}
+
+/** Channel level at `ticks`: CC 7 (default 100) times CC 11 (default 127), each read as 0-1. */
+function levelAt(st: ChannelState, ticks: number): number {
+  return (valueAt(st.volume, ticks, 100) / 127) * (valueAt(st.expression, ticks, 127) / 127);
 }
 
 // ---------- small statistics ----------
@@ -420,14 +431,17 @@ function dominant<T>(regions: Region<T>[], endTicks: number, length: (from: numb
 /**
  * Tempo regions worth talking about: stretches shorter than one bar (a 2-tick default tempo before
  * the real one, the steps of a ritardando) are absorbed into their neighbours and runs of
- * near-identical tempos collapse, so the map lists musical tempo changes only. The time warp
- * itself uses the full tempo map through @tonejs/midi.
+ * near-identical tempos collapse, so the map lists musical tempo changes only. A file whose tempo
+ * never holds for a whole bar (a tempo event on every beat) gets one region at its typical tempo:
+ * the median of the tempos weighted by how many ticks each holds. The time warp itself uses the
+ * full tempo map through @tonejs/midi.
  */
 function tempoMap(midi: MidiType, barTicks: number, endTicks: number): Region<number>[] {
   const raw = midi.header.tempos.map((t) => ({ ticks: t.ticks, value: Math.round(t.bpm * 10) / 10 })).sort((a, b) => a.ticks - b.ticks);
   if (!raw.length) return [{ ticks: 0, value: 120 }];
-  const long = raw.filter((t, i) => (i + 1 < raw.length ? raw[i + 1].ticks : Math.max(endTicks, t.ticks + 1)) - t.ticks >= barTicks);
-  const kept = long.length ? long : [raw.reduce((a, b) => (b.ticks - a.ticks > 0 ? b : a))];
+  const span = (i: number) => (i + 1 < raw.length ? raw[i + 1].ticks : Math.max(endTicks, raw[i].ticks + 1)) - raw[i].ticks;
+  const long = raw.filter((_, i) => span(i) >= barTicks);
+  const kept = long.length ? long : [{ ticks: 0, value: weightedMedian(raw.map((t, i) => ({ value: t.value, weight: span(i) }))) }];
   kept[0] = { ...kept[0], ticks: 0 };
   const out: Region<number>[] = [];
   for (const t of kept) {
@@ -436,6 +450,15 @@ function tempoMap(midi: MidiType, barTicks: number, endTicks: number): Region<nu
     out.push(t);
   }
   return out;
+}
+
+/** The value at which the weights on either side balance (the lower one on an exact tie); 0 when nothing weighs. */
+function weightedMedian(items: { value: number; weight: number }[]): number {
+  const sorted = items.filter((x) => x.weight > 0).sort((a, b) => a.value - b.value);
+  const total = sorted.reduce((a, x) => a + x.weight, 0);
+  let acc = 0;
+  for (const x of sorted) { acc += x.weight; if (acc >= total / 2) return x.value; }
+  return 0;
 }
 
 function meterMap(midi: MidiType): Region<[number, number]>[] {
@@ -576,6 +599,17 @@ function overlapping(a: NoteEvent, b: NoteEvent): boolean {
   return overlap >= 0.5 * Math.min(a.duration, b.duration);
 }
 
+/**
+ * How far back a note looks for an earlier note still sounding when parts are measured (`stats`),
+ * in beats: four bars of 4/4. A note held longer (a pedal, or a stuck note whose note-off never
+ * came, cut at `MAX_NOTE_BARS`) sounds with everything struck while it is held as far as its own
+ * share goes, but lends harmony only to the notes struck in its first four bars. Measured on the
+ * library, both halves matter: looking back without a bound turns lines played over stuck notes
+ * into chords (the vibraphone of Brassens' "L'ancêtre"), and bounding the held note's own reach
+ * too turns pads whose voices move under chords held for bars into lines.
+ */
+const LOOKBACK_BEATS = 16;
+
 /** Statistics of a part's notes, which must be sorted by start. */
 function stats(notes: NoteEvent[]): TrackStats {
   if (!notes.length) return { notes: 0, avgPitch: 0, medianPitch: 0, p10Pitch: 0, p90Pitch: 0, polyphony: 0, chordal: 0, triadic: 0 };
@@ -590,7 +624,7 @@ function stats(notes: NoteEvent[]): TrackStats {
       hit = true;
       if ((a.pitch - b.pitch) % 12 !== 0) harmony = true;
     };
-    for (let j = i - 1; j >= 0 && !harmony && notes[j].start > a.start - 16; j--) visit(notes[j]);
+    for (let j = i - 1; j >= 0 && !harmony && notes[j].start > a.start - LOOKBACK_BEATS; j--) visit(notes[j]);
     for (let j = i + 1; j < notes.length && !harmony && notes[j].start < a.start + a.duration; j++) visit(notes[j]);
     if (hit) simultaneous++;
     if (harmony) chordal++;
@@ -646,8 +680,11 @@ export function applySustain(notes: NoteEvent[], pedal: { beat: number; down: bo
     const iv = lo > 0 ? intervals[lo - 1] : undefined;
     if (!iv || end >= iv.end) continue;
     let newEnd = Math.min(iv.end, n.start + maxExtend);
+    // The next strike of the same pitch (the first start after this one) ends the held note.
     const starts = byPitch.get(n.pitch)!;
-    for (const s of starts) if (s > n.start + 1e-9) { newEnd = Math.min(newEnd, s); break; }
+    let a = 0, b = starts.length;
+    while (a < b) { const mid = (a + b) >> 1; if (starts[mid] <= n.start + 1e-9) a = mid + 1; else b = mid; }
+    if (a < starts.length) newEnd = Math.min(newEnd, starts[a]);
     if (newEnd > end) n.duration = newEnd - n.start;
   }
 }
@@ -742,15 +779,16 @@ export function dedupeParts<T extends { notes: NoteEvent[]; volume?: number }>(p
     return p.notes.map((n, i) => ({ pitch: n.pitch, at: at ? at[i] : n.start }));
   };
   const level = (p: T) => p.notes.length * (p.volume ?? NOMINAL_VOLUME);
+  const cache = new Map<number, Onset[]>();
+  const onsetsOf = (i: number) => { let o = cache.get(i); if (!o) cache.set(i, (o = onsets(parts[i]))); return o; };
   const dropped = new Set<number>();
   for (let i = 0; i < parts.length; i++) {
     if (dropped.has(i)) continue;
-    const a = onsets(parts[i]);
     for (let j = i + 1; j < parts.length; j++) {
       if (dropped.has(j)) continue;
-      const b = onsets(parts[j]);
-      const small = Math.min(a.length, b.length), big = Math.max(a.length, b.length);
+      const small = Math.min(parts[i].notes.length, parts[j].notes.length), big = Math.max(parts[i].notes.length, parts[j].notes.length);
       if (small < 2 || small < 0.85 * big) continue;
+      const a = onsetsOf(i), b = onsetsOf(j);
       // Compare from the smaller part; `delay` is then how much later than parts[i] parts[j] plays.
       const fromI = a.length <= b.length;
       const m = fromI ? matchParts(a, b, maxOffset) : matchParts(b, a, maxOffset);
@@ -785,12 +823,17 @@ export function foldStubs<T extends { notes: NoteEvent[]; ticks?: number[]; prog
     if (!hosts.length) { out.push(p); continue; }
     const m = med(p);
     const host = hosts.reduce((best, h) => (Math.abs(med(h) - m) < Math.abs(med(best) - m) ? h : best));
-    const merged = host.notes.map((n, i) => ({ n, t: host.ticks?.[i] ?? 0 })).concat(p.notes.map((n, i) => ({ n, t: p.ticks?.[i] ?? 0 })));
-    merged.sort((x, y) => x.n.start - y.n.start || x.n.pitch - y.n.pitch);
-    host.notes = merged.map((x) => x.n);
-    if (host.ticks) host.ticks = merged.map((x) => x.t);
+    mergeNotes(host, p);
   }
   return out;
+}
+
+/** Move `from`'s notes (and their file ticks, when the host keeps them) into `host`, sorted by start, then pitch. */
+function mergeNotes(host: { notes: NoteEvent[]; ticks?: number[] }, from: { notes: NoteEvent[]; ticks?: number[] }): void {
+  const merged = host.notes.map((n, i) => ({ n, t: host.ticks?.[i] ?? 0 })).concat(from.notes.map((n, i) => ({ n, t: from.ticks?.[i] ?? 0 })));
+  merged.sort((x, y) => x.n.start - y.n.start || x.n.pitch - y.n.pitch);
+  host.notes = merged.map((x) => x.n);
+  if (host.ticks) host.ticks = merged.map((x) => x.t);
 }
 
 /** A total silence longer than this (bars) may separate the song from stray events left after it. */
@@ -1042,9 +1085,23 @@ interface Timing {
   remarks: string[];
 }
 
-/** Dominant tempo and metre, the beat map, the bar-line phase, and the remarks describing them. */
+/**
+ * Dominant tempo and metre, the bar-line phase, and the remarks describing them. Note positions are
+ * elapsed seconds re-expressed as beats of the dominant tempo (`sourceTiming`, the default of
+ * `songFromMidi`), or, for the optional grid analysis, file beats warped by `beatMap`.
+ */
 function readTiming(midi: MidiType, sourceTiming = false): Timing {
-  const ppq = midi.header.ppq || 480;
+  // SMPTE files count ticks per video frame, not per beat: @tonejs/midi reads no ppq from them and every time would be NaN.
+  if (!(midi.header.ppq > 0)) throw new Error('SMPTE-timed MIDI files (ticks per frame rather than per beat) are not supported');
+  const ppq = midi.header.ppq;
+  const remarks: string[] = [];
+  // A tempo event of 0 microseconds per beat is invalid (an infinite tempo that would collapse its whole region onto one instant).
+  const invalid = midi.header.tempos.filter((t) => !(t.bpm > 0 && Number.isFinite(t.bpm)));
+  if (invalid.length) {
+    midi.header.tempos = midi.header.tempos.filter((t) => !invalid.includes(t));
+    midi.header.update();
+    remarks.push(`${invalid.length} invalid tempo event${invalid.length === 1 ? '' : 's'} (zero length per beat) ignored`);
+  }
   const endTicks = midi.durationTicks || 0;
   const meters = meterMap(midi);
   const [num, den] = dominant(meters, endTicks);
@@ -1053,12 +1110,13 @@ function readTiming(midi: MidiType, sourceTiming = false): Timing {
   const tempos = tempoMap(midi, barLen * ppq, endTicks);
   const bpm = dominant(tempos, endTicks, (a, b) => seconds(b) - seconds(a));
   // Snapped to a microbeat so float noise cannot push a downbeat into the previous bar.
-  const beats = beatMap(midi.header.tempos, bpm, ppq, barLen);
+  const beats = sourceTiming ? [] : beatMap(midi.header.tempos, bpm, ppq, barLen);
   const toBeat = (ticks: number) => Math.round((sourceTiming ? seconds(ticks) * bpm / 60 : beatAt(beats, ticks, ppq)) * 1e6) / 1e6;
   const barOffset = barPhase(meters, endTicks, ppq, barLen, toBeat);
   const barOf = (ticks: number) => Math.floor((toBeat(ticks) - barOffset) / barLen) + 1;
-  const remarks: string[] = [];
-  if (tempos.length > 1) {
+  if (sourceTiming) {
+    if (tempos.length > 1) remarks.push('Tempo changes preserved in elapsed time; displayed bars use the dominant tempo.');
+  } else if (tempos.length > 1) {
     const list = tempos.slice(0, 4).map((t) => `${t.value} bpm at bar ${barOf(t.ticks)}`);
     // Which of the listed tempos play at a snapped ratio (the beat-map region in force at their tick).
     const snapped = new Map<string, number>();
@@ -1074,7 +1132,7 @@ function readTiming(midi: MidiType, sourceTiming = false): Timing {
     remarks.push(`tempo changes (${list.join(', ')}${tempos.length > 4 ? ', ...' : ''}) are rendered at the dominant ${bpm} bpm with note timing kept in real time, so the other sections are stretched across the grid${snapNote}`);
   }
   const prefix = beats.findIndex((r) => r.ratio === 1);
-  const squeezed = beats[0].squeezed;
+  const squeezed = beats[0]?.squeezed;
   if (prefix > 0 && squeezed !== undefined && Math.abs(squeezed - 1) > 0.002) {
     const bars = Math.round((beats[prefix].ticks / ppq / barLen) * 10) / 10;
     const pct = Math.round(Math.abs(squeezed - 1) * 1000) / 10;
@@ -1083,9 +1141,6 @@ function readTiming(midi: MidiType, sourceTiming = false): Timing {
   if (meters.length > 1) {
     const list = meters.slice(0, 4).map((m) => `${m.value[0]}/${m.value[1]} at bar ${barOf(m.ticks)}`);
     remarks.push(`metre changes (${list.join(', ')}${meters.length > 4 ? ', ...' : ''}) are rendered on a constant ${num}/${den} grid of one bar per cycle`);
-  }
-  if (sourceTiming) {
-    remarks.splice(0, remarks.length, ...(tempos.length > 1 ? ['Tempo changes preserved in elapsed time; displayed bars use the dominant tempo.'] : []));
   }
   return { ppq, endTicks, num, den, barLen, bpm, barOffset, toBeat, barOf, remarks };
 }
@@ -1120,7 +1175,7 @@ function readParts(midi: MidiType, channels: Map<number, ChannelState>, time: Ti
         start,
         duration: Math.min(MAX_NOTE_BARS * time.barLen, Math.max(time.toBeat(n.ticks + n.durationTicks) - start, 0.000001)),
         velocity: n.velocity,
-        ...(st && (st.volume.length || st.expression.length) ? { volume: (valueAt(st.volume, n.ticks, 100) / 127) * (valueAt(st.expression, n.ticks, 127) / 127) } : {}),
+        ...(st && (st.volume.length || st.expression.length) ? { volume: levelAt(st, n.ticks) } : {}),
         ...(st?.pan.length ? { pan: valueAt(st.pan, n.ticks, 64) / 127 } : {}),
       });
       entry.ticks.push(n.ticks);
@@ -1310,10 +1365,7 @@ function mergeSameProgram(parts: Part[]): void {
     const key = `${p.channel}:${p.program}`;
     const host = byKey.get(key);
     if (!host) { byKey.set(key, p); continue; }
-    const merged = host.notes.map((n, k) => ({ n, t: host.ticks[k] })).concat(p.notes.map((n, k) => ({ n, t: p.ticks[k] })));
-    merged.sort((x, y) => x.n.start - y.n.start || x.n.pitch - y.n.pitch);
-    host.notes = merged.map((x) => x.n);
-    host.ticks = merged.map((x) => x.t);
+    mergeNotes(host, p);
     if (!host.name) host.name = p.name;
     parts.splice(i, 1);
   }
@@ -1344,17 +1396,20 @@ function applyControllers(parts: Part[], channels: Map<number, ChannelState>, ti
     const st = channels.get(e.channel);
     if (!st) continue;
     if (st.volume.length || st.expression.length) {
-      const level = overNotes(e.ticks.map((t) => (valueAt(st.volume, t, 100) / 127) * (valueAt(st.expression, t, 127) / 127)));
+      const level = overNotes(e.ticks.map((t) => levelAt(st, t)));
       e.volume = Math.round(level.median * 1000) / 1000;
       // Swell instruments can start every note almost silent, then raise expression while it is
       // held. Measuring only note-on levels can discard the entire song (e.g. Cathedral).
       if (e.volume < 0.05) {
         const ticks = [...new Set([...st.volume, ...st.expression].map(p => p.ticks))].sort((a, b) => a - b);
-        const changes = ticks.map(t => ({ beat: time.toBeat(t), level: (valueAt(st.volume, t, 100) / 127) * (valueAt(st.expression, t, 127) / 127) }));
-        const sustained = e.notes.map((n, i) => {
+        const changes = ticks.map(t => ({ beat: time.toBeat(t), level: levelAt(st, t) }));
+        const held = e.notes.map((n, i) => {
           const end = n.start + n.duration;
-          let from = n.start, current = (valueAt(st.volume, e.ticks[i], 100) / 127) * (valueAt(st.expression, e.ticks[i], 127) / 127), sum = 0;
-          for (const change of changes) {
+          let from = n.start, current = levelAt(st, e.ticks[i]), sum = 0;
+          let k = 0, hi = changes.length;
+          while (k < hi) { const mid = (k + hi) >> 1; if (changes[mid].beat <= from) k = mid + 1; else hi = mid; }
+          for (; k < changes.length; k++) {
+            const change = changes[k];
             if (change.beat <= from) continue;
             if (change.beat >= end) break;
             sum += (change.beat - from) * current;
@@ -1363,10 +1418,10 @@ function applyControllers(parts: Part[], channels: Map<number, ChannelState>, ti
           }
           return (sum + (end - from) * current) / n.duration;
         });
-        const heldLevel = Math.round(median([...sustained].sort((a, b) => a - b)) * 1000) / 1000;
+        const heldLevel = Math.round(median(held) * 1000) / 1000;
         if (heldLevel > e.volume && heldLevel >= 0.05) {
           e.volume = heldLevel;
-          e.notes.forEach((n, i) => { n.volume = sustained[i]; });
+          e.notes.forEach((n, i) => { n.volume = held[i]; });
           e.remarks.push('volume swells after note-on; mean controller level during held notes used');
         }
       }
@@ -1436,12 +1491,8 @@ export function foldDrumParts(parts: Part[]): string[] {
     const label = gmLabel(p.program);
     for (const n of p.notes) n.pitch = key;
     remarks.push(`ch ${p.channel + 1} "${p.name}" (${label} patch on one pitch) is played as the kit's ${drumWord(key)}`);
-    const host = kit;
-    if (host && host !== p) {
-      const merged = host.notes.map((n, k) => ({ n, t: host.ticks[k] })).concat(p.notes.map((n, k) => ({ n, t: p.ticks[k] })));
-      merged.sort((x, y) => x.n.start - y.n.start || x.n.pitch - y.n.pitch);
-      host.notes = merged.map((x) => x.n);
-      host.ticks = merged.map((x) => x.t);
+    if (kit && kit !== p) {
+      mergeNotes(kit, p);
       parts.splice(i, 1);
     } else {
       p.percussion = true;
@@ -1541,11 +1592,23 @@ function capRegisterBasses(scored: Scored[]): void {
   for (const s of byRegister.slice(1)) s.role = 'other';
 }
 
+/**
+ * The minor key of each key signature. @tonejs/midi names a signature by its major key whatever the
+ * scale byte says (no sharps or flats is "C", minor or not), so a minor signature is its relative minor.
+ */
+const RELATIVE_MINOR: Record<string, string> = {
+  Cb: 'Ab', Gb: 'Eb', Db: 'Bb', Ab: 'F', Eb: 'C', Bb: 'G', F: 'D', C: 'A', G: 'E', D: 'B', A: 'F#', E: 'C#', B: 'G#', 'F#': 'D#', 'C#': 'A#',
+};
+
 /** The key: a key signature when the file has a trustworthy one, otherwise estimated from the pitched notes. */
 function detectKey(midi: MidiType, tracks: Track[]): { tonic?: string; mode?: 'major' | 'minor' } {
   const ks = midi.header.keySignatures[0];
   // A C major signature at tick 0 is the file-format default and usually means "unknown".
-  if (ks && ks.key && !(ks.key === 'C' && ks.scale !== 'minor')) return { tonic: ks.key, mode: ks.scale === 'minor' ? 'minor' : 'major' };
+  if (ks && ks.key && !(ks.key === 'C' && ks.scale !== 'minor')) {
+    if (ks.scale !== 'minor') return { tonic: ks.key, mode: 'major' };
+    const tonic = RELATIVE_MINOR[ks.key];
+    if (tonic) return { tonic, mode: 'minor' };
+  }
   const hist = new Array(12).fill(0);
   for (const t of tracks) if (t.role !== 'drums') for (const n of t.notes) hist[n.pitch % 12] += n.duration;
   const k = estimateKey(hist);
@@ -1616,20 +1679,27 @@ export function detectSectionsFromMidi(song: Song): Section[] {
   for (const t of pitched) for (const n of t.notes) end = Math.max(end, n.start + n.duration);
   const bars = barIndex(song.meta, end - 1e-6) + 1;
   const preferFlats = !!song.meta.tonic && song.meta.tonic.includes('b');
-  const chords: ChordEvent[] = [];
-  for (let b = 0; b < bars; b++) {
-    const w = new Array(12).fill(0);
-    const bassHist = new Array(12).fill(0);
-    const b0 = barStart(song.meta, b), b1 = b0 + bar;
-    for (const t of pitched) {
-      for (const n of t.notes) {
-        if (n.start >= b1 || n.start + n.duration <= b0) continue;
-        const overlap = Math.min(b1, n.start + n.duration) - Math.max(b0, n.start);
-        const weight = overlap * (t.role === 'melody' ? 0.5 : 1);
-        w[n.pitch % 12] += weight;
-        if (t.role === 'bass' || n.pitch < 50) bassHist[n.pitch % 12] += overlap;
+  // One pass over the notes: each adds its overlap with the few bars it sounds in (a bar either side
+  // of the ones `barIndex` names, for rounding), in track and note order.
+  const weights = Array.from({ length: bars }, () => new Array<number>(12).fill(0));
+  const bassHists = Array.from({ length: bars }, () => new Array<number>(12).fill(0));
+  for (const t of pitched) {
+    const scale = t.role === 'melody' ? 0.5 : 1;
+    for (const n of t.notes) {
+      const stop = n.start + n.duration;
+      const from = Math.max(0, barIndex(song.meta, n.start) - 1), to = Math.min(bars - 1, barIndex(song.meta, stop) + 1);
+      for (let b = from; b <= to; b++) {
+        const b0 = barStart(song.meta, b), b1 = b0 + bar;
+        if (n.start >= b1 || stop <= b0) continue;
+        const overlap = Math.min(b1, stop) - Math.max(b0, n.start);
+        weights[b][n.pitch % 12] += overlap * scale;
+        if (t.role === 'bass' || n.pitch < 50) bassHists[b][n.pitch % 12] += overlap;
       }
     }
+  }
+  const chords: ChordEvent[] = [];
+  for (let b = 0; b < bars; b++) {
+    const w = weights[b], bassHist = bassHists[b];
     let bassPc: number | undefined;
     const bmax = Math.max(...bassHist);
     if (bmax > 0) bassPc = bassHist.indexOf(bmax);
