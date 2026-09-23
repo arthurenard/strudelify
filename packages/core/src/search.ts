@@ -266,10 +266,16 @@ export function sameSongTitle(a: readonly string[], b: readonly string[]): boole
   return differ < 0 || spellingVariant(a[differ], b[differ]);
 }
 
-/** Words of a title as the index sees them: a leading parenthetical, then the main title without trailing parentheticals. */
-function titleWords(title: string): string[] {
+/**
+ * Words of a title as the index sees them (a leading parenthetical, then the main title without trailing
+ * parentheticals) and how many of the first are optional: the parenthetical, and a leading "the", which is
+ * left out as often as it is typed ("house of the rising sun"; a two-word title keeps it: "The Wall").
+ */
+function titleWords(title: string): { words: string[]; lead: number } {
   const { lead, main } = splitTitle(title);
-  return [...tokenize(lead), ...tokenize(main)];
+  const parenthetical = tokenize(lead);
+  const words = tokenize(main);
+  return { words: [...parenthetical, ...words], lead: parenthetical.length + (words.length >= 3 && words[0] === 'the' ? 1 : 0) };
 }
 
 /**
@@ -288,7 +294,9 @@ export function isDuplicateTitle(a: string, b: string): boolean {
   // Parenthetical part numbers identify separate works, not optional alternate titles.
   const numbers = (s: string) => tokenize(s).filter(t => /^\d+$/.test(t)).join(' ');
   if (numbers(a) !== numbers(b)) return false;
-  return sameSongTitle(titleWords(a), titleWords(b)) || sameSongTitle(tokenize(a), tokenize(b));
+  const [ta, tb] = [titleWords(a), titleWords(b)];
+  const [ca, cb] = [ta.words.slice(ta.lead), tb.words.slice(tb.lead)];
+  return sameSongTitle(ta.words, tb.words) || (ca.length > 0 && cb.length > 0 && sameSongTitle(ca, cb)) || sameSongTitle(tokenize(a), tokenize(b));
 }
 
 // ---------------------------------------------------------------------------
@@ -324,7 +332,7 @@ interface Doc {
   /** Every token of the raw title, trailing parentheticals included, for duplicate detection. */
   full: string[];
   titleIds: Int32Array;
-  /** Number of leading optional tokens: they count as title text but a full match does not need them. */
+  /** Number of leading optional tokens (a leading parenthetical, a leading "the"): they count as title text but a full match does not need them. */
   lead: number;
   /** Artist terms without "the" / "and", used for exactness checks. */
   artistCore: Int32Array;
@@ -346,6 +354,8 @@ interface Doc {
   /** 0..1: how well known the artist's whole catalogue is (log of its summed popularity). */
   artistWeight: number;
   cover: boolean;
+  /** The song is named after its artist ("Black Sabbath" by Black Sabbath). */
+  eponymous: boolean;
   /** An imported score arrangement (PDMX), credited to its composer or, often, to whoever arranged it. */
   arrangement: boolean;
 }
@@ -488,9 +498,8 @@ export function createIndex(entries: IndexEntry[]): SongIndex {
   const artistPostings: number[] = [];
   for (let d = 0; d < N; d++) {
     const e = entries[d];
-    const { lead, main, extras } = splitTitle(e.title);
-    const leadTokens = tokenize(lead);
-    const title = [...leadTokens, ...tokenize(main)];
+    const { extras } = splitTitle(e.title);
+    const { words: title, lead } = titleWords(e.title);
     const titleSet = new Set(title);
     const titleStr = ' ' + title.join(' ') + ' ';
     // Parenthesised parts and "O'Riley -> o riley" style splits are searchable, at a lower
@@ -557,17 +566,18 @@ export function createIndex(entries: IndexEntry[]): SongIndex {
       title,
       full: tokenize(e.title),
       titleIds: Int32Array.from(title.map((w) => termId.get(w)!)),
-      lead: leadTokens.length,
+      lead,
       artistCore,
       aliases: Int32Array.from(aliases),
       titleStr,
       alts,
-      gluedTitle: title.length - leadTokens.length >= 2 && title.join('').length <= ALIAS_MAX ? title.slice(leadTokens.length).join('') : '',
+      gluedTitle: title.length - lead >= 2 && title.join('').length <= ALIAS_MAX ? title.slice(lead).join('') : '',
       artistKey,
       pop,
       catalogue: 0,
       artistWeight: 0,
       cover: COVER_RE.test(e.artist),
+      eponymous: artistCoreWords(title.slice(lead)).join(' ') === artistCoreWords(artist).join(' '),
       arrangement: e.provenance?.provider === 'pdmx',
     };
     artistKeys.add(artistKey);
@@ -577,7 +587,8 @@ export function createIndex(entries: IndexEntry[]): SongIndex {
     doc.artistWeight = Math.min(1, Math.log2(1 + doc.catalogue) / Math.log2(1 + KNOWN_CATALOGUE));
   }
   /** Duplicate transcriptions of one song: the same artist and the same title, see isDuplicateTitle. */
-  const sameSong = (a: Doc, b: Doc): boolean => a.artistKey === b.artistKey && (sameSongTitle(a.title, b.title) || sameSongTitle(a.full, b.full));
+  const sameSong = (a: Doc, b: Doc): boolean => a.artistKey === b.artistKey
+    && (sameSongTitle(a.title, b.title) || sameSongTitle(a.full, b.full) || (a.title.length > a.lead && b.title.length > b.lead && sameSongTitle(a.title.slice(a.lead), b.title.slice(b.lead))));
 
   const nTerms = terms.length;
   const post: Int32Array[] = postLists.map((l) => Int32Array.from(l));
@@ -1113,8 +1124,11 @@ export function createIndex(entries: IndexEntry[]): SongIndex {
       // before the five songs credited to "Elvis").
       const relative = maxCatalogue > 0 ? Math.sqrt(doc.catalogue / maxCatalogue) : 1;
       const artistPart = Math.sqrt(artistQual) * artistTyped;
+      // Words a full title explains do not name the artist as well ("like a rolling stone" is the title, not the
+      // Rolling Stones' cover of it), unless the song is named after its artist.
+      const artistNamed = aMatched > 0 && (k < n || doc.eponymous);
       let titleBonus: number;
-      if (titleFull) titleBonus = 8 * Math.max(tMinQ, WORST_WORD_FLOOR) * titleQual + (aMatched ? 2 * artistPart * (0.5 + 0.5 * relative) : 0);
+      if (titleFull) titleBonus = 8 * Math.max(tMinQ, WORST_WORD_FLOOR) * titleQual + (artistNamed ? 2 * artistPart * (0.5 + 0.5 * relative) : 0);
       // A prefix of the title: the rest of the title is unknown, so how much of it the
       // query covers matters less than popularity ("hey" -> Hey Jude before Hey You). A word
       // that is almost always an artist's word in the data is less likely to be the start of
@@ -1122,7 +1136,7 @@ export function createIndex(entries: IndexEntry[]): SongIndex {
       // is the composer before "Roll Over Beethoven").
       else if (prefixTitle) titleBonus = 3 + titleQual - 1.5 * titleArtistness;
       else titleBonus = 2 * titleQual + (titleInQuery ? 2 : phraseInTitle ? 1.5 * (1 - titleArtistness) : 0);
-      const titleScore = 4 * qQual + artistQual + titleBonus;
+      const titleScore = 4 * qQual + (titleFull && !artistNamed ? 0 : artistQual) + titleBonus;
 
       // Every query word is explained by the artist name: browse the catalogue by popularity.
       // The tier is scaled by how well known the artist is, by how much of the name has been

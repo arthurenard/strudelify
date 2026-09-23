@@ -244,6 +244,24 @@ describe('ranking: exact title dominance', () => {
     expect(top('wonderful world')[0]).toBe('louis-armstrong--wonderful-world');
     expect(top('i feel good')[0]).toBe('brown-james--i-got-you');
   });
+  it('treats a leading "the" as optional, and does not count words the title explains as the artist named', () => {
+    const small = createIndex([
+      song('the-animals--the-house-of-the-rising-sun', 'The House of the Rising Sun', 'The Animals', 7),
+      song('pdmx--1', 'house of the rising sun', 'G. Carretero'),
+      song('bob-dylan--like-a-rolling-stone', 'Like A Rolling Stone', 'Bob Dylan', 2),
+      song('pdmx--2', 'Like a Rolling Stone', 'The Rolling Stones'),
+      song('the-rolling-stones--angie', 'Angie', 'The Rolling Stones', 5),
+      song('pink-floyd--the-wall', 'The Wall', 'Pink Floyd', 3),
+      song('x--wall', 'Wall', 'X'),
+    ]);
+    const [rising] = small.search('house of the rising sun');
+    expect([rising.id, rising.match.title]).toEqual(['the-animals--the-house-of-the-rising-sun', 'exact']);
+    // The query is the title: that the Rolling Stones' name shares two of its words does not name them.
+    expect(small.search('like a rolling stone')[0].id).toBe('bob-dylan--like-a-rolling-stone');
+    expect(small.search('angie rolling stones')[0].match).toMatchObject({ title: 'exact', artist: 'exact' });
+    // A two-word title keeps its "the".
+    expect(small.search('wall')[0].id).toBe('x--wall');
+  });
   it('marks how the title and artist matched', () => {
     const [h] = index.search('yesterday beatles');
     expect(h.match).toEqual({ title: 'exact', artist: 'exact', coverage: 1, titleShare: 1 });
@@ -874,6 +892,11 @@ describe('duplicate titles', () => {
     expect(isDuplicateTitle('Stay for a While', 'Stay for Awhile')).toBe(true);
     expect(isDuplicateTitle('Another Brick In The Wall (Part II)', 'Another Brick in the Wall, Part 2')).toBe(true);
     expect(isDuplicateTitle('I Got You (I Feel Good)', 'I Got You')).toBe(true);
+    // Optional leading words: a leading "the" (three words or more) and a leading parenthetical.
+    expect(isDuplicateTitle('The House of the Rising Sun', 'house of the rising sun')).toBe(true);
+    expect(isDuplicateTitle("(Sittin' On) The Dock of the Bay", 'The Dock of the Bay')).toBe(true);
+    expect(isDuplicateTitle('The Wall', 'Wall')).toBe(false);
+    expect(isDuplicateTitle('(Intro)', '(Outro)')).toBe(false);
   });
   it('never calls two titles without Latin letters the same unless they are the same text', () => {
     expect(isDuplicateTitle('東京', '大阪')).toBe(false);
