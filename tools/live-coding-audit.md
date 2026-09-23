@@ -1,5 +1,7 @@
 # Live-coding output audit
 
+> **Historical record.** This review describes the code and catalogue as they were on its date. The current code format, loop selection and measured fidelity are documented in the [README](../README.md#how-the-code-is-generated).
+
 Historical full-arrangement audit. The default now uses automatic Main loop selection; see
 [the pipeline review](pipeline-review.md) for the current behavior and expanded catalogue.
 

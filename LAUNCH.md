@@ -1,8 +1,10 @@
 # Publication review — 19 September 2026
 
 _Updated 23 September 2026: the licence file is added, fonts are served with the site, the production page carries a
-Content Security Policy, the catalogue figures below are current (12,188 entries after 48 unusable score imports were
-removed), and CI runs the typecheck, the tests and a fixture web build. The rights questions below are unchanged._
+Content Security Policy, and CI runs the typecheck, the tests and a fixture web build. Later that day: a second score
+import brought the catalogue to 13,975 entries, songs moved from `/#id` links to their own addresses, and the build
+writes a page per song and per artist for search engines (see the hosting notes). The rights questions below are
+unchanged, and apply to the imported scores as much as to the first ones._
 
 The app is a working local beta. The full music catalogue is **not cleared for public publication** by this review. Passing software tests does not establish music or artwork rights, and transcription quality is not uniformly verified against recordings. No website was deployed during this review.
 
@@ -31,12 +33,12 @@ For a Belgian launch, ask SABAM/Unisono or qualified counsel specifically about 
 
 ## Technical state and known limits
 
-- Local library: 12,188 entries, including alternate transcriptions. All 12,459 source-file references exist, and every entry compiles and plays through the Strudel runtime in all three modes (`tools/library-check.mjs`).
+- Local library: 13,975 entries, including alternate transcriptions. All 14,246 source-file references exist, and every entry compiles and plays through the Strudel runtime in all three modes (`tools/library-check.mjs`, 23 September 2026, after the import).
 - `npm run check` (typecheck of every package and the tests, the unit/runtime suite, the importer tests) and the production build pass. `npm audit` (development dependencies included) returned zero known advisories on 23 September 2026; this is not a complete security audit.
 - Browser checks: four landing covers and eight Nirvana search covers load at the intended thumbnail sizes; the editor stays unloaded while browsing, then loads on song selection; playback and live note boxes work.
-- Source fidelity remains variable. Main loop is a simplified excerpt; Full arrangement is a cleaned transcription; neither promises the original studio recording. This is suitable for beta expectations, not an “exact music” claim.
+- Source fidelity remains variable. Main loop is an excerpt the song repeats; Full arrangement is a cleaned transcription on a grid; neither promises the original studio recording. This is suitable for beta expectations, not an “exact music” claim.
 - There is no site-wide shared artwork cache. Every new visitor still queries third-party services. If traffic grows, consider a provider-permitted metadata cache or a pre-resolved catalogue, with explicit refresh/retention rules and cleared image use. Deezer JSONP executes third-party script; a production API boundary would reduce that dependency.
-- The database index is about 2.8 MB uncompressed (430 KB gzipped); the landing page no longer waits for it. The complete output is about 540 MB including song sources and local samples. Configure compression and caching at the host and verify its total-size/file-count limits.
+- The database index is about 3.4 MB uncompressed (520 KB gzipped); the landing page no longer waits for it. The complete output is about 920 MB in about 32,700 files: 580 MB of song sources, 310 MB of prerendered song pages (about 24 KB each, 7 KB gzipped), the artist pages and local samples. Configure compression and caching at the host and verify its total-size/file-count limits (some hosts cap a site at 20,000 files).
 
 ## Deploy it yourself, after rights are resolved
 
@@ -48,7 +50,7 @@ npm ci
 # It is gitignored and will NOT arrive in a fresh GitHub checkout.
 # See README.md for the original dataset build workflow; rebuilding is not legal clearance.
 npm run check
-npm run build:web
+SITE_URL=https://your.domain npm run build:web
 npm run preview -w @strudelify/web
 ```
 
@@ -56,6 +58,6 @@ Publish **the entire `packages/web/dist` directory**. Vite already includes `db/
 
 The page carries its Content Security Policy as a meta tag (`CONTENT_SECURITY_POLICY` in `packages/web/vite.config.ts`). Send the same policy as a `Content-Security-Policy` header, with `frame-ancestors 'none'` added (a meta tag cannot carry it), plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`.
 
-Serve at the domain root with HTTPS; the current `/db/`, `/audio/` and other absolute paths do not support a repository subpath without code/config changes. Song links use hashes, so no server-side song route is needed. Enable gzip/Brotli for JSON and JavaScript. Hashed `/assets/` files can be cached immutably; unversioned HTML, database and sample manifests should revalidate instead of being cached forever. Do not publish raw downloads, `.env`, `node_modules` or repository internals.
+Serve at the domain root with HTTPS; the current `/db/`, `/audio/` and other absolute paths do not support a repository subpath without code/config changes. Songs have their own addresses (`/song/<id>/`), each a folder with an `index.html`, which every static host serves as is: no rewrite rule is needed. Serve `404.html` for unknown addresses (most hosts do by default). Set `SITE_URL` to the final address when building (Vercel and Netlify supply their own when it is not set) so the pages carry canonical links and the sitemap is written; then submit `https://your.domain/sitemap.xml` in Google Search Console and Bing Webmaster Tools. The artist pages carry their own stricter policy (no script at all); a header policy equal to the app's is compatible with them. Enable gzip/Brotli for JSON and JavaScript. Hashed `/assets/` files can be cached immutably; unversioned HTML, database and sample manifests should revalidate instead of being cached forever. Do not publish raw downloads, `.env`, `node_modules` or repository internals.
 
 On the final HTTPS domain, test a fresh browser session and a phone: search, covers, direct song links, first playback, seek/pause, code highlighting, download, and opening code in Strudel. Repeat with an unavailable artwork provider. The current checks were local, not against your future hosting provider.

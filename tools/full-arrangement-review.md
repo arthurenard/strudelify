@@ -1,5 +1,7 @@
 # Full arrangement review — 2026-09-12
 
+> **Historical record.** This review describes the code and catalogue as they were on its date. The current code format, loop selection and measured fidelity are documented in the [README](../README.md#how-the-code-is-generated).
+
 The reported Teen Spirit output had two independent problems: a damaged transcription and an event-heavy full-song compiler. Browser playback also reproduced a failing remote snare download. A successful pattern evaluation alone did not establish working audio.
 
 ## Source selection

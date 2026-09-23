@@ -1,10 +1,11 @@
 # Strudelify
 
-Type a song name, get a short, editable instrumental loop in [Strudel](https://strudel.cc).
+Type a song name, get an editable instrumental loop in [Strudel](https://strudel.cc): a phrase the song keeps coming
+back to, at least 12 seconds long (usually eight bars).
 Choose Full arrangement when you want the complete transcription.
 No LLM involved: the music is compiled from open, machine-readable transcriptions.
 
-The bundled library contains **12,188 catalogue entries**: 11,720 with MIDI and 468 with chord charts only.
+The bundled library contains **13,975 catalogue entries**: 13,507 with MIDI and 468 with chord charts only.
 Of the MIDI entries, 271 also have a chord chart. Alternate transcriptions and artist/title spellings remain
 in the catalogue, so this is an entry count, not a verified count of distinct compositions. The website
 uses that wording and derives its count directly from the shipped index. Two MIDI entries currently have
@@ -45,7 +46,7 @@ The downloader checks every file against its pinned size (and SHA-256 or gzip ch
 it, so an interrupted download or an error page is never taken for the data. The builder checks all of
 its inputs before it starts and swaps the new database in only once it is complete; a failed build leaves
 the working database alone. Song ids come from `packages/data/catalogue-ids.tsv`, which records every id
-with the artist and title it names, so a rebuild keeps every shared link (`#the-beatles--hey-jude`); the
+with the artist and title it names, so a rebuild keeps every shared link (`/song/the-beatles--hey-jude/`); the
 builder adds new songs to it (commit the file). `npm run data:refresh` re-reads each song's tempo and key
 from its own source files with the current analysis, without the raw datasets.
 
@@ -69,7 +70,7 @@ catalogue, not a song; words inside a title only resolve when they explain nearl
 Ambiguous queries print the candidates and exit 1; pass the artist or the exact id. Songs not in the
 database also exit 1 with the nearest matches, never a silent substitute.
 
-The CLI defaults to an automatically selected 2–4-bar **Main loop** with simplified articulation and dynamics. Pass `--full-song` for the full arrangement, or `--source-detail` for unrounded MIDI events.
+The CLI defaults to an automatically selected **Main loop**, a phrase the song repeats (usually eight bars, sixteen for fast songs), written on a grid like the Full arrangement. Pass `--full-song` for the full arrangement, or `--source-detail` for unrounded MIDI events.
 
 Options: `--full-song`, `--source-detail`, `--no-melody` (also removes instrumental leads), `--max-bars <n>`, `--max-tracks <n>`
 (whole numbers of at least 1), `--json` (with `-o`, written to the file), `--url`, `--open` (exits 1 with the reason when no
@@ -82,12 +83,12 @@ npm run dev:web        # http://127.0.0.1:5173
 npm run build:web
 ```
 
-The web app is fully static. It fetches `db/index.json` (2.8 MB, 430 KB gzipped) when the browser is idle
+The web app is fully static. It fetches `db/index.json` (3.4 MB, 520 KB gzipped) when the browser is idle
 or as soon as search or a song link needs it, searches as you type in the browser, fetches the song's
 source file and compiles it client-side, then loads the result into an embedded Strudel editor. The
 landing page's example cards come from a pool of 200 popular songs baked into `index.html`, so they draw
 without the index. Vite copies the database and local audio into `packages/web/dist`; deploy that whole
-directory at the domain root (about 540 MB in the current build). The database is gitignored, so a fresh
+directory at the domain root (about 920 MB and 32,700 files in the current build, see [pages](#pages-for-search-engines)). The database is gitignored, so a fresh
 GitHub checkout must restore/build it before the web build (`node tools/fixture-db.mjs` makes a two-song one
 for trying the build). See [launch review and deployment steps](LAUNCH.md).
 
@@ -119,7 +120,8 @@ with the site.
   bars) so long songs stay legible. Long songs scroll sideways with an overview strip as the map.
   Everything is keyboard-reachable (Tab to a lane, arrows along it, Enter to jump).
 - **Options**: an instrumental-lead switch and an optional excerpt length. The website renders a
-  short **Main loop** by default: a coherent instrumental passage selected and simplified automatically.
+  **Main loop** by default: a phrase the song repeats, selected automatically (see below); switching
+  style while it plays carries on from the same place in the song.
   **Full arrangement** retains the whole transcription using reusable riffs; **Source detail** retains
   unrounded events. Detected vocals are always excluded. Chord charts offer the same loop/full choice,
   but their accompaniment is generated from chord symbols.
@@ -129,6 +131,31 @@ with the site.
   take what the editor holds, your edits included; an option change regenerates the code and offers the
   edited version back. The `// chords:` and `// key` comments are spelled the way the readout spells them
   (flats in flat keys, `maj7` for `^7`).
+- **More by the artist**: under the code, up to eight of the artist's other songs (most transcribed
+  first, one per title), and a link to the artist's page.
+- **Addresses**: every song has its own address, `/song/<id>/`, that opens it directly; links in the
+  app change it without reloading, and the Back button returns to the previous song. Old `/#<id>` links
+  are moved to the new address. `/?q=<text>` opens the search with that text.
+
+### Pages for search engines
+
+`npm run build:web` also writes a static page per song, per artist and per letter (the prerender plugin
+in `packages/web/vite.config.ts`, the pages themselves in `packages/web/src/prerender.ts`):
+
+- `song/<id>/index.html` is the app opened on the song: its own title ("Song — Artist: Strudel code"),
+  description, canonical address, Open Graph and Twitter cards, structured data (`MusicComposition`
+  with its artist, and breadcrumbs), the song's facts, its Main loop code as plain text until the
+  editor loads, and links to the artist's other songs. The loops are compiled in worker threads (about
+  40 s for the catalogue).
+- `artist/<slug>/index.html` lists an artist's songs; `artists/` and `artists/<letter>/` index them A to
+  Z. These are plain pages with no script.
+- `index.html` gains `WebSite` structured data with the search box; `404.html` is served for unknown
+  addresses; `sitemap.xml` lists every page and `robots.txt` points to it.
+
+Set the site's address when building, `SITE_URL=https://example.com npm run build:web` (on Vercel
+the production domain, and on Netlify the site's URL, are used when it is not set). Without it the pages
+have no canonical links, Open Graph addresses or sitemap, and the build says so. The icons and the
+link-preview image are in `packages/web/static`, drawn by `node tools/make-icons.mjs`.
 
 ## How the code is generated
 
@@ -138,15 +165,22 @@ dropped duplicates, the mix scaling), and every part's comment says its role, it
 
 ### MIDI songs
 
-The website and CLI default to **Main loop**. The compiler fingerprints each bar, finds recurring
-2–4-bar passages shared across the band, and favors passages with bass, drums and pitched material.
-It selects up to four pitched parts and six percussion voices, quantizes to a common musical grid,
-merges unison attacks and keeps two dynamic levels per part (ghost notes become a separate `_soft` part).
-This is a deliberate musical sketch, not an exact rendition of the whole recording. The code identifies
-the source passage and simplifications. No song IDs or hand-authored riffs participate in this process.
+The website and CLI default to **Main loop**, a phrase of the song: eight bars, or sixteen when eight
+would last under 12 seconds, four when they would last over 40 (median 17.5 s). Every bar is
+fingerprinted per section of the band (which pitch classes sound and where the onsets fall, drums by
+sound), so near repeats count. Each window is scored on how often the song plays it again, whether it
+recurs right after itself (so the loop's end leads back into its start as in the song), how much of the
+band and the tune play through it, and a crash on its first downbeat; intros, outros and very dense
+passages score a little lower. The loop keeps up to four pitched parts and six percussion sounds on the
+coarsest grid that places 95% of the onsets within 35 ms, merges unison attacks, and keeps a part's ghost
+notes as a separate `_soft` part. A note struck a hair before the loop's end belongs to the next
+downbeat, which the loop's start already plays, so it is left out rather than cut to a blip. This is a
+musical sketch, not an exact rendition of the whole recording. The code identifies the source passage and
+simplifications. No song IDs or hand-authored riffs participate in this process.
 
-**Full arrangement** retains the complete bar timeline. It quantizes to a shared musical grid, steadies
-each part's dynamics, removes empty/unison events, merges matching guitar doubles while keeping their
+**Full arrangement** retains the complete bar timeline. It quantizes to a shared musical grid, keeps each
+part at its typical level plus, when they are common (5% of its notes or more), its ghost notes at their
+own level (a drum kit per sound), removes empty/unison events, merges matching guitar doubles while keeping their
 unique solos/fills, and combines percussion keys that play the same sample. These are explicit
 simplifications, not recording fidelity guarantees. **Source detail** retains the unrounded instrumental
 events; it is long by nature (every event keeps its exact timing and dynamics).
@@ -182,12 +216,15 @@ const kick = s("bd").struct("<x ~@2 x!2 ~@3 ...>").gain(0.3)
   every repeat. In a Main loop, a part with a note held over the bar line is one pattern, a line per bar.
 - **Drums** are one part per sound with a step-grid rhythm (`s("bd").struct("x ~@2 x!2 ~@3")`); samples
   ring to their natural end, so only the onsets are written. Each part has a single `.gain()` (velocity
-  included) and a `.pan()` when it is off centre.
+  included) and a `.pan()` when it is off centre; ghost notes are a `_soft` part with its own gain.
+- **Spelling:** notes follow the key, with flats in flat keys (`bb3` in F minor, `a#3` in E major). A riff
+  on a line of its own names the chords it strikes in a comment (`// Dm C`, power chords as `F5`); a part
+  written without riffs names its chords in its heading comment.
 
 Lines wrap at 120 characters; a riff is never split, so a dense one can run longer (the editor's wrap
-toggle folds it). Across the catalogue a Full arrangement has 164 lines at the median and 10% of songs
+toggle folds it). Across the catalogue a Full arrangement has 161 lines at the median and 12.6% of songs
 exceed 300 (long through-composed pieces and dense transcriptions, where every variation is written out);
-a Main loop has 42 at the median and never more than about 110.
+a Main loop has 61 at the median, 91 at the 90th percentile and never more than 190.
 
 The core API keeps its source-detail/full-song default for compatibility:
 
@@ -216,7 +253,7 @@ compile(song, { timing: 'source' })                // unrounded instrumental eve
   never holds for a bar gets its typical (median) tempo; an invalid zero-length tempo event is ignored, and
   SMPTE-timed files are rejected with an error. These decisions can still differ from the recording.
 - **Limits:** the CLI/core default cap remains 200 bars of 4/4 and 12 pitched tracks; callers can override
-  these. When a song has more pitched parts than the cap, the melody and the main bass are kept first. Main loop is bounded separately to 2–4 bars (one for very short inputs). Full arrangement on
+  these. When a song has more pitched parts than the cap, the melody and the main bass are kept first. Main loop has its own length (above) and keeps up to four pitched parts and six percussion sounds. Full arrangement on
   the website requests the complete song. These full representations can be much longer than a sketch.
 
 ### Chord-only songs
@@ -245,20 +282,22 @@ consistency, not perceptual equivalence to the original music.
 `npm run data:expand` downloads a pinned PDMX release through the Zenodo record API, verifies checksums,
 filters metadata, extracts regular MIDI files into staging, parses and compiles each candidate, then
 executes the result through the installed Strudel runtime. It admits only nonempty loops that repeat
-at their timeline boundary and fit a 12,000-character ceiling. Existing entries are preserved; IDs and
+at their timeline boundary and fit a 20,000-character ceiling. Existing entries are preserved; IDs and
 normalized artist/title identities prevent duplicate additions. The index is replaced atomically after
 source files are written. Re-running is safe. A base database rebuild must be followed by expansion again.
 
 Use `npm run data:expand -- --dry-run` to review additions without changing the database.
 `--limit=100` bounds candidates; `--db=/absolute/path` chooses another base database.
 The ignored `packages/data/raw/pdmx/import-report.json` records candidates and rejection reasons.
-Minimum score rating is 4.5/5 with five reviews; further filters require valid non-draft instrumental
+A score needs a rating of at least 4.0/5 from three reviews or more, or, with fewer reviews, at least ten
+favourites and no rating below 4.0; rated scores are taken first. Further filters require valid non-draft instrumental
 scores, no declared licence conflict or paywall, and bounded duration, track and note counts.
 Score ratings are not recording-fidelity scores. The website labels these entries **Score arrangement**.
 
 The first import added 1,592 entries; 48 whose title or artist named nothing usable (a lone symbol, text
 decoded with the wrong character set) were later removed, and uploaders' credit blocks were reduced to the
-composer or performer (`packages/data/src/metadata.ts`). All source archives and generated database files remain ignored
+composer or performer (`packages/data/src/metadata.ts`). A second import with the thresholds above added
+1,787 more (3,597 candidates; the rest were already in the catalogue or failed a check), 3,331 in all. All source archives and generated database files remain ignored
 by Git; the importer is the reproducible deliverable, and the expanded library is available locally.
 [Pipeline review](tools/pipeline-review.md) explains the source comparison and checks.
 
@@ -283,9 +322,11 @@ title", "title by artist", partial words while typing, misspellings, words typed
 titles in parentheses ("i feel good"). A letter-perfect whole title beats a typo'd one, which beats an
 artist's name (a catalogue, listed by popularity), which is level with a title prefix, which beats a
 phrase inside a title, which beats a bag of words. Popularity only decides between equally good matches.
-`index.resolve()` turns a query into one song or an "ambiguous" verdict for the CLI. The index builds in
-about 150 ms for the 12,188 entries and answers in about 0.1 ms on average (under 5 ms for a single
-letter, which matches thousands of songs).
+A leading "The" in a title of three words or more is optional, like a leading parenthetical ("house of the
+rising sun"), and words the title explains do not also count as naming the artist ("like a rolling stone"
+is Bob Dylan's before the Rolling Stones' cover). `index.resolve()` turns a query into one song or an
+"ambiguous" verdict for the CLI. The index builds in about 150 ms for the 13,975 entries and answers in
+about 0.1 ms on average (a few ms for a single letter, which matches thousands of songs).
 
 ## Tools
 
@@ -293,11 +334,12 @@ letter, which matches thousands of songs).
 node tools/search-check.mjs            # search battery (top-1/top-3), held-out sets, keystroke walks, resolve verdicts, timings; exits 1 on regression
 node tools/search-check.mjs -q "text"  # top 10 with scores for one query
 node tools/art-check.mjs --n 40 --random 10   # cover-art coverage and time-to-art on a database sample (network); see tools/art-check.md
-node tools/shot.mjs "#nirvana--smells-like-teen-spirit" out.png [--mobile] [--full] [--wait ms] [--click "<css>"]
-node tools/ui-check.mjs                # headless UI check against the dev server: errors, horizontal scroll at 390/768/1440, baked landing, canonical artists, lane labels, no stale song while the next loads; exits 1 on failure
+node tools/shot.mjs nirvana--smells-like-teen-spirit out.png [--mobile] [--full] [--wait ms] [--click "<css>"]
+node tools/ui-check.mjs                # headless UI check against the dev server (or STRUDELIFY_URL): errors, horizontal scroll at 390/768/1440, baked landing, canonical artists, lane labels, song addresses, old /#id links, More by, ?q=, no stale song while the next loads; exits 1 on failure
 node tools/library-check.mjs --timing=patterns --loop --workers=4 # every source file, compilation, runtime and loop boundary
 node tools/loop-size.mjs              # catalogue-wide code-length distribution
 node tools/fixture-db.mjs             # a two-song database from the curated sources (never replaces one)
+node tools/make-icons.mjs             # redraw the icons and the link-preview image in packages/web/static
 node tools/vendor-acoustic-samples.mjs # re-vendor the acoustic drum hits (downloads them; needs flac or macOS)
 ```
 

@@ -1,5 +1,7 @@
 # Strudelify website audit
 
+> **Historical record.** This review describes the code and catalogue as they were on its date. The current code format, loop selection and measured fidelity are documented in the [README](../README.md#how-the-code-is-generated).
+
 Initial audit completed 11 September 2026. The subsequent [instrumental performance audit](music-quality-audit.md) supersedes the renderer, test totals, source choices and fidelity limitations below.
 
 ## Library

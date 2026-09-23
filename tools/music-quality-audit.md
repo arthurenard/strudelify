@@ -1,5 +1,7 @@
 # Instrumental performance audit
 
+> **Historical record.** This review describes the code and catalogue as they were on its date. The current code format, loop selection and measured fidelity are documented in the [README](../README.md#how-the-code-is-generated).
+
 Completed 11 September 2026 against the local database and rebuilt production site. The subsequent
 [live-coding audit](live-coding-audit.md) documents the new default editable output and its timing tradeoff. This supersedes
 the musical-rendering conclusions in the initial [website audit](site-audit.md).
