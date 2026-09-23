@@ -20,10 +20,11 @@ export function onIndex(fn: (idx: SongIndex) => void) { if (state.index) fn(stat
 let byId = new Map<string, IndexEntry>();
 export const entryById = (id: string): IndexEntry | undefined => byId.get(id);
 
-export function getIndex(): Promise<SongIndex> {
+/** The song index, fetched once. `quiet`: a background load (the landing page at idle) shows no progress in the header. */
+export function getIndex({ quiet = false } = {}): Promise<SongIndex> {
   if (state.index) return Promise.resolve(state.index);
   if (indexPromise) return indexPromise;
-  setStatus('Loading…');
+  if (!quiet) setStatus('Loading…');
   indexPromise = (async () => {
     const res = await fetch('/db/index.json');
     if (!res.ok) throw new Error(`index.json: HTTP ${res.status}`);
@@ -58,6 +59,9 @@ interface Row { entry: IndexEntry; el: HTMLLIElement }
 let rows: Row[] = [];
 let activeRow = -1;
 let searchSeq = 0;
+let searchTimer: number | undefined;
+/** The query the rows on screen answer ('' for the default palette). */
+let shownQuery = '';
 let chooseHandler: (entry: IndexEntry) => void = () => {};
 export function onChoose(fn: (entry: IndexEntry) => void) { chooseHandler = fn; }
 /** Called (debounced) for the highlighted row, so the song's art can be fetched before it is opened. */
@@ -65,9 +69,16 @@ let previewHandler: (entry: IndexEntry) => void = () => {};
 export function onPreview(fn: (entry: IndexEntry) => void) { previewHandler = fn; }
 let previewTimer: number | undefined;
 
-// Only visible rows fetch artwork. Provider queues still enforce their individual rate limits.
+// Only visible rows fetch artwork. Provider queues still enforce their individual rate limits. The lookups
+// belong to the rows on screen: replacing the rows or closing the palette cancels the ones still running.
 let coverQueue: Row[] = [];
 let coverLoads = 0;
+let coverCtrl = new AbortController();
+function cancelCovers() {
+  coverCtrl.abort();
+  coverCtrl = new AbortController();
+  coverQueue = [];
+}
 const coverObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(entries => {
   for (const item of entries) if (item.isIntersecting) {
     coverObserver!.unobserve(item.target);
@@ -97,7 +108,7 @@ function loadRowCovers() {
     if (!row.el.isConnected) continue;
     coverLoads++;
     const e = row.entry;
-    void lookupThumbnail(e.id, displayArtist(e.artist), e.title, e.year)
+    void lookupThumbnail(e.id, displayArtist(e.artist), e.title, e.year, coverCtrl.signal)
       .then(info => renderRowCover(row, info))
       .catch(() => {}).finally(() => { coverLoads--; loadRowCovers(); });
   }
@@ -120,8 +131,11 @@ function openPanel(open: boolean) {
   el.q.setAttribute('aria-expanded', String(open));
   if (!open) { el.q.removeAttribute('aria-activedescendant'); activeRow = -1; }
 }
-/** Close the palette and clear the box (a song was picked or left). */
+/** Close the palette and clear the box (a song was picked or left); a search still pending is dropped with it. */
 export function closeSearch() {
+  clearTimeout(searchTimer);
+  searchSeq++;
+  cancelCovers();
   openPanel(false);
   el.q.value = '';
   el.qClear.hidden = true;
@@ -151,7 +165,7 @@ function rowHtml(e: IndexEntry, tokens: string[], inGroup: boolean): string {
 
 function resetRows() {
   coverObserver?.disconnect();
-  coverQueue = [];
+  cancelCovers();
   el.results.innerHTML = '';
   rows = [];
   activeRow = -1;
@@ -194,6 +208,7 @@ function renderDefault() {
   addGroup('Popular', 'most transcribed');
   for (const e of byPopularity(idx.entries).filter((e) => !own.has(e.id)).slice(0, recent.length ? 6 : 8)) makeRow(e, []);
   el.resultsFoot.innerHTML = `<span>${idx.entries.length.toLocaleString('en-US')} library entries · type to search</span>${KEYS_HINT}`;
+  shownQuery = '';
   openPanel(true);
   if (rows.length) setActiveRow(0, false);
 }
@@ -236,7 +251,7 @@ function renderResults(text: string, hits: IndexEntry[]) {
 
 function setActiveRow(i: number, scroll = true) {
   activeRow = i;
-  rows.forEach((r, k) => r.el.classList.toggle('active', k === i));
+  rows.forEach((r, k) => { r.el.classList.toggle('active', k === i); r.el.setAttribute('aria-selected', String(k === i)); });
   if (i >= 0) {
     el.q.setAttribute('aria-activedescendant', rows[i].el.id);
     if (scroll) rows[i].el.scrollIntoView({ block: 'nearest' });
@@ -251,7 +266,6 @@ function choose(entry: IndexEntry) {
   chooseHandler(entry); // moves focus on to the player
 }
 
-let searchTimer: number | undefined;
 async function runSearch() {
   const text = el.q.value.trim();
   el.qClear.hidden = !el.q.value;
@@ -261,6 +275,7 @@ async function runSearch() {
     const idx = await getIndex();
     if (seq !== searchSeq || el.q.value.trim() !== text) return;
     renderResults(text, tidyHits(idx.search(text, 14), text).slice(0, 12));
+    shownQuery = text;
   } catch {
     el.results.innerHTML = `<li class="msg error" role="presentation">Could not load the song database<small>${esc(state.indexError ?? '')}</small></li>`;
     el.resultsFoot.innerHTML = '';
@@ -287,14 +302,21 @@ el.q.addEventListener('keydown', (e) => {
     setActiveRow(e.key === 'ArrowDown' ? (activeRow + 1) % n : (activeRow - 1 + n) % n);
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    if (open && rows.length) choose(rows[Math.max(0, activeRow)].entry);
-    else { clearTimeout(searchTimer); runSearch(); }
+    // Rows still showing an earlier query (typed faster than the search delay) are not what Enter means:
+    // search what is in the box now, then open its first result.
+    if (open && rows.length && shownQuery === el.q.value.trim()) choose(rows[Math.max(0, activeRow)].entry);
+    else {
+      clearTimeout(searchTimer);
+      const text = el.q.value.trim();
+      void runSearch().then(() => { if (text && shownQuery === text && el.q.value.trim() === text && rows.length) choose(rows[0].entry); });
+    }
   } else if (e.key === 'Escape') {
     if (open) openPanel(false); else el.q.blur();
   } else if (e.key === 'Tab') openPanel(false);
 });
-el.qClear.addEventListener('click', () => { el.q.value = ''; el.qClear.hidden = true; el.q.focus(); renderDefault(); });
+// Pressing the clear button must not blur the box: its blur would close the palette the click reopens.
+el.qClear.addEventListener('pointerdown', (e) => e.preventDefault());
+el.qClear.addEventListener('click', () => { clearTimeout(searchTimer); searchSeq++; el.q.value = ''; el.qClear.hidden = true; el.q.focus(); renderDefault(); });
 el.ctaSearch.addEventListener('click', focusSearch);
 el.nfSearch.addEventListener('click', focusSearch);
 
-export { exampleCard, cardSubtitle } from './landing.js';

@@ -202,7 +202,7 @@ export function tidyHits<T extends Pick<SearchHit, 'id' | 'title' | 'artist'>>(h
 }
 
 /** Most popular songs first, then alphabetical. */
-export function byPopularity(entries: readonly IndexEntry[]): IndexEntry[] {
+export function byPopularity<E extends Pick<IndexEntry, 'popularity' | 'title'>>(entries: readonly E[]): E[] {
   return [...entries].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0) || a.title.localeCompare(b.title));
 }
 
@@ -342,18 +342,17 @@ export function fitLabel(variants: readonly string[], width: number, measure: (t
 export interface BarCapOption { value: number; label: string }
 export const ALL_BARS = 1_000_000;
 /**
- * Choices for the bar cap of a `totalBars`-long song: only caps that actually cut the song, plus "All".
- * The compiler counts a cap in bars of 4/4 (a length in beats whatever the metre), so the labels say how
- * many of the song's own bars each cap keeps: in 2/4, "200" of 4/4 is the first 400 bars, and a 212-bar
- * song is not cut by it at all. `quartersPerBar` is the song's bar length in quarter notes (4 in 4/4, 2 in
- * 2/4, 3 in 6/8). The default keeps the compile bounded (200 bars of 4/4) unless the song is shorter.
+ * Choices for the bar cap of a `totalBars`-long song: only caps that actually cut the song, plus "All",
+ * last, which the website selects: it renders the whole song unless asked for less. The compiler counts a
+ * cap in bars of 4/4 (a length in beats whatever the metre), so the labels say how many of the song's own
+ * bars each cap keeps: in 2/4, "200" of 4/4 is the first 400 bars, and a 212-bar song is not cut by it at
+ * all. `quartersPerBar` is the song's bar length in quarter notes (4 in 4/4, 2 in 2/4, 3 in 6/8).
  */
-export function barCapOptions(totalBars: number, quartersPerBar = 4, caps: readonly number[] = [16, 32, 64, 128, 200, 400], dflt = 200): { options: BarCapOption[]; value: number } {
+export function barCapOptions(totalBars: number, quartersPerBar = 4, caps: readonly number[] = [16, 32, 64, 128, 200, 400]): BarCapOption[] {
   const songBars = (c: number) => Math.max(1, Math.round((c * 4) / (quartersPerBar || 4)));
   const options = caps.filter((c) => songBars(c) < totalBars).map((c) => ({ value: c, label: `First ${songBars(c)} bars` }));
   options.push({ value: ALL_BARS, label: totalBars > 0 ? `All ${totalBars} bars` : 'All bars' });
-  const value = totalBars > songBars(dflt) && caps.includes(dflt) ? dflt : ALL_BARS;
-  return { options, value };
+  return options;
 }
 
 /** Bars between ruler ticks so that consecutive ticks are at least `minPx` apart. */
@@ -658,18 +657,18 @@ export function shiftTonic(tonic: string | undefined, semitones: number): string
 
 // ---------- parts ----------
 /**
- * The parts of the generated code as "role · instrument" lines, read from the comment that precedes each
- * `const x = note(...)` (the compiler writes `// role · gm_instrument · …`), for the Parts chip tooltip.
+ * The parts of the generated code as "role · instrument" lines, read from the comment the compiler writes
+ * above each `const x = note(...)` (`// role · instrument · …`), for the Parts chip tooltip. A chord
+ * chart's `arrange(...)` data has no such comment and is not a part.
  */
 export function partList(code: string): string[] {
   const out: string[] = [];
   const lines = code.split('\n');
   for (let i = 0; i < lines.length; i++) {
-    if (!/^const \w+ = (?:note|n|mini|s|chord|arrange)\(/.test(lines[i])) continue;
+    if (!/^const \w+ = (?:note|n|s|chord|arrange)\(/.test(lines[i])) continue;
     const m = /^\/\/ ([^·\n]+?)(?: · ([^·\n]+?))?(?: · |$)/.exec(lines[i - 1] ?? '');
-    if (/^const \w+ = arrange\(/.test(lines[i]) && !m) continue;
-    if (/^const \w+_riff\d+ = /.test(lines[i]) && !['bass', 'chords', 'melody', 'drums', 'other'].includes(m?.[1]?.trim() ?? '')) continue;
-    const role = m?.[1]?.trim() ?? (lines[i].includes('.pickRestart(') ? /^const (\w+) = /.exec(lines[i])?.[1]?.replace(/_/g, ' ') : undefined) ?? 'part';
+    if (!m && lines[i].includes(' = arrange(')) continue;
+    const role = m?.[1]?.trim() ?? 'part';
     const instrument = (m?.[2] ?? '').trim().replace(/^gm_/, '').replace(/_/g, ' ');
     out.push(instrument && !/^(gain|pan)\b/.test(instrument) ? `${role} · ${instrument}` : role);
   }

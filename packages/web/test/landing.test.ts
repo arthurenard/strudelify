@@ -9,6 +9,13 @@ import { songTint } from '../src/tint.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const html = fs.readFileSync(path.join(HERE, '..', 'index.html'), 'utf8');
+/** The built catalogue, or null without one or with only a small fixture (tools/fixture-db.mjs). */
+function realCatalogue(): IndexEntry[] | null {
+  const file = path.join(HERE, '..', '..', 'data', 'public', 'db', 'index.json');
+  if (!fs.existsSync(file)) return null;
+  const entries: IndexEntry[] = JSON.parse(fs.readFileSync(file, 'utf8'));
+  return entries.length >= 1000 ? entries : null;
+}
 const entry = (id: string, title: string, artist: string, year?: number): IndexEntry =>
   ({ id, title, artist, year, sources: ['midi'], files: { midi: `songs/${id}.mid` } });
 
@@ -43,9 +50,9 @@ describe('landing bake', () => {
     expect(exampleCard(entry('x', 'Rock & <Roll>', 'A "B"'))).toContain('Rock &amp; &lt;Roll&gt;');
   });
   it('lists example ids that exist in the database (when the database is built)', () => {
-    const dbIndex = path.join(HERE, '..', '..', 'data', 'public', 'db', 'index.json');
-    if (!fs.existsSync(dbIndex)) return;
-    const ids = new Set((JSON.parse(fs.readFileSync(dbIndex, 'utf8')) as IndexEntry[]).map((e) => e.id));
+    const entries = realCatalogue();
+    if (!entries) return;
+    const ids = new Set(entries.map((e) => e.id));
     for (const id of exampleIds(html)) expect(ids.has(id), id).toBe(true);
   });
 });
@@ -111,9 +118,9 @@ describe('landing example sample', () => {
     expect(pickLandingExamples(entries).map((e) => e.id)).toEqual(['a--one', 'b--two']);
   });
   it('lists Spotify pool ids that exist in the database (when the database is built)', () => {
-    const dbIndex = path.join(HERE, '..', '..', 'data', 'public', 'db', 'index.json');
-    if (!fs.existsSync(dbIndex)) return;
-    const ids = new Set((JSON.parse(fs.readFileSync(dbIndex, 'utf8')) as IndexEntry[]).map((e) => e.id));
+    const entries = realCatalogue();
+    if (!entries) return;
+    const ids = new Set(entries.map((e) => e.id));
     for (const id of SPOTIFY_POPULAR_IDS) expect(ids.has(id), id).toBe(true);
   });
 });

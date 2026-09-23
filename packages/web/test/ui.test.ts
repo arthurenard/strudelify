@@ -200,26 +200,21 @@ describe('timeline layout', () => {
     expect(fitLabel(v, 64, measure, 0)).toBe('B♭maj7/A');
     expect(fitLabel([], 100, measure)).toBeNull();
   });
-  it('offers only bar caps that cut the song, plus "All", defaulting to 200 or the whole song', () => {
-    expect(barCapOptions(151)).toEqual({ options: [16, 32, 64, 128].map((c) => ({ value: c, label: `First ${c} bars` })).concat({ value: ALL_BARS, label: 'All 151 bars' }), value: ALL_BARS });
-    const long = barCapOptions(312);
-    expect(long.options.map((o) => o.value)).toEqual([16, 32, 64, 128, 200, ALL_BARS]);
-    expect(long.value).toBe(200);
-    expect(barCapOptions(12)).toEqual({ options: [{ value: ALL_BARS, label: 'All 12 bars' }], value: ALL_BARS });
-    expect(barCapOptions(0).options).toEqual([{ value: ALL_BARS, label: 'All bars' }]);
+  it('offers only bar caps that cut the song, plus "All" last (the website renders the whole song)', () => {
+    expect(barCapOptions(151)).toEqual([16, 32, 64, 128].map((c) => ({ value: c, label: `First ${c} bars` })).concat({ value: ALL_BARS, label: 'All 151 bars' }));
+    expect(barCapOptions(312).map((o) => o.value)).toEqual([16, 32, 64, 128, 200, ALL_BARS]);
+    expect(barCapOptions(12)).toEqual([{ value: ALL_BARS, label: 'All 12 bars' }]);
+    expect(barCapOptions(0)).toEqual([{ value: ALL_BARS, label: 'All bars' }]);
   });
   it('labels the caps in the song\'s own bars when the metre is not 4/4', () => {
     // A cap is a length in beats (bars of 4/4): in 2/4 it keeps twice as many bars, so a 212-bar song is not cut by "200".
     const twoFour = barCapOptions(212, 2);
-    expect(twoFour.options.map((o) => o.label)).toEqual(['First 32 bars', 'First 64 bars', 'First 128 bars', 'All 212 bars']);
-    expect(twoFour.options.map((o) => o.value)).toEqual([16, 32, 64, ALL_BARS]);
-    expect(twoFour.value).toBe(ALL_BARS);
-    // 6/8 (three quarter notes per bar): 200 bars of 4/4 keep 267 bars, and the default still applies when the song is longer.
-    const sixEight = barCapOptions(300, 3);
-    expect(sixEight.options.find((o) => o.value === 200)?.label).toBe('First 267 bars');
-    expect(sixEight.value).toBe(200);
+    expect(twoFour.map((o) => o.label)).toEqual(['First 32 bars', 'First 64 bars', 'First 128 bars', 'All 212 bars']);
+    expect(twoFour.map((o) => o.value)).toEqual([16, 32, 64, ALL_BARS]);
+    // 6/8 (three quarter notes per bar): 200 bars of 4/4 keep 267 bars.
+    expect(barCapOptions(300, 3).find((o) => o.value === 200)?.label).toBe('First 267 bars');
     // 3/4 is plain: 16 bars of 4/4 are 21 bars of 3/4, all of them under a 40-bar song.
-    expect(barCapOptions(40, 3).options.map((o) => o.label)).toEqual(['First 21 bars', 'All 40 bars']);
+    expect(barCapOptions(40, 3).map((o) => o.label)).toEqual(['First 21 bars', 'All 40 bars']);
   });
   it('picks a ruler step that keeps ticks apart', () => {
     expect(rulerStep(10)).toBe(8);
@@ -577,7 +572,7 @@ describe('part list', () => {
 });
 
 describe('derived form', () => {
-  const rep = (seq: string[], times: number) => Array.from({ length: times }, () => seq).flat();
+  const rep = (seq: (string | null)[], times: number) => Array.from({ length: times }, () => seq).flat();
   const A = ['C', 'C', 'F', 'F', 'G', 'G', 'C', 'C'];
   const B = ['Am', 'Am', 'F', 'F', 'G', 'G', 'E', 'E'];
   it('labels repeated 8-bar chord windows with letters in order of appearance', () => {
@@ -667,15 +662,19 @@ describe('live-coding part counts', () => {
   it('counts direct drum patterns in a main loop', () => {
     expect(partList('// bass · bass\nconst bass = note("c2")\n// drums · snare\nconst snare = n("~ 0 ~ 0")')).toEqual(['bass · bass', 'drums · snare']);
   });
-  it('counts instrument arrangements, not riff definitions, including source tracks named like riffs', () => {
+  it('counts parts written as picked riffs, their soft notes, and no chord-chart data', () => {
     expect(partList([
-      '// bass: reusable phrases',
-      'const bass_riff1 = note("c2 e2")',
-      'const bass_riff2 = note("d2 f2")',
-      '// bass · bass',
-      'const bass = arrange([4, bass_riff1], [4, bass_riff2])',
-      '// chords · guitar',
-      'const guitar_riff1 = note("c3")',
-    ].join('\n'))).toEqual(['bass · bass', 'chords · guitar']);
+      '// bass · electric bass finger',
+      'const bass = note(`<',
+      '  A B@2 ~ A',
+      '>`.pickRestart({',
+      '  A: "c2@3 c2", B: "[d2 f2]/2",',
+      '})).s("gm_electric_bass_finger").gain(0.5)',
+      '// drums · hihat · soft notes',
+      'const hihat_soft = s("~ hh ~ hh").gain(0.2)',
+      'const chords = arrange(',
+      '  [8, "<C F>"],',
+      ')',
+    ].join('\n'))).toEqual(['bass · electric bass finger', 'drums · hihat']);
   });
 });

@@ -25,10 +25,42 @@ function landingPlugin(): Plugin {
   };
 }
 
+/**
+ * The production page's Content Security Policy, as a meta tag (a server can send the same as a header, and add
+ * `frame-ancestors`, which a meta tag cannot carry). Scripts come only from the site, except the Deezer JSONP of
+ * the cover-art lookup and the data: URLs of Strudel's audio worklets; `'unsafe-eval'` is Strudel's own: the REPL
+ * evaluates the code in the editor, and its soundfont loader evaluates the fonts it fetches. No inline script runs. Images, samples, soundfonts and the cover-art APIs come from
+ * many HTTPS hosts, so those are allowed by scheme. Styles allow inline attributes (the per-song tile colours)
+ * and the editor's injected styles. Only production gets it: the dev server's hot reload needs inline scripts.
+ */
+export const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-eval' https://api.deezer.com",
+  // Strudel's audio engine (superdough) loads its AudioWorklet processors from data: URLs, which script-src-elem governs.
+  "script-src-elem 'self' data: https://api.deezer.com",
+  "worker-src 'self' blob:",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https:",
+  "media-src 'self' data: blob: https:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'none'",
+].join('; ');
+
+function securityPlugin(): Plugin {
+  return {
+    name: 'strudelify-csp',
+    apply: 'build',
+    transformIndexHtml: (html) => html.replace('<meta charset="utf-8" />', `<meta charset="utf-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}" />`),
+  };
+}
+
 export default defineConfig({
   // The song database is built into packages/data/public/db and served as static files.
   publicDir: path.resolve(__dirname, '..', 'data', 'public'),
-  plugins: [landingPlugin(), {
+  plugins: [landingPlugin(), securityPlugin(), {
     name: 'strudelify-database-check',
     apply: 'build',
     buildStart() {
@@ -48,5 +80,7 @@ export default defineConfig({
   }],
   // The Strudel REPL is code-split and loaded when a song is opened.
   build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 2600 },
-  server: { port: 5173 },
+  // IPv4, as tools/shot.mjs, tools/ui-check.mjs and .claude/launch.json expect (Node resolves "localhost" to ::1 first).
+  server: { port: 5173, host: '127.0.0.1' },
+  preview: { host: '127.0.0.1' },
 });

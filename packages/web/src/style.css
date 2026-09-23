@@ -4,6 +4,12 @@
    NOTE: Strudel injects --background/--foreground/--caret/--selection/... on :root
    with !important, so the app's own tokens use different names.
    ========================================================================== */
+
+/* Fonts are served with the site (SIL Open Font License), so no visitor's browser contacts a font CDN. */
+@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
 :root {
   color-scheme: dark;
   --bg: #0a0c10;
@@ -29,7 +35,7 @@
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
   --shadow-2: 0 24px 60px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.4);
   --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
-  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --header-h: 64px;
   --tl-pad: 12px; /* breathing room inside the timeline's scroll box (see TL_PAD in timeline.ts) */
@@ -412,6 +418,10 @@ body > canvas#test-canvas { display: none; }
 .btn:active { transform: translateY(1px); }
 .btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
 .btn.primary:hover { background: var(--accent-2); }
+.btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.btn[aria-disabled="true"]:hover { background: var(--panel-2); border-color: var(--line-2); }
+.btn[aria-disabled="true"]:active { transform: none; }
+.btn.primary[aria-disabled="true"]:hover { background: var(--accent); border-color: transparent; }
 .btn.lg { min-height: 52px; padding: 0 22px; font-size: 16px; border-radius: var(--r-pill); }
 .btn.lg svg { width: 20px; height: 20px; }
 .btn.sm { min-height: 32px; padding: 0 10px; font-size: 12.5px; border-radius: 8px; }

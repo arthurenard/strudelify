@@ -1,19 +1,20 @@
 /**
  * Opening a song: skeleton, fetch + parse, compile, hero (art, tint, chips), options, recompile on change.
  */
-import { loadSong, compile, timeline, barRange, selectLoop, gmLabel, chordSummary, type IndexEntry, type Song, type CompileOptions } from '@strudelify/core';
+import { loadSong, render, barRange, gmLabel, chordSummary, type IndexEntry, type Song, type CompileOptions, type Timeline } from '@strudelify/core';
 import { lookupArt } from './art.js';
 import { el, setStatus, showBanner, hideBanner, toast, prefersReducedMotion } from './dom.js';
 import { state } from './state.js';
+import { saveRow } from './store.js';
 import { loadRepl } from './repl.js';
-import { play, stop } from './player.js';
+import { stop, refresh } from './player.js';
 import { renderTimeline, updatePosition, clearTimeline } from './timeline.js';
-import { showCode, clearCode } from './code.js';
+import { showCode, clearCode, hasEdits, editorCode, restoreEdits } from './code.js';
 import { closeSearch, rememberRecent } from './search.js';
 import {
   esc, fmt, songTint, initial, displayArtist, keyName, prefersFlats, structureSections, structureChords,
   albumLine, titleSize, barCapOptions, dominantHsl, respellChordLine, respellKeyLine, replaceChordLine, midiKey, chartShift, shiftTonic,
-  partList, deriveForm, leadName,
+  partList, deriveForm, leadName, pageTitle, ALL_BARS,
 } from './ui.js';
 
 export function showSection(which: 'song' | 'empty' | 'notfound') {
@@ -35,15 +36,17 @@ const readFile = async (p: string) => {
 };
 
 // ---------- options ----------
-/** Bar-cap choices for this song: only caps shorter than the song, plus "All N bars"; the default is the whole song. */
+/** Bar-cap choices for this song: only caps shorter than the song, plus "All N bars", which is selected: the website renders the whole song. */
 function fillBarCaps(totalBars: number, meta: Song['meta']) {
-  const { options: opts, value } = barCapOptions(totalBars, meta.beatsPerBar * (4 / meta.beatUnit));
+  const opts = barCapOptions(totalBars, meta.beatsPerBar * (4 / meta.beatUnit));
   el.maxBars.innerHTML = opts.map((o) => `<option value="${o.value}">${esc(o.label)}</option>`).join('');
-  el.maxBars.value = String(opts[opts.length - 1]?.value ?? value);
+  el.maxBars.value = String(opts[opts.length - 1].value);
 }
 function options(): CompileOptions {
-  return { simplify: el.codeStyle.value === 'patterns', form: el.codeStyle.value === 'loop' ? 'loop' : 'song', timing: el.codeStyle.value === 'source' ? 'source' : 'patterns', melody: el.melody.checked, maxTracks: Number.MAX_SAFE_INTEGER, maxBars: Number(el.maxBars.value) || 200 };
+  return { form: el.codeStyle.value === 'loop' ? 'loop' : 'song', timing: el.codeStyle.value === 'source' ? 'source' : 'patterns', melody: el.melody.checked, maxTracks: Number.MAX_SAFE_INTEGER, maxBars: Number(el.maxBars.value) || ALL_BARS };
 }
+/** Stands in until the first compile fills the song's timeline in. */
+const NO_TIMELINE: Timeline = { bars: 0, cpm: 0, secondsPerBar: 0, chords: [], sections: [] };
 
 /** Instrumental leads can be toggled; detected vocals are always omitted. Charts have no MIDI options. */
 function applyOptionVisibility(song: Song) {
@@ -102,8 +105,18 @@ const TILE_AFTER_MS = 800;
 /** A lookup still running after this long tints the hero with the tile's colour; a cover found later cross-fades over it. */
 const TINT_AFTER_MS = 2500;
 const tintKey = (id: string) => `tint:${id}`;
-function cachedTint(id: string): string | null { try { return localStorage.getItem(tintKey(id)); } catch { return null; } }
-function rememberTint(id: string, tint: string) { try { localStorage.setItem(tintKey(id), tint); } catch { /* quota, private mode */ } }
+/** A remembered tint: `{ tint, ts }` (see store.ts), or a bare colour from before rows were stamped. */
+function cachedTint(id: string): string | null {
+  try {
+    const raw = localStorage.getItem(tintKey(id));
+    if (!raw || raw[0] !== '{') return raw;
+    const { tint } = JSON.parse(raw) as { tint?: unknown };
+    return typeof tint === 'string' ? tint : null;
+  } catch { return null; }
+}
+function rememberTint(id: string, tint: string) {
+  try { saveRow(localStorage, tintKey(id), JSON.stringify({ tint, ts: Date.now() })); } catch { /* storage unavailable */ }
+}
 let tileTimer: number | undefined;
 let tintTimer: number | undefined;
 
@@ -166,7 +179,7 @@ function dominantColor(url: string): Promise<string | null> {
 }
 
 /** The tint for a song: the cover's dominant colour, or (no cover, unreadable cover) the tile colour of its title. */
-async function tintFor(entry: IndexEntry, art: string | undefined): Promise<string> {
+async function tintFor(entry: { title: string; artist: string }, art: string | undefined): Promise<string> {
   return (art && (await dominantColor(art))) || songTint(entry);
 }
 const hasCover = (info: { art?: string; kind?: string }) => !!info.art && info.kind !== 'placeholder';
@@ -204,10 +217,11 @@ async function renderArt(entry: IndexEntry) {
  * the hero paints finished on the first frame. Never cancels the current song's own lookup.
  */
 const prefetched = new Set<string>();
-export async function prefetchArt(entry: IndexEntry) {
+/** `display` is the artist as shown, when the caller has it without the index (a landing card). */
+export async function prefetchArt(entry: Pick<IndexEntry, 'id' | 'title' | 'artist' | 'year'> & { display?: string }) {
   if (prefetched.has(entry.id) || cachedTint(entry.id)) return;
   prefetched.add(entry.id);
-  const info = await lookupArt(entry.id, displayArtist(entry.artist), entry.title, { year: entry.year, supersede: false, budget: 4000 });
+  const info = await lookupArt(entry.id, entry.display ?? displayArtist(entry.artist), entry.title, { year: entry.year, supersede: false, budget: 4000 });
   if (!info.art) { prefetched.delete(entry.id); return; } // superseded or aborted: try again next time
   if (state.current?.entry.id === entry.id || cachedTint(entry.id)) return;
   rememberTint(entry.id, await tintFor(entry, hasCover(info) ? info.art : undefined));
@@ -232,7 +246,7 @@ export async function choose(entry: IndexEntry) {
   const artist = displayArtist(entry.artist);
   // Resolve artwork alongside the MIDI and editor downloads, not after compilation.
   void lookupArt(entry.id, artist, entry.title, { year: entry.year });
-  document.title = `${entry.title} — ${artist} · Strudelify`;
+  document.title = pageTitle(entry.title, artist);
   const hash = `#${encodeURIComponent(entry.id)}`;
   if (location.hash !== hash) history.pushState(null, '', hash);
   rememberRecent(entry.id);
@@ -242,33 +256,42 @@ export async function choose(entry: IndexEntry) {
   try {
     const [song] = await Promise.all([loadSong(entry, readFile), loadRepl()]);
     if (state.loadingId !== entry.id) return;
-    state.current = { entry, song, tl: timeline(song, options()), code: '', flats: false, chordSource: 'detected' };
+    state.current = { entry, song, tl: NO_TIMELINE, code: '', flats: false, chordSource: 'detected' };
     el.song.classList.remove('loading');
     el.optsSkel.hidden = true;
     applyOptionVisibility(song);
     recompile();
     setStatus('');
-    // Chosen from the search box: focus moves on to Play (Space then plays) instead of being dropped on <body>.
-    if (document.activeElement === el.q) el.play.focus({ preventScroll: true });
+    // Chosen from the search box or a card (which the song page replaced): focus moves on to Play, so Space
+    // then plays, instead of being dropped on <body>.
+    const focused = document.activeElement;
+    if (!focused || focused === document.body || focused === el.q || !(focused as HTMLElement).offsetParent) el.play.focus({ preventScroll: true });
     renderArt(entry);
   } catch (e) {
     if (state.loadingId !== entry.id) return;
+    // Nothing is loading any more: picking the song again (a result, a card, Back) tries again.
+    state.loadingId = null;
     el.song.classList.remove('loading');
     el.optsSkel.hidden = true;
     setStatus('');
-    showBanner(`Could not load “${entry.title}”: ${(e as Error).message}`, () => { state.loadingId = null; choose(entry); });
+    showBanner(`Could not load “${entry.title}”: ${(e as Error).message}`, () => { choose(entry); });
     toast(`Could not load ${entry.title}`, 'error');
   }
 }
 
-/** Compile with the current options and refresh code, chips, timeline and counters (re-evaluates while playing). */
+/**
+ * Compile with the current options and refresh code, chips, timeline and counters (re-evaluates while playing).
+ * Code the user edited is regenerated too, and the banner offers the edited version back.
+ */
 export function recompile() {
   const cur = state.current;
   if (!cur) return;
+  const edits = cur.code && hasEdits() ? editorCode() : null;
   const opts = options();
   el.optBars.hidden = opts.form === 'loop' || !cur.song.tracks.length;
   const { song } = cur;
-  cur.code = compile(song, opts);
+  const rendering = render(song, opts);
+  cur.code = rendering.code;
   const playable = !cur.code.trimEnd().endsWith('\nsilence');
   el.play.disabled = !playable;
   hideBanner();
@@ -276,7 +299,7 @@ export function recompile() {
     void stop();
     showBanner('No separate instrumental parts remain in this transcription with the current options.');
   }
-  cur.tl = timeline(song, opts);
+  cur.tl = rendering.timeline;
   cur.chordSource = song.tracks.length ? 'detected' : 'chart';
   let key: { tonic?: string; mode?: 'major' | 'minor' } = { tonic: song.meta.tonic, mode: song.meta.mode };
   let keyTitle = '';
@@ -315,12 +338,14 @@ export function recompile() {
   // The code the user copies spells its chords and key exactly as the readout and the lane do (comments only).
   cur.code = respellKeyLine(respellChordLine(cur.code, cur.flats), key.tonic, key.mode);
   showCode(cur.code, cur.entry.id);
-  renderChips(cur.entry, opts.form === 'loop' ? selectLoop(song, opts).song : song, cur.code, key, keyTitle);
+  if (edits !== null && playable) showBanner('The code was regenerated for the new options, replacing your edits.', () => restoreEdits(edits), 'Restore my edits');
+  renderChips(cur.entry, opts.form === 'loop' ? rendering.song : song, cur.code, key, keyTitle);
   renderTimeline();
   el.totalTime.textContent = fmt(cur.tl.bars * cur.tl.secondsPerBar);
   el.track.setAttribute('aria-valuemax', String(Math.max(0, cur.tl.bars - 1)));
   state.pausedBar = Math.min(state.pausedBar, Math.max(0, cur.tl.bars - 1));
-  updatePosition(state.started ? 0 : state.pausedBar, true);
-  if (state.started) play(); // re-evaluate with the new code
+  // Playing: the new code is swapped in where the song is; paused: the playhead stays where it was.
+  if (state.started) void refresh();
+  else updatePosition(state.pausedBar, true);
 }
 for (const input of [el.melody, el.maxBars, el.codeStyle]) input.addEventListener('change', recompile);

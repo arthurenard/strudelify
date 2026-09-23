@@ -1,7 +1,8 @@
 /**
  * The code section: editor theming, wrap toggle, collapse, copy / download / open-in-strudel.cc.
+ * The actions take what the editor holds, so a user's edits are what gets copied, saved or opened.
  */
-import { shareUrl } from '@strudelify/core';
+import { shareUrl, MAX_SHARE_URL } from '@strudelify/core';
 import { el, toast, isMobile } from './dom.js';
 import { state } from './state.js';
 import { ed } from './repl.js';
@@ -9,14 +10,26 @@ import { ed } from './repl.js';
 let shownId = '';
 let lineCount = 0;
 let editorConfigured = false;
+/** The code last put in the editor: anything else there is the user's edit. */
+let generated = '';
+
+/** The code the editor holds: the generated code, or the user's edits to it. */
+export const editorCode = (): string => ed()?.code ?? state.current?.code ?? '';
+/** Whether the user has changed the code in the editor since it was generated. */
+export const hasEdits = (): boolean => !!ed() && ed()!.code !== generated;
+/** Put code back in the editor as the user's own (after an option change regenerated it). */
+export function restoreEdits(code: string) {
+  ed()?.setCode(code);
+  syncActions();
+}
+
 /** Put generated code in the editor and point the actions at it. */
 export function showCode(code: string, id: string) {
   if (ed() && !editorConfigured) { applyWrap(); editorConfigured = true; }
+  generated = code;
   ed()?.setCode(code);
-  el.open.href = shareUrl(code);
-  if (el.download.href.startsWith('blob:')) URL.revokeObjectURL(el.download.href);
-  el.download.href = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
   el.download.download = `${id}.strudel.js`;
+  syncActions(code);
   lineCount = code.split('\n').length;
   el.codeLines.textContent = `${lineCount} lines`;
   if (id !== shownId) { shownId = id; setExpanded(false); } // a new song starts folded; recompiles keep the choice
@@ -33,10 +46,47 @@ export function clearCode() {
   el.hbar.hidden = true;
   el.codeBody.classList.remove('overflowing');
   el.open.removeAttribute('href');
+  el.open.removeAttribute('aria-disabled');
   if (el.download.href.startsWith('blob:')) URL.revokeObjectURL(el.download.href);
   el.download.removeAttribute('href');
+  actionsCode = null;
+  generated = '';
   setExpanded(false);
 }
+
+// ---------- actions ----------
+/** The code the Download and Open links currently point at. */
+let actionsCode: string | null = null;
+const OPEN_TITLE = el.open.title;
+/**
+ * Point Download and Open at `code` (by default, what the editor holds now). A program longer than a
+ * browser takes in a link cannot travel to strudel.cc in the URL: the link is disabled and says why.
+ */
+function syncActions(code = editorCode()) {
+  if (code === actionsCode) return;
+  actionsCode = code;
+  if (el.download.href.startsWith('blob:')) URL.revokeObjectURL(el.download.href);
+  el.download.href = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+  const url = shareUrl(code);
+  if (url.length <= MAX_SHARE_URL) {
+    el.open.href = url;
+    el.open.removeAttribute('aria-disabled');
+    el.open.title = OPEN_TITLE;
+  } else {
+    el.open.removeAttribute('href');
+    el.open.setAttribute('aria-disabled', 'true');
+    el.open.title = `This code is too long to open in strudel.cc by link (${Math.round(url.length / 1024 / 1024 * 10) / 10} MB). Download it and paste it into strudel.cc instead.`;
+  }
+}
+// The links follow the editor: refreshed as the pointer or the focus reaches them, and again on the click itself.
+for (const link of [el.open, el.download]) {
+  for (const ev of ['pointerenter', 'focus', 'pointerdown'] as const) link.addEventListener(ev, () => { if (state.current) syncActions(); });
+}
+el.open.addEventListener('click', (e) => {
+  if (!state.current) { e.preventDefault(); return; }
+  syncActions();
+  if (el.open.getAttribute('aria-disabled') === 'true') { e.preventDefault(); toast('Too long to open by link: download the code and paste it into strudel.cc', 'error'); }
+});
 
 // ---------- height cap ----------
 /**
@@ -74,7 +124,7 @@ window.addEventListener('resize', () => requestAnimationFrame(syncCap), { passiv
 el.copy.addEventListener('click', async () => {
   if (!state.current) return;
   try {
-    await navigator.clipboard.writeText(state.current.code);
+    await navigator.clipboard.writeText(editorCode());
     toast('Copied to clipboard');
     el.copy.classList.add('done');
     setTimeout(() => el.copy.classList.remove('done'), 1500);
@@ -82,6 +132,7 @@ el.copy.addEventListener('click', async () => {
 });
 el.download.addEventListener('click', (e) => {
   if (!state.current) { e.preventDefault(); return; }
+  syncActions();
   toast(`Saved ${state.current.entry.id}.strudel.js`, 'info');
 });
 
@@ -161,10 +212,14 @@ el.hbarTrack.addEventListener('keydown', (e) => {
   const sc = scroller();
   if (!sc) return;
   const page = sc.clientWidth * 0.8;
-  if (e.key === 'ArrowRight') { e.preventDefault(); sc.scrollLeft += page; }
-  else if (e.key === 'ArrowLeft') { e.preventDefault(); sc.scrollLeft -= page; }
-  else if (e.key === 'Home') { e.preventDefault(); sc.scrollLeft = 0; }
-  else if (e.key === 'End') { e.preventDefault(); sc.scrollLeft = sc.scrollWidth; }
+  if (e.key === 'ArrowRight') sc.scrollLeft += page;
+  else if (e.key === 'ArrowLeft') sc.scrollLeft -= page;
+  else if (e.key === 'Home') sc.scrollLeft = 0;
+  else if (e.key === 'End') sc.scrollLeft = sc.scrollWidth;
+  else return;
+  // The keys scroll the code; they must not also seek or rewind the song (see main.ts).
+  e.preventDefault();
+  e.stopPropagation();
 });
 
 // ---------- wrap ----------

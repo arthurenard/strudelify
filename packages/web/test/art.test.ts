@@ -561,22 +561,22 @@ describe('RequestQueue per-host policy and cool-down', () => {
 describe('resolveArt under a rate-limited iTunes', () => {
   it('shows Deezer art within 2 s of simulated time when iTunes answers 403, and skips iTunes while it cools', async () => {
     const clock = fakeClock();
-    const fetchImpl = vi.fn(async (url: string) => {
+    const fetchMock = vi.fn(async (url: string) => {
       if (url.includes('itunes.apple.com')) return new Response('', { status: 403 });
       if (url.includes('api.deezer.com/search?q')) return jsonRes({ data: [deezerRow('Queen', 'Bohemian Rhapsody', 'A Night at the Opera')] });
       return jsonRes({});
-    }) as unknown as typeof fetch;
-    const adapter = createFetchAdapter({ fetch: fetchImpl, queue: policyQueue(clock) });
+    });
+    const adapter = createFetchAdapter({ fetch: fetchMock as unknown as typeof fetch, queue: policyQueue(clock) });
     const events: ArtEvent[] = [];
     const info = await resolveArt({ artist: 'Queen', title: 'Bohemian Rhapsody' }, adapter, { now: clock.now, onEvent: (e) => events.push(e) });
     expect(info).toMatchObject({ source: 'deezer', kind: 'track', album: 'A Night at the Opera' });
     expect(clock.t).toBeLessThan(2000);
-    const itunesCalls = () => fetchImpl.mock.calls.filter(([u]) => String(u).includes('itunes')).length;
+    const itunesCalls = () => fetchMock.mock.calls.filter(([u]) => String(u).includes('itunes')).length;
     expect(itunesCalls()).toBe(2); // one retry, then the lane cools ("Queen Bohemian Rhapsody" has a single spelling)
     expect(events.filter((e) => e.source === 'itunes-song')).toHaveLength(1);
 
     // The next song (same queue, as in the browser) skips iTunes and goes straight to Deezer.
-    fetchImpl.mockClear();
+    fetchMock.mockClear();
     events.length = 0;
     const t1 = clock.t;
     const again = await resolveArt({ artist: 'Queen', title: 'Bohemian Rhapsody' }, adapter, { now: clock.now, onEvent: (e) => events.push(e) });

@@ -3,12 +3,14 @@
  * Vite plugin that bakes the landing cards into index.html (landing.ts), so both paint the same colour.
  */
 
-/** Stable FNV-1a hash of a string, mapped to a hue in [0, 360). */
-export function hashHue(s: string): number {
+/** Stable 32-bit FNV-1a hash of a string. */
+export function fnv1a(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return (h >>> 0) % 360;
+  return h >>> 0;
 }
+/** The hash mapped to a hue in [0, 360). */
+export const hashHue = (s: string): number => fnv1a(s) % 360;
 /**
  * The identity palette: twelve hues spaced around the wheel so that any two songs that hash to different slots
  * are clearly different colours, in two weights each (a deeper and a brighter version) so that neighbouring

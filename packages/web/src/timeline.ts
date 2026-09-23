@@ -21,8 +21,13 @@ const minPxPerBar = () => (isMobile() ? 22 : 10);
 /** From this width per bar every block carries its own symbol; below it the lane shows harmonic phrases instead. */
 const EXACT_PX = 20;
 
-interface Handlers { seek(bar: number): void; currentBar(): number }
-let handlers: Handlers = { seek: () => {}, currentBar: () => 0 };
+interface Handlers {
+  seek(bar: number): void;
+  currentBar(): number;
+  /** Play or pause (Space on the slider, as on a media player's seek bar). */
+  toggle(): void;
+}
+let handlers: Handlers = { seek: () => {}, currentBar: () => 0, toggle: () => {} };
 /** The transport owns seeking; the timeline only reports where the user pointed. */
 export function bindTimeline(h: Handlers) { handlers = h; }
 
@@ -449,14 +454,20 @@ el.track.addEventListener('pointercancel', endScrub);
 el.track.addEventListener('pointerleave', hideHover);
 el.track.addEventListener('keydown', (e) => {
   const cur = state.current;
-  if (!cur) return;
-  e.stopPropagation(); // the page-level arrows (4 bars) must not fire on top of the slider's own (1 bar)
+  if (!cur || e.metaKey || e.ctrlKey || e.altKey) return; // Cmd+K and the browser's own shortcuts pass through
   const step = e.shiftKey ? 8 : 1;
   const last = Math.max(0, cur.tl.bars - 1);
-  if (e.key === 'ArrowRight') { e.preventDefault(); handlers.seek(Math.min(last, handlers.currentBar() + step)); }
-  else if (e.key === 'ArrowLeft') { e.preventDefault(); handlers.seek(Math.max(0, handlers.currentBar() - step)); }
-  else if (e.key === 'Home') { e.preventDefault(); handlers.seek(0); }
-  else if (e.key === 'End') { e.preventDefault(); handlers.seek(last); }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp') handlers.seek(Math.min(last, handlers.currentBar() + step));
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') handlers.seek(Math.max(0, handlers.currentBar() - step));
+  else if (e.key === 'PageUp') handlers.seek(Math.min(last, handlers.currentBar() + 8));
+  else if (e.key === 'PageDown') handlers.seek(Math.max(0, handlers.currentBar() - 8));
+  else if (e.key === 'Home') handlers.seek(0);
+  else if (e.key === 'End') handlers.seek(last);
+  else if (e.key === ' ') handlers.toggle();
+  else return;
+  // Handled here: the page-level keys (arrows by 4 bars, Space) must not act on top of the slider's own.
+  e.preventDefault();
+  e.stopPropagation();
 });
 
 // ---------- lanes ----------

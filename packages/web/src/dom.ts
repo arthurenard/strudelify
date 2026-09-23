@@ -119,10 +119,12 @@ export function setStatus(text: string) { el.status.textContent = text; }
 
 // ---------- banner ----------
 let retryAction: (() => void) | null = null;
-export function showBanner(message: string, retry?: () => void) {
+/** Show a message with, optionally, one action (Retry by default). */
+export function showBanner(message: string, retry?: () => void, actionLabel = 'Retry') {
   el.bannerText.textContent = message;
   retryAction = retry ?? null;
   el.bannerRetry.hidden = !retry;
+  el.bannerRetry.textContent = actionLabel;
   el.banner.hidden = false;
 }
 export function hideBanner() { el.banner.hidden = true; retryAction = null; }
