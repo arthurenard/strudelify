@@ -71,7 +71,7 @@ async function importFrom(stage: string, limit: number) {
       if (!validTranscription(song)) throw new Error('Invalid decoded MIDI events');
       const code = compile(song, { timing: 'patterns', form: 'loop' });
       if (/\b(?:NaN|Infinity|undefined)\b/.test(code.split('\n').filter(l => !l.startsWith('//')).join('\n'))) throw Error('Non-finite output');
-      if (code.length > 12000) throw Error('Main-loop code exceeds readability limit');
+      if (code.length > 20000) throw Error('Main-loop code exceeds readability limit');
       validatePattern(code, timeline(song, { form: 'loop', timing: 'patterns' }).bars);
       const entry: IndexEntry = { id, title: item.title, artist: item.artist, sources: ['midi'], bpm: song.meta.bpm,
         key: song.meta.tonic ? `${song.meta.tonic} ${song.meta.mode ?? ''}`.trim() : undefined,

@@ -9,11 +9,20 @@ def named(text):
     """A title or artist with at least two letters or digits: 'ª -' names nothing. The importer cleans the rest."""
     return sum(c.isalnum() for c in unicodedata.normalize('NFKC', value(text))) >= 2
 
+# A score is good enough when three or more reviewers rate it 4/5 or better, or, with fewer ratings (none
+# below 4), when at least ten users made it a favourite.
+MIN_RATING, MIN_RATINGS, MIN_FAVOURITES = 4.0, 3, 10
+
+def liked(r):
+    rating, ratings = float(r['rating'] or 0), int(r['n_ratings'] or 0)
+    if ratings >= MIN_RATINGS: return rating >= MIN_RATING
+    return int(r['n_favorites'] or 0) >= MIN_FAVOURITES and (ratings == 0 or rating >= MIN_RATING)
+
 def eligible(r):
     return (r['license_conflict'] == 'False' and r['is_draft'] == 'False'
         and r['has_paywall'] == 'False' and r['subset:all_valid'] == 'True'
         and r['is_best_unique_arrangement'] == 'True' and r['has_lyrics'] == 'False'
-        and float(r['rating'] or 0) >= 4.5 and int(r['n_ratings'] or 0) >= 5
+        and liked(r)
         and 2 <= int(r['n_tracks'] or 0) <= 16
         and 30 <= float(r['song_length.seconds'] or 0) <= 600
         and 100 <= int(r['n_notes'] or 0) <= 12000
@@ -29,7 +38,8 @@ def select(csv_path, archive_path, destination, limit):
                 if eligible(r): rows.append(r)
             except (ValueError, KeyError):
                 continue
-    rows.sort(key=lambda r: (float(r['rating']), min(int(r['n_ratings']), 1000)), reverse=True)
+    # Rated scores first, best rated first; then by favourites. The first row of an artist and title wins.
+    rows.sort(key=lambda r: (int(r['n_ratings'] or 0) >= MIN_RATINGS, float(r['rating'] or 0), min(int(r['n_ratings'] or 0), 1000), int(r['n_favorites'] or 0)), reverse=True)
     selected = {}
     identities = set()
     for r in rows:
