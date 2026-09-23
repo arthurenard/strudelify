@@ -4,70 +4,93 @@
   "source": "https://github.com/sgossner/VCSL",
   "files": [
     {
-      "file": "bassdrum1-6.wav",
+      "file": "bassdrum1-6.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v7_rr1_Sum.wav",
-      "sha256": "7024054e68261d2cca0ee58fdf9d6f23b54370792d04aa2c1ccf41acc090bd2b",
-      "bytes": 1105152
+      "sourceSha256": "7024054e68261d2cca0ee58fdf9d6f23b54370792d04aa2c1ccf41acc090bd2b",
+      "sourceBytes": 1105152,
+      "sha256": "884d712adcbde777d0c38b04a179a5299fd1ba137d94fb74f3a8253d107f6299",
+      "bytes": 103358
     },
     {
-      "file": "snare_modern-43.wav",
+      "file": "snare_modern-43.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%202/Snare3M_Xstick_v2_rr1_Mid.wav",
-      "sha256": "fad304d674fa84a73ec89235aa1b811c91edf155bed108315b68fbd69f652fce",
-      "bytes": 201240
+      "sourceSha256": "fad304d674fa84a73ec89235aa1b811c91edf155bed108315b68fbd69f652fce",
+      "sourceBytes": 201240,
+      "sha256": "3db8c8084a87ec2be9385072494a06178fc1026bf074757797030772787a47e3",
+      "bytes": 28514
     },
     {
-      "file": "snare_modern-14.wav",
+      "file": "snare_modern-14.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Modern%201/Snare2_HitSN_v7_rr1_Mid.wav",
-      "sha256": "e63d9ebb2d1f85456d7554448b52330031051bc45db36f5fe08ef5f5149421e6",
-      "bytes": 271480
+      "sourceSha256": "e63d9ebb2d1f85456d7554448b52330031051bc45db36f5fe08ef5f5149421e6",
+      "sourceBytes": 271480,
+      "sha256": "660c342bce98641168cfb9c0f6e8abfe45a6bf077694180017dad281b24d0cf5",
+      "bytes": 51963
     },
     {
-      "file": "tom2_stick-4.wav",
+      "file": "tom2_stick-4.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Membranophones/Struck%20Membranophones/Tom%202/Stick/TomL_HitS_v4_rr1_Mid.wav",
-      "sha256": "d1cb91ccf2817e4c6f2e839530980554f63c232a3fa98f84a383a6cb1c4a98bd",
-      "bytes": 603516
+      "sourceSha256": "d1cb91ccf2817e4c6f2e839530980554f63c232a3fa98f84a383a6cb1c4a98bd",
+      "sourceBytes": 603516,
+      "sha256": "11a5e3ffbd8d99664f2919f16e778afd89d6c181a1e6346d95ac9dea135e03d7",
+      "bytes": 63790
     },
     {
-      "file": "hihat-8.wav",
+      "file": "hihat-8.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Idiophones/Struck%20Idiophones/Hi-Hat%20Cymbal/HiHat_HitC_v4_rr1_Mid.wav",
-      "sha256": "ccaf3b3a353c22d7aac00c261229c42a1ef083285069f4c76dbafba454b46edd",
-      "bytes": 266280
+      "sourceSha256": "ccaf3b3a353c22d7aac00c261229c42a1ef083285069f4c76dbafba454b46edd",
+      "sourceBytes": 266280,
+      "sha256": "50f00af983ed3b96fd714cbf6d115b34c757c7362e8d26cab9af80e693b09582",
+      "bytes": 61643
     },
     {
-      "file": "hihat-0.wav",
+      "file": "hihat-0.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Idiophones/Struck%20Idiophones/Hi-Hat%20Cymbal/HiHat_Close_rr1_Mid.wav",
-      "sha256": "4e4dbb4ddbeea653f95c2c229685fd5966ed9492fb8489d89d19dbd864f1a6b4",
-      "bytes": 236820
+      "sourceSha256": "4e4dbb4ddbeea653f95c2c229685fd5966ed9492fb8489d89d19dbd864f1a6b4",
+      "sourceBytes": 236820,
+      "sha256": "1647c63b1427fcb1031da8084c8fba583f33be887e7a894f97119d4785d4c955",
+      "bytes": 37357
     },
     {
-      "file": "hihat-13.wav",
+      "file": "hihat-13.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Idiophones/Struck%20Idiophones/Hi-Hat%20Cymbal/HiHat_HitO_rr1_Mid.wav",
-      "sha256": "fa492ec14cc6924b43ad5fcf9e9a0f406d926998835bde2eb5847cd15ad25be7",
-      "bytes": 1026612
+      "sourceSha256": "fa492ec14cc6924b43ad5fcf9e9a0f406d926998835bde2eb5847cd15ad25be7",
+      "sourceBytes": 1026612,
+      "sha256": "8a3799a106c5485dd88b220fbc32c322319411c0ea588c0b4384801004cc367a",
+      "bytes": 285159
     },
     {
-      "file": "tom_stick-4.wav",
+      "file": "tom_stick-4.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Membranophones/Struck%20Membranophones/Tom%201/Stick/TomH_HitS_v4_rr1_Mid.wav",
-      "sha256": "021ae3ad142c891d2f8422f74bbbff24d258a72edcc3d9c4ff0d8107f1686512",
-      "bytes": 525140
+      "sourceSha256": "021ae3ad142c891d2f8422f74bbbff24d258a72edcc3d9c4ff0d8107f1686512",
+      "sourceBytes": 525140,
+      "sha256": "5ca4c2d94bc6bc6b152edd33d9a17157399f7d29ba41595dcf891ede5ebb9f8d",
+      "bytes": 55343
     },
     {
-      "file": "sus_cymbal2-9.wav",
+      "file": "sus_cymbal2-9.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Idiophones/Struck%20Idiophones/Suspended%20Cymbal%202/susCymb2_hit_fff1.wav",
-      "sha256": "715edddcffc1e5aa7395c9ebe91b6396aa7665fa854b26d37e20953f046ac6f1",
-      "bytes": 2788526
+      "sourceSha256": "715edddcffc1e5aa7395c9ebe91b6396aa7665fa854b26d37e20953f046ac6f1",
+      "sourceBytes": 2788526,
+      "sha256": "1da8ac380654c6c80c830cbde0433ba212872f36cb14729f027abce17058318f",
+      "bytes": 679055
     },
     {
-      "file": "sus_cymbal-15.wav",
+      "file": "sus_cymbal-15.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Idiophones/Struck%20Idiophones/Suspended%20Cymbal%201/susCymb1_hit_stick_f1.wav",
-      "sha256": "bc03d2057fed2e56f0aa5f34d3fa42d859ba06150f6b9433409d3fce43342fcb",
-      "bytes": 1213358
+      "sourceSha256": "bc03d2057fed2e56f0aa5f34d3fa42d859ba06150f6b9433409d3fce43342fcb",
+      "sourceBytes": 1213358,
+      "sha256": "713bbb2a2efaaeb40dccd0aa09777d365edde9aaa1adad6a9d8ed21ba6112f80",
+      "bytes": 258935
     },
     {
-      "file": "sus_cymbal-8.wav",
+      "file": "sus_cymbal-8.flac",
       "source": "https://raw.githubusercontent.com/sgossner/VCSL/master/Idiophones/Struck%20Idiophones/Suspended%20Cymbal%201/susCymb1_hit_bell_fff1.wav",
-      "sha256": "6be90461233ba1900c1c02118cc0d00b50d0d534596ec0ae2fe5bc1e0ce0e715",
-      "bytes": 748994
+      "sourceSha256": "6be90461233ba1900c1c02118cc0d00b50d0d534596ec0ae2fe5bc1e0ce0e715",
+      "sourceBytes": 748994,
+      "sha256": "d6ab559eb6a10cd5f4a43c3403a38622acd2b8c20c6f1e66159ba88944112bf8",
+      "bytes": 194783
     }
-  ]
+  ],
+  "encoding": "FLAC: each source WAV re-encoded losslessly, so it decodes to exactly the source samples."
 }

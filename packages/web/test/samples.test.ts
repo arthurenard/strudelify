@@ -9,11 +9,17 @@ it('ships every selected acoustic hit at its original sample index with verified
   const provenance=JSON.parse(fs.readFileSync(new URL('provenance.json',root),'utf8'));
   for(const {sample,index} of Object.values(ACOUSTIC_DRUMS)) {
     const path=bank[sample][index];
-    expect(path).toMatch(/^\/audio\/acoustic\/.+\.wav$/);
+    expect(path).toMatch(/^\/audio\/acoustic\/.+\.flac$/);
     const file=path.split('/').pop(), bytes=fs.readFileSync(new URL(file,root));
-    expect(bytes.toString('ascii',0,4)).toBe('RIFF');
-    expect(crypto.createHash('sha256').update(bytes).digest('hex')).toBe(provenance.files.find((f:any)=>f.file===file).sha256);
+    expect(bytes.toString('ascii',0,4)).toBe('fLaC');
+    const row=provenance.files.find((f:any)=>f.file===file);
+    expect(crypto.createHash('sha256').update(bytes).digest('hex')).toBe(row.sha256);
+    expect(row.sourceSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(row.source).toMatch(/^https:\/\/raw\.githubusercontent\.com\/sgossner\/VCSL\/.+\.wav$/);
   }
+  // Nothing on disk that the bank does not name (a leftover WAV would be published for nothing).
+  const shipped=fs.readdirSync(root).filter(f=>/\.(flac|wav)$/.test(f)).sort();
+  expect(shipped).toEqual(provenance.files.map((f:any)=>f.file).sort());
 });
 it('waits for audio decoding before declaring the drum bank ready',async()=>{
   const map={snare_modern:['/audio/acoustic/test.wav']};
