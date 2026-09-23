@@ -66,7 +66,7 @@ try {
   // Songs at three widths: no horizontal scroll, labels, readout vs lane.
   for (const [w, h] of [[1440, 900], [768, 1024], [390, 844]]) {
     await page.setViewport({ width: w, height: h, isMobile: w < 768, hasTouch: w < 768 });
-    for (const id of ['pink-floyd--another-brick-in-the-wall-part-2', 'james-brown--i-don-t-mind', 'steve-miller-band--the-joker']) {
+    for (const id of ['pink-floyd--another-brick-in-the-wall-part-2', 'james-brown--i-dont-mind', 'steve-miller-band--the-joker']) {
       await page.goto(`${BASE}/#${id}`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
       const s = await state();
       check(s.scrollW === s.innerW, `${w}px ${id}: no horizontal scroll (${s.scrollW}/${s.innerW})`);
@@ -92,7 +92,8 @@ try {
   await sleep(150); const s1 = await state(); check(s1.title === "I Don't Mind", 'search Enter: new title at once'); noStale(s1, 'search +150 ms');
   await sleep(400); noStale(await state(), 'search +550 ms');
   await throttle(false); await waitSong(); await sleep(400);
-  const jb = await state(); check(jb.lanes > 0 && jb.bar === 'bar 1 / 85', `loaded: ${jb.title} ${jb.bar}`);
+  // (The website opens a song on its Main loop, a few bars of the chart.)
+  const jb = await state(); check(jb.lanes > 0 && /^bar 1 \/ \d+$/.test(jb.bar), `loaded: ${jb.title} ${jb.bar}`);
   check(!errors.length, `song switching: no errors${errors.length ? '\n  ' + errors.join('\n  ') : ''}`);
 } finally { await browser.close(); }
 console.log(failures.length ? `\n${failures.length} failure(s)` : '\nall checks passed');

@@ -18,7 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
 import { spawnSync } from 'node:child_process';
-import { createIndex } from '../packages/core/dist/index.js';
+import { createIndex, isDuplicateTitle, normaliseText } from '../packages/core/dist/index.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DB = process.env.STRUDELIFY_DB ?? path.resolve(HERE, '..', 'packages', 'data', 'public', 'db');
@@ -278,7 +278,7 @@ const CASES = [
   ['ewf', { artist: /^Earth, Wind & Fire$/ }],
   ['bto', { artist: /^Bachman-Turner Overdrive$/ }],
   // a composer's catalogue before a song titled with his name or containing it
-  ['mozart', { artist: /^Wolfgang Amadeus Mozart$/ }], // not Suzanne Ciani's "Mozart" (one transcription)
+  ['mozart', { artist: /^(?:Wolfgang Amadeus|Wolfgang A\.|W\. ?A\.?) Mozart$/ }], // the composer under any spelling, not Suzanne Ciani's "Mozart" (one transcription)
   ['beethoven', ['ludwig-van-beethoven--5th-symphony', 'ludwig-van-beethoven--fur-elise']], // the composer's best-known pieces before "Roll Over Beethoven"
   ['chopin', { artist: /^Chopin Frederic$/ }],
   ['bach', { artist: /^Bach Johann Sebastian$/ }],
@@ -707,8 +707,8 @@ const HELDOUT4 = [
   ['look of love part 1', 'abc--look-of-love-part-1'],
   ['rock and roll part 2', ['gary-glitter--rock-roll-part-2', 'gary-glitter--rock-n-roll-pt-2']],
   ["what'd i say", 'ray-charles--what-d-i-say-part-1'],
-  ['mambo no 5', 'lou-bega--mambo-no-5'],
-  ['mambo number 5', 'lou-bega--mambo-no-5'],
+  ['mambo no 5', 'lou-bega--mambo-no-5-a-little-bit-of'],
+  ['mambo number 5', 'lou-bega--mambo-no-5-a-little-bit-of'],
   ['nothing compares 2 u', 'prince--nothing-compares-2-u'],
   ['nothing compares to you', 'prince--nothing-compares-2-u'],
   ['i would die 4 u', 'prince--i-would-die-4-u'],
@@ -877,11 +877,11 @@ const RESOLVE = [
   ['oxygene part 4', 'jean-michel-jarre--oxygene-part-4'],
   ['chronologie part 2 jarre', 'jean-michel-jarre--chronologie-part-2'],
   ['stay for a while amy grant', ['amy-grant--stay-for-a-while', 'amy-grant--stay-for-awhile']], // the same letters spaced differently: one song
-  ["i'll do anything for love meat loaf", 'meat-loaf--i-ll-do-anything-for-love'],
+  ["i'll do anything for love meat loaf", 'meat-loaf--ill-do-anything-for-love-but-i-wont-do-that'],
   ['equinoxe part 4', ['jean-michel-jarre--equinoxe-part-4', 'jean-michel-jarre--equinox-part-4']], // the same piece, one spelt without the e
   // a digit, a one-letter title word or a trailing space is not "still typing"
   ['pink floyd another brick in the wall part 2', 'pink-floyd--another-brick-in-the-wall-part-2'],
-  ['mambo no 5', 'lou-bega--mambo-no-5'],
+  ['mambo no 5', 'lou-bega--mambo-no-5-a-little-bit-of'],
   ['nothing compares 2 u', 'prince--nothing-compares-2-u'],
   ['song 2', 'blur--song-2'],
   ['i would die 4 u', 'prince--i-would-die-4-u'],
@@ -935,7 +935,21 @@ if (adhoc) {
 }
 
 const ids = new Set(entries.map((e) => e.id));
+const byId = new Map(entries.map((e) => [e.id, e]));
 let configErrors = 0;
+
+/**
+ * Whether a hit is the expected song: that id, or a duplicate transcription of it (the same
+ * artist, however the name is ordered, and the same title up to a misspelling: "John Elton" and
+ * "Elton John"'s "Candle in the Wind"), which search collapses into one row and resolve treats as one.
+ */
+const artistKey = (a) => normaliseText(a).split(' ').filter((w) => w !== 'the' && w !== 'and').sort().join(' ');
+function isSong(hit, id) {
+  if (hit.id === id) return true;
+  const want = byId.get(id);
+  return !!want && artistKey(hit.artist) === artistKey(want.artist) && isDuplicateTitle(hit.title, want.title);
+}
+const isAny = (hit, want) => want.some((w) => isSong(hit, w));
 
 /** Run one battery; returns { top1, top3, failures[] }. */
 function runBattery(cases) {
@@ -950,8 +964,8 @@ function runBattery(cases) {
     if (typeof expect === 'string' || Array.isArray(expect)) {
       const want = Array.isArray(expect) ? expect : [expect];
       for (const w of want) if (!ids.has(w)) { console.error(`CONFIG ERROR: expected id "${w}" is not in the index`); configErrors++; }
-      ok1 = hits.length > 0 && want.includes(hits[0].id);
-      ok3 = hits.slice(0, 3).some((h) => want.includes(h.id));
+      ok1 = hits.length > 0 && isAny(hits[0], want);
+      ok3 = hits.slice(0, 3).some((h) => isAny(h, want));
     } else {
       // The artist's songs come first, contiguously, and (those matched by the artist
       // name alone) sorted by popularity; a song of theirs whose title also matches the
@@ -1002,7 +1016,7 @@ for (const [marked, expect] of WALKS) {
     prev = prefix.trim();
     walkSteps++;
     const hits = index.search(prefix, 3);
-    if (hits.some((h) => want.includes(h.id))) walkOk++;
+    if (hits.some((h) => isAny(h, want))) walkOk++;
     else walkFailures.push(`WALK "${prefix}" (of "${q}")\n` + hits.map((h) => '      ' + fmt(h)).join('\n'));
   }
 }
@@ -1013,7 +1027,9 @@ const resolveFailures = [];
 for (const [q, expect] of RESOLVE) {
   const r = index.resolve(q);
   const got = r.kind === 'ok' ? r.entry.id : r.kind;
-  if (Array.isArray(expect) ? expect.includes(got) : got === expect) resolveOk++;
+  const wants = Array.isArray(expect) ? expect : [expect];
+  for (const w of wants) if (w !== 'ambiguous' && w !== 'none' && !ids.has(w)) { console.error(`CONFIG ERROR: resolve id "${w}" is not in the index`); configErrors++; }
+  if (wants.includes(got) || (r.kind === 'ok' && isAny(r.entry, wants.filter((w) => ids.has(w))))) resolveOk++;
   else resolveFailures.push(`RESOLVE "${q}": expected ${expect}, got ${got}\n` + r.hits.slice(0, 3).map((h) => '      ' + fmt(h)).join('\n'));
 }
 

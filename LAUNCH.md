@@ -1,5 +1,9 @@
 # Publication review — 19 September 2026
 
+_Updated 23 September 2026: the licence file is added, fonts are served with the site, the production page carries a
+Content Security Policy, the catalogue figures below are current (12,188 entries after 48 unusable score imports were
+removed), and CI runs the typecheck, the tests and a fixture web build. The rights questions below are unchanged._
+
 The app is a working local beta. The full music catalogue is **not cleared for public publication** by this review. Passing software tests does not establish music or artwork rights, and transcription quality is not uniformly verified against recordings. No website was deployed during this review.
 
 ## Performance changes
@@ -13,7 +17,7 @@ A live three-song check of Nirvana, Queen and The Beatles returned metadata in 4
 
 ## Rights to settle before launch
 
-1. **Software.** The README's MIT declaration is not accompanied by a licence file. Have the copyright holder add the intended licence and notices. The browser bundles Strudel, which is AGPL-3.0. Treat the distributed combined application as requiring AGPL-compliant distribution, including complete corresponding source and build instructions, dependency notices and the licence text. A private GitHub link or minified JavaScript alone is insufficient. Confirm the intended distribution with appropriate licensing advice; this review does not relicense the project. [GNU FAQ](https://www.gnu.org/licenses/gpl-faq.en.html), [AGPL text](https://www.gnu.org/licenses/agpl-3.0.html).
+1. **Software.** The project's own code is MIT ([LICENSE](LICENSE)). The browser bundles Strudel, which is AGPL-3.0. Treat the distributed combined application as requiring AGPL-compliant distribution, including complete corresponding source and build instructions, dependency notices and the licence text. A private GitHub link or minified JavaScript alone is insufficient. Confirm the intended distribution with appropriate licensing advice; this review does not relicense the project. [GNU FAQ](https://www.gnu.org/licenses/gpl-faq.en.html), [AGPL text](https://www.gnu.org/licenses/agpl-3.0.html).
 
 2. **Music.** Lakh declares CC-BY 4.0 and requests attribution to Colin Raffel's 2016 thesis, but also states that the MIDI files were scraped and that Raffel did not transcribe them. That is not a guarantee of permission from every composer, publisher or arranger. Removing vocals or generating new synthesized sound does not establish clearance for the underlying composition, arrangement or downloadable note transcription. Review rights per work, or publish a catalogue of works and arrangements you own, have licensed, or have verified as public domain in the relevant territories. PDMX's agreement between two licence metadata fields is not independent rights verification. [Lakh](https://colinraffel.com/projects/lmd/), [PDMX record](https://zenodo.org/records/15571083).
 
@@ -21,18 +25,18 @@ A live three-song check of Nirvana, Queen and The Beatles returned metadata in 4
 
 4. **Artwork and APIs.** Apple's published Search API terms restrict artwork to promoting store content and require a nearby approved store badge linked to the content. The current cover tiles do not supply that presentation; a generic iTunes footer link does not meet that requirement. Resolve whether the proposed use is permitted, change the integration, or remove/replace that source before release. Deezer has separate developer terms. MusicBrainz metadata licensing does not include cover-art copyright. Do not assume that a keyless API grants unrestricted display or redistribution rights. [Apple terms](https://developer.apple.com/library/archive/documentation/AudioVideo/Conceptual/iTuneSearchAPI/index.html), [Deezer terms](https://cdn-content.dzcdn.net/pdf/CGU-developers.pdf), [MusicBrainz data licence](https://musicbrainz.org/doc/About/Data_License).
 
-5. **Samples and privacy.** Local acoustic recordings have CC0 provenance under `packages/data/public/audio/acoustic/`; preserve it. Review the licences of the remaining remotely fetched banks/soundfonts. Document the external requests to artwork services, Google Fonts, sample hosts and any hosting analytics, plus local storage of search history, cover URLs and preferences. The applicable privacy obligations depend on the deployed service and audience.
+5. **Samples and privacy.** Local acoustic recordings have CC0 provenance under `packages/data/public/audio/acoustic/`; preserve it. Review the licences of the remaining remotely fetched banks/soundfonts. Document the external requests to artwork services, sample hosts and any hosting analytics (fonts are served with the site; no font CDN is contacted), plus local storage of search history, cover URLs and preferences (per-song rows are capped at 1,000 per kind). The applicable privacy obligations depend on the deployed service and audience.
 
 For a Belgian launch, ask SABAM/Unisono or qualified counsel specifically about interactive synthesized playback, MIDI/Strudel transcription downloads, arrangements and the territories served. An ordinary background-music licence should not be assumed to cover all those uses. [Belgian FPS Economy copyright FAQ](https://economie.fgov.be/en/themes/intellectual-property/intellectual-property-rights/copyright-and-related-rights/copyright/control-service-copyright-and/frequently-asked-questions).
 
 ## Technical state and known limits
 
-- Local library: 12,236 entries, including alternate transcriptions. All 12,507 source-file references exist.
-- Full unit/runtime regression suite and production build pass; web TypeScript check passes. `npm audit --omit=dev` returned zero known advisories on the review date; this is not a complete security audit.
+- Local library: 12,188 entries, including alternate transcriptions. All 12,459 source-file references exist, and every entry compiles and plays through the Strudel runtime in all three modes (`tools/library-check.mjs`).
+- `npm run check` (typecheck of every package and the tests, the unit/runtime suite, the importer tests) and the production build pass. `npm audit` (development dependencies included) returned zero known advisories on 23 September 2026; this is not a complete security audit.
 - Browser checks: four landing covers and eight Nirvana search covers load at the intended thumbnail sizes; the editor stays unloaded while browsing, then loads on song selection; playback and live note boxes work.
 - Source fidelity remains variable. Main loop is a simplified excerpt; Full arrangement is a cleaned transcription; neither promises the original studio recording. This is suitable for beta expectations, not an “exact music” claim.
 - There is no site-wide shared artwork cache. Every new visitor still queries third-party services. If traffic grows, consider a provider-permitted metadata cache or a pre-resolved catalogue, with explicit refresh/retention rules and cleared image use. Deezer JSONP executes third-party script; a production API boundary would reduce that dependency.
-- The database index is about 2.8 MB uncompressed. The complete output is about 547 MB including song sources and local samples. Configure compression and caching at the host and verify its total-size/file-count limits.
+- The database index is about 2.8 MB uncompressed (430 KB gzipped); the landing page no longer waits for it. The complete output is about 540 MB including song sources and local samples. Configure compression and caching at the host and verify its total-size/file-count limits.
 
 ## Deploy it yourself, after rights are resolved
 
@@ -43,13 +47,14 @@ npm ci
 # Restore your approved packages/data/public/db catalogue here.
 # It is gitignored and will NOT arrive in a fresh GitHub checkout.
 # See README.md for the original dataset build workflow; rebuilding is not legal clearance.
-npm run build
-npx tsc --noEmit -p packages/web
-npm test
-npm run preview -w @strudelify/web -- --host 127.0.0.1
+npm run check
+npm run build:web
+npm run preview -w @strudelify/web
 ```
 
 Publish **the entire `packages/web/dist` directory**. Vite already includes `db/` and `audio/`; there is no second database copy to upload. The build now fails if the database is absent, empty, or references missing source files.
+
+The page carries its Content Security Policy as a meta tag (`CONTENT_SECURITY_POLICY` in `packages/web/vite.config.ts`). Send the same policy as a `Content-Security-Policy` header, with `frame-ancestors 'none'` added (a meta tag cannot carry it), plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`.
 
 Serve at the domain root with HTTPS; the current `/db/`, `/audio/` and other absolute paths do not support a repository subpath without code/config changes. Song links use hashes, so no server-side song route is needed. Enable gzip/Brotli for JSON and JavaScript. Hashed `/assets/` files can be cached immutably; unversioned HTML, database and sample manifests should revalidate instead of being cached forever. Do not publish raw downloads, `.env`, `node_modules` or repository internals.
 

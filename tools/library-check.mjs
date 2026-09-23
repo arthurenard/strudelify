@@ -20,7 +20,7 @@ const allEntries = JSON.parse(fs.readFileSync(path.join(db, 'index.json'), 'utf8
 const timing = process.argv.find(arg => arg.startsWith('--timing='))?.split('=')[1] ?? 'source';
 if (!['source', 'grid', 'patterns'].includes(timing)) throw new Error('Invalid --timing');
 const form = process.argv.includes('--loop') ? 'loop' : 'song';
-const options = { timing, form, simplify: process.argv.includes('--simplify'), ...(process.argv.includes('--full') ? { maxBars: Number.MAX_SAFE_INTEGER, maxTracks: Number.MAX_SAFE_INTEGER } : {}) };
+const options = { timing, form, ...(process.argv.includes('--full') ? { maxBars: Number.MAX_SAFE_INTEGER, maxTracks: Number.MAX_SAFE_INTEGER } : {}) };
 const workerCount = Number(process.argv.find(arg => arg.startsWith('--workers='))?.split('=')[1] ?? 1);
 if (!Number.isInteger(workerCount) || workerCount < 1 || workerCount > 8) throw new Error('--workers must be between 1 and 8');
 if (workerCount > 1) {
@@ -43,10 +43,13 @@ if (workerCount > 1) {
     const key = `${normaliseText(e.artist)}::${normaliseText(e.title)}`;
     groups.set(key, [...(groups.get(key) ?? []), e.id]);
   }
+  fs.rmSync(temp, { recursive: true, force: true }); // the shard reports are merged; the output file is the record
   combined.duplicateGroups = [...groups.values()].filter(group => group.length > 1);
   if (new Set(allEntries.map(e => e.id)).size !== allEntries.length) combined.failures.push({ error: 'Duplicate catalogue IDs' });
-  fs.writeFileSync(process.argv.find(arg => arg.startsWith('--output='))?.slice('--output='.length) ?? path.join(root, 'tools/library-report.json'), JSON.stringify(combined, null, 2) + '\n');
+  const output = process.argv.find(arg => arg.startsWith('--output='))?.slice('--output='.length) ?? path.join(root, 'tools/library-report.json');
+  fs.writeFileSync(output, JSON.stringify(combined, null, 2) + '\n');
   console.log(JSON.stringify({ ...combined, codeSizes: undefined, readability: sizeSummary(combined.codeSizes), remarks: undefined, truncated: combined.truncated.length, duplicateGroups: combined.duplicateGroups.length }, null, 2));
+  console.log(`Report: ${output}`);
   process.exit(codes.some(code => code !== 0) || combined.failures.length ? 1 : 0);
 }
 const [shard, shards] = (process.argv.find(arg => arg.startsWith('--shard='))?.split('=')[1] ?? '0/1').split('/').map(Number);
@@ -106,6 +109,9 @@ const allFiles = new Set(allEntries.flatMap(e => Object.values(e.files)));
 report.orphans = fs.readdirSync(path.join(db, 'songs')).filter(file => !allFiles.has(`songs/${file}`));
 const output = process.argv.find(arg => arg.startsWith('--output='))?.slice('--output='.length) ?? path.join(root, 'tools/library-report.json');
 fs.writeFileSync(output, JSON.stringify(report, null, 2) + '\n');
-console.log(JSON.stringify({ ...report, codeSizes: undefined, failures: report.failures.slice(0,30), failureCount: report.failures.length, duplicateGroups: report.duplicateGroups.length, truncated: report.truncated.length, remarks: undefined }, null, 2));
-console.log(`Report: ${output}`);
+// A worker's report is merged and summarised by the parent (see --workers); only a single run prints its own.
+if (!process.argv.some(arg => arg.startsWith('--shard='))) {
+  console.log(JSON.stringify({ ...report, codeSizes: undefined, failures: report.failures.slice(0,30), failureCount: report.failures.length, duplicateGroups: report.duplicateGroups.length, truncated: report.truncated.length, remarks: undefined }, null, 2));
+  console.log(`Report: ${output}`);
+}
 if (report.failures.length || report.empty.length || report.orphans.length) process.exitCode = 1;
