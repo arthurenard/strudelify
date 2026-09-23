@@ -5,7 +5,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { songFromMidi, compile, timeline, normaliseText, type IndexEntry } from '@strudelify/core';
+import { songFromMidi, compile, timeline, type IndexEntry } from '@strudelify/core';
+import { cleanArtist, cleanTitle } from './metadata.js';
+import { words } from './ids.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RAW = path.join(ROOT, 'raw/pdmx');
@@ -34,20 +36,32 @@ async function main() {
     if (await md5(file + '.part') !== checksum) throw Error(`Checksum mismatch: ${name}`);
     fs.renameSync(file + '.part', file);
   }
+  // Candidates are extracted to a staging directory that is removed once the import is over, whatever its outcome.
   const stage = fs.mkdtempSync(path.join(RAW, 'import-'));
+  try {
+    await importFrom(stage, limit);
+  } finally {
+    fs.rmSync(stage, { recursive: true, force: true });
+  }
+}
+
+async function importFrom(stage: string, limit: number) {
   execFileSync('python3', [path.join(ROOT, 'scripts/select_pdmx.py'), path.join(RAW, 'PDMX.csv'), path.join(RAW, 'mid.tar.gz'), stage, String(limit)], { stdio: 'inherit' });
   const candidates: { file: string; title: string; artist: string; rating: number; ratings: number; license: string; scoreId: string }[] = JSON.parse(fs.readFileSync(path.join(stage, 'manifest.json'), 'utf8'));
   const entries: IndexEntry[] = JSON.parse(fs.readFileSync(path.join(DB, 'index.json'), 'utf8'));
   // Search popularity counts independent transcriptions, not score-review votes.
   for (const entry of entries) if (entry.provenance?.provider === 'pdmx') entry.popularity = 1;
   const ids = new Set(entries.map(e => e.id));
-  const identity = (e: { artist: string; title: string }) => `${normaliseText(e.artist)}::${normaliseText(e.title)}`;
+  const identity = (e: { artist: string; title: string }) => `${words(e.artist).join(' ')}::${words(e.title).join(' ')}`;
   const identities = new Set(entries.map(identity));
   const additions: { entry: IndexEntry; data: Buffer }[] = [];
   const { validatePattern } = await import(new URL('../../../tools/strudel-runtime.mjs', import.meta.url).href);
   const rejected: { title: string; reason: string }[] = [];
-  for (const item of candidates) {
-    const id = `pdmx--${item.scoreId}`;
+  for (const found of candidates) {
+    const id = `pdmx--${found.scoreId}`;
+    // Uploaders' credit blocks and misdecoded text become a name the catalogue can show (see metadata.ts).
+    const item = { ...found, title: cleanTitle(found.title), artist: cleanArtist(found.artist) };
+    if (!item.title || !item.artist) { rejected.push({ title: found.title, reason: `No usable ${item.title ? 'artist' : 'title'}` }); continue; }
     if (ids.has(id) || identities.has(identity(item))) continue;
     try {
       const data = fs.readFileSync(path.join(stage, item.file));
@@ -74,7 +88,7 @@ async function main() {
       if (fs.existsSync(dest)) { if (!fs.readFileSync(dest).equals(data)) throw Error(`Conflicting existing source: ${entry.id}`); }
       else fs.writeFileSync(dest, data, { flag: 'wx' });
     }
-    const next = [...entries, ...additions.map(a => a.entry)].sort((a, b) => a.artist.localeCompare(b.artist) || a.title.localeCompare(b.title));
+    const next = [...entries, ...additions.map(a => a.entry)].sort((a, b) => a.artist.localeCompare(b.artist, 'en') || a.title.localeCompare(b.title, 'en'));
     fs.writeFileSync(path.join(DB, 'index.json.next'), JSON.stringify(next));
     fs.renameSync(path.join(DB, 'index.json.next'), path.join(DB, 'index.json'));
   }
