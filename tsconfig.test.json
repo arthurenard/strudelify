@@ -9,5 +9,5 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": ["packages/*/test/**/*.ts", "vitest.config.ts", "packages/web/vite.config.ts", "packages/web/src/strudel.d.ts"]
+  "include": ["packages/*/test/**/*.ts", "vitest.config.ts", "packages/web/vite.config.ts", "packages/web/src/strudel.d.ts", "packages/web/src/vite-env.d.ts"]
 }
