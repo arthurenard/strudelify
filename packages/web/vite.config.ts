@@ -127,12 +127,13 @@ function siteUrl(): string | null {
   return origin;
 }
 
-/** Every song's Main loop code, compiled in worker threads (a song whose code fails maps to null). */
-async function compileLoops(entries: IndexEntry[]): Promise<Map<string, string | null>> {
-  const workers = Math.max(1, Math.min(8, os.availableParallelism() - 1));
+/** Every song's code as the app first shows it, compiled in worker threads (a song whose code fails maps to null). */
+async function compileCodes(entries: IndexEntry[]): Promise<Map<string, string | null>> {
+  // Every core (the main thread only waits): Vercel's Hobby builds have two.
+  const workers = Math.max(1, Math.min(8, os.availableParallelism()));
   const shares = Array.from({ length: workers }, (_, w) => entries.filter((_, i) => i % workers === w)).filter((s) => s.length);
   const results = await Promise.all(shares.map((share) => new Promise<[string, string | null][]>((resolve, reject) => {
-    const worker = new Worker(path.resolve(import.meta.dirname, 'scripts/loop-worker.mjs'), { workerData: { db: DB, entries: share } });
+    const worker = new Worker(path.resolve(import.meta.dirname, 'scripts/code-worker.mjs'), { workerData: { db: DB, entries: share } });
     worker.once('message', resolve);
     worker.once('error', reject);
     worker.once('exit', (code) => { if (code) reject(new Error(`A song-page worker exited with code ${code}`)); });
@@ -142,7 +143,7 @@ async function compileLoops(entries: IndexEntry[]): Promise<Map<string, string |
 
 /**
  * The pages search engines and link previews read (see prerender.ts), written after the build: the home page's
- * head, a page per song (the app opened on it, with its Main loop code) and per artist, the A–Z index, the
+ * head, a page per song (the app opened on it, with the start of its code) and per artist, the A–Z index, the
  * sitemap, robots.txt, the 404 page and the icon files (packages/web/static).
  */
 function prerenderPlugin(): Plugin {
@@ -165,7 +166,7 @@ function prerenderPlugin(): Plugin {
       if (!css) this.error('The built index.html links no stylesheet.');
       write('index.html', homePage(shell, site));
       write('404.html', notFoundPage(shell));
-      const codes = await compileLoops(entries);
+      const codes = await compileCodes(entries);
       const groups = artists(entries);
       const songsOf = new Map(groups.flatMap((g) => g.entries.map((e) => [e.id, g.entries] as const)));
       const known = readCatalogue(true);

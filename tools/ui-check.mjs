@@ -121,9 +121,20 @@ try {
   await sleep(150); const s1 = await state(); check(s1.title === "I Don't Mind", 'search Enter: new title at once'); noStale(s1, 'search +150 ms');
   await sleep(400); noStale(await state(), 'search +550 ms');
   await throttle(false); await waitSong(); await sleep(400);
-  // (The website opens a song on its Main loop, a few bars of the chart.)
   const jb = await state(); check(jb.lanes > 0 && /^bar 1 \/ \d+$/.test(jb.bar), `loaded: ${jb.title} ${jb.bar}`);
-  check(!errors.length, `song switching: no errors${errors.length ? '\n  ' + errors.join('\n  ') : ''}`);
+  check(!errors.length, `song switching: no errors${errors.length ? '\n  ' + errors.join('\n  ') : ''}`); errors.length = 0;
+
+  // A song opens on its Full arrangement with the lead off, unless the lead is all it has; a score has an
+  // artist--title address like any song.
+  const opened = async (id) => {
+    await page.goto(`${BASE}/song/${id}/`, { waitUntil: 'networkidle2' }); await waitSong(); await sleep(400);
+    return page.evaluate(() => ({ style: document.getElementById('code-style')?.value, lead: document.getElementById('melody')?.checked, title: document.getElementById('title')?.textContent, code: document.querySelector('.cm-content')?.textContent ?? '' }));
+  };
+  const bad = await opened('billie-eilish--bad-guy');
+  check(bad.title === 'bad guy' && bad.style === 'patterns' && bad.lead === false, `score address and defaults: "${bad.title}", ${bad.style}, lead ${bad.lead ? 'on' : 'off'}`);
+  const solo = await opened('dexter-gordon--blue-bossa');
+  check(solo.style === 'patterns' && solo.lead === true && !/\nsilence\s*$/.test(solo.code), `a lead-only song keeps its lead: ${solo.title}, lead ${solo.lead ? 'on' : 'off'}`);
+  check(!errors.length, `defaults: no errors${errors.length ? '\n  ' + errors.join('\n  ') : ''}`);
   if (artRefused.size) console.log(`note artwork lookups refused by ${[...artRefused].join(', ')} (rate limit); the page showed tiles instead`);
 } finally { await browser.close(); }
 console.log(failures.length ? `\n${failures.length} failure(s)` : '\nall checks passed');

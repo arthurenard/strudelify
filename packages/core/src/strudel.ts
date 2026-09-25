@@ -323,6 +323,12 @@ function tempo(meta: SongMeta): string {
   return `${fmt(meta.bpm)}/${fmt(barLength(meta))}`;
 }
 
+/**
+ * Whether a song has an instrumental part besides its lead: what still plays with the lead off (`melody: false`).
+ * The website leaves the lead off by default, except for a song that is its lead alone (a solo piano score).
+ */
+export const hasBacking = (song: Song): boolean => song.tracks.some((t) => !t.vocal && t.role !== 'melody' && t.notes.length > 0);
+
 function compilePrepared(song: Song, opts: CompileOptions): string {
   const melody = opts.melody ?? true;
   const melodySound = opts.melodySound ?? DEFAULT_MELODY_SOUND;

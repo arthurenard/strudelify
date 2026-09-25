@@ -4,7 +4,7 @@ import type { IndexEntry } from '@strudelify/core';
 import { bakeLanding, exampleIds } from '../src/landing.js';
 import { songPath, songIdFromPath, artistSlug, artistPath, setArtistAliases, canonicalArtists, setBase, sitePath, isHomePath } from '../src/ui.js';
 import { readCovers, coverLine, COVERS_HEADER } from '../src/covers.js';
-import { songPage, homePage, notFoundPage, artists, artistPage, artistsPage, letterOf, sitemap, robots, songTitle, songDescription, compact, LANDING_POOL_SCRIPT } from '../src/prerender.js';
+import { STATIC_CODE_LINES, songPage, homePage, notFoundPage, artists, artistPage, artistsPage, letterOf, sitemap, robots, songTitle, songDescription, compact, LANDING_POOL_SCRIPT } from '../src/prerender.js';
 
 const entry = (id: string, title: string, artist: string, extra: Partial<IndexEntry> = {}): IndexEntry => ({ id, title, artist, sources: ['midi'], files: { midi: `songs/${id}.mid` }, ...extra });
 const entries: IndexEntry[] = [
@@ -51,7 +51,7 @@ describe('song pages', () => {
     expect(work).toMatchObject({ '@type': 'MusicComposition', name: 'Sultans of Swing', musicalKey: 'C major', dateCreated: '1978', recordedAs: { byArtist: { name: 'Dire Straits', url: `${site}/artist/dire-straits/` } } });
     expect(trail.itemListElement.map((i: { name: string }) => i.name)).toEqual(['Home', 'Artists', 'Dire Straits', 'Sultans of Swing']);
   });
-  it("opens on the song: its facts, its loop code as text and the artist's other songs, without the landing pool", () => {
+  it("opens on the song: its facts, its code as text and the artist's other songs, without the landing pool", () => {
     expect(page).toContain('<section id="song" class="song" aria-label="Song">');
     expect(page).toContain('<section id="empty" class="empty" hidden aria-label="Introduction">');
     expect(page).toContain('<h1 id="title" class="title lg">Sultans of Swing</h1>');
@@ -66,6 +66,13 @@ describe('song pages', () => {
     expect(artistPage(artists(entries)[0], '/assets/index.css', site)).toContain('<span class="ex-t">Sultans of Swing</span><span class="ex-a">1978 · C major · 153 bpm</span>');
     expect(shell).toMatch(LANDING_POOL_SCRIPT);
     expect(page).not.toMatch(LANDING_POOL_SCRIPT);
+  });
+  it("carries the start of a long song's code as text and counts all of it", () => {
+    const code = Array.from({ length: 450 }, (_, i) => `// line ${i + 1}`).join('\n');
+    const page = songPage(shell, entries[0], [], { code }, site);
+    expect(page).toContain('<span id="code-lines" class="code-lines">450 lines</span>');
+    expect(page).toContain(`// line ${STATIC_CODE_LINES}\n// … ${450 - STATIC_CODE_LINES} more lines</pre>`);
+    expect(page).not.toContain(`// line ${STATIC_CODE_LINES + 1}\n`);
   });
   it('spells keys the display way, escapes titles and says where a score comes from', () => {
     expect(songPage(shell, entries[3], [], {}, site)).toContain('<span class="k">Key</span>B♭ major');

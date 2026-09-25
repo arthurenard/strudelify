@@ -2,8 +2,8 @@
  * The site's static pages, as HTML strings, for search engines and link previews (see the prerender plugin in
  * vite.config.ts, which writes them into the build):
  * - a page per song at `song/<id>/`: the app itself (the built index.html), opened on the song, with its own
- *   title, description, canonical address, Open Graph card and structured data, and the song's Main loop code
- *   as text until the editor loads;
+ *   title, description, canonical address, Open Graph card and structured data, and the start of the song's
+ *   code (the Full arrangement the app opens on) as text until the editor loads;
  * - a page per artist at `artist/<slug>/` and an A–Z index at `artists/`, plain pages linking to the songs;
  * - the sitemap and robots.txt.
  * Paths are under the site's base path (see `setBase`). Addresses are absolute when the site's origin is known
@@ -22,8 +22,10 @@ export const OG_IMAGE = 'og.png';
 /** The landing pool's `<script>` is only for the home page's cards (see `bakeLanding`). */
 export const LANDING_POOL_SCRIPT = new RegExp(`\\s*<script type="application/json" id="${LANDING_POOL_ID}">[\\s\\S]*?<\\/script>`);
 
-/** What a song page shows beyond its index entry: the Main loop's code. */
+/** What a song page shows beyond its index entry: the code the app opens the song on. */
 export interface SongFacts { code?: string }
+/** How much of the code a page carries as text: its start (the editor, which holds all of it, replaces the text). */
+export const STATIC_CODE_LINES = 200;
 /** An artist's songs as cards, each with its cover from the catalogue. */
 const songCards = (songs: readonly IndexEntry[], covers?: Covers | null) => songs.map((e) => artistSongCard({ ...e, cover: cardCover(covers, e.id) })).join('');
 
@@ -100,7 +102,7 @@ export function homePage(shell: string, site: string | null): string {
 
 /**
  * A song's page: the app opened on the song. The landing's example pool is dropped (the app reads the index
- * instead), the song section shows the title, artist, key and tempo, the Main loop's code as text and the
+ * instead), the song section shows the title, artist, key and tempo, the start of its code as text and the
  * artist's other songs, and the head names the page. The app takes over when it loads.
  */
 export function songPage(shell: string, e: IndexEntry, group: readonly IndexEntry[], facts: SongFacts, site: string | null, covers?: Covers | null): string {
@@ -134,9 +136,11 @@ export function songPage(shell: string, e: IndexEntry, group: readonly IndexEntr
       .replace('<div id="art-fallback" class="art-fallback" aria-hidden="true"></div>', '<div id="art-fallback" class="art-fallback" aria-hidden="true" hidden></div>');
   }
   if (facts.code) {
+    const lines = facts.code.split('\n');
+    const shown = lines.length > STATIC_CODE_LINES ? [...lines.slice(0, STATIC_CODE_LINES), `// … ${lines.length - STATIC_CODE_LINES} more lines`] : lines;
     html = html
-      .replace('<span id="code-lines" class="code-lines"></span>', `<span id="code-lines" class="code-lines">${facts.code.split('\n').length} lines</span>`)
-      .replace('<div class="code-skel"', `<pre id="code-static" class="code-static">${esc(facts.code)}</pre>\n            <div class="code-skel"`);
+      .replace('<span id="code-lines" class="code-lines"></span>', `<span id="code-lines" class="code-lines">${lines.length} lines</span>`)
+      .replace('<div class="code-skel"', `<pre id="code-static" class="code-static">${esc(shown.join('\n'))}</pre>\n            <div class="code-skel"`);
   }
   if (more.length) {
     html = html.replace(/<section class="more" id="more" aria-labelledby="more-title" hidden>[\s\S]*?<\/section>/, [

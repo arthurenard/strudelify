@@ -1,7 +1,7 @@
 import type { CompileOptions } from '../src/strudel.js';
 import { describe, it, expect } from 'vitest';
 import vm from 'node:vm';
-import { compile as compileSource, noteName, timeline, chordSummary, chooseGrid, songGrid, gridCandidates, gainsFor, panFor, selectTracks, mixParts, barRange, PAN_WIDTH_LEAD, VOCAL_LEAD_FLOOR, INSTRUMENT_LEAD_FLOOR, LEAD_OVERLAP_SHARE, LEAD_FLOOR_MIN_COVERAGE } from '../src/strudel.js';
+import { compile as compileSource, hasBacking, noteName, timeline, chordSummary, chooseGrid, songGrid, gridCandidates, gainsFor, panFor, selectTracks, mixParts, barRange, PAN_WIDTH_LEAD, VOCAL_LEAD_FLOOR, INSTRUMENT_LEAD_FLOOR, LEAD_OVERLAP_SHARE, LEAD_FLOOR_MIN_COVERAGE } from '../src/strudel.js';
 import { AUDIBLE_LEVEL, percShare } from '../src/gm.js';
 import { hash2code, shareUrl } from '../src/share.js';
 import type { Song, Track, NoteEvent } from '../src/types.js';
@@ -600,5 +600,17 @@ describe('chordSummary', () => {
     const wide = [{ label: 'y', bars: 200, chords: Array.from({ length: 40 }, (_, i) => ({ symbol: `Chord${i}sus4add9`, beats: 4 })) }];
     expect(chordSummary(wide).length).toBeLessThanOrEqual(400);
     expect(chordSummary([])).toBe('');
+  });
+});
+
+describe('hasBacking', () => {
+  const track = (role: Track['role'], notes = 1, vocal = false): Track => ({ name: role, program: 0, role, vocal, notes: Array.from({ length: notes }, (_, i) => ({ pitch: 60, start: i, duration: 1, velocity: 0.8 })) });
+  const song = (...tracks: Track[]): Song => ({ meta: { id: 'x', title: 'X', artist: 'Y', bpm: 120, beatsPerBar: 4, beatUnit: 4, sources: ['midi'] }, sections: [], tracks });
+  it('tells a song that still plays with its lead off from one that is its lead alone', () => {
+    expect(hasBacking(song(track('melody'), track('bass')))).toBe(true);
+    expect(hasBacking(song(track('melody'), track('drums')))).toBe(true);
+    expect(hasBacking(song(track('melody')))).toBe(false); // a solo piano score
+    expect(hasBacking(song(track('melody'), track('chords', 1, true)))).toBe(false); // a sung part is never played
+    expect(hasBacking(song(track('melody'), track('bass', 0)))).toBe(false); // a part without notes plays nothing
   });
 });

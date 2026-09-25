@@ -1,7 +1,7 @@
 /**
  * Opening a song: skeleton, fetch + parse, compile, hero (art, tint, chips), options, recompile on change.
  */
-import { loadSong, render, barRange, gmLabel, chordSummary, normaliseText, type IndexEntry, type Song, type CompileOptions, type Timeline } from '@strudelify/core';
+import { loadSong, render, barRange, gmLabel, chordSummary, normaliseText, hasBacking, type IndexEntry, type Song, type CompileOptions, type Timeline } from '@strudelify/core';
 import { lookupArt } from './art.js';
 import { el, setStatus, showBanner, hideBanner, toast, prefersReducedMotion } from './dom.js';
 import { state } from './state.js';
@@ -52,6 +52,8 @@ const NO_TIMELINE: Timeline = { bars: 0, from: 0, cpm: 0, secondsPerBar: 0, chor
 
 /** Instrumental leads can be toggled; detected vocals are always omitted. Charts have no MIDI options. */
 function applyOptionVisibility(song: Song) {
+  // Each song opens without its lead (the backing to play along with), unless the lead is all it has.
+  el.melody.checked = !hasBacking(song);
   const melodyTracks = song.tracks.filter((t) => t.role === 'melody' && !t.vocal);
   const hasMelody = melodyTracks.length > 0;
   const hasTracks = song.tracks.length > 0;
@@ -271,8 +273,6 @@ export async function choose(entry: IndexEntry) {
   state.current = null;
   closeSearch(); // whichever way a song is opened (result, example card, link), a stale query does not linger in the box
   setStatus('Analysing…');
-  // Include instrumental leads by default for each newly opened song.
-  el.melody.checked = true;
   showSkeleton(entry); // synchronously, before the (async) hard stop: the page shows the new song at once
   const artist = displayArtist(entry.artist);
   renderMore(entry, artist);
