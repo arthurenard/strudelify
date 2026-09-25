@@ -40,14 +40,10 @@ export function coverInfo(c: Cover | undefined): ArtInfo | null {
 
 /** How many files the catalogue is split into. */
 export const COVER_SHARDS = 256;
-/**
- * The file a song's cover is in: songs of one artist share one (the artist part of the id, `the-beatles` of
- * `the-beatles--hey-jude`); score arrangements, whose ids name no artist, are spread by their own id.
- */
+/** The file a song's cover is in: songs of one artist share one (the artist part of the id, `the-beatles` of `the-beatles--hey-jude`). */
 export function coverShard(id: string): number {
   const cut = id.indexOf('--');
-  const artist = cut > 0 && !id.startsWith('pdmx--') ? id.slice(0, cut) : id;
-  return fnv1a(artist) % COVER_SHARDS;
+  return fnv1a(cut > 0 ? id.slice(0, cut) : id) % COVER_SHARDS;
 }
 
 /**

@@ -7,12 +7,14 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { songFromMidi, compile, timeline, type IndexEntry } from '@strudelify/core';
 import { cleanArtist, cleanTitle } from './metadata.js';
-import { words } from './ids.js';
+import { words, readIds, writeIds, assignIds, scoreKey } from './ids.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RAW = path.join(ROOT, 'raw/pdmx');
 const DB = path.resolve(process.argv.find(x => x.startsWith('--db='))?.slice(5) ?? path.join(ROOT, 'public/db'));
 const RECORD = 'https://zenodo.org/api/records/15571083';
+/** Every song's id, with the artist and title it names: scores are named like the rest of the catalogue (see ids.ts). */
+const IDS = path.join(ROOT, 'catalogue-ids.tsv');
 const SOURCES: Record<string, string> = { 'PDMX.csv': '30392ccf38bb63ce70e7afae70f9c88c', 'mid.tar.gz': 'd920a21b2fcd99a56d9c381b39debbb2' };
 async function md5(file: string) {
   const hash = crypto.createHash('md5'); for await (const chunk of fs.createReadStream(file)) hash.update(chunk); return hash.digest('hex');
@@ -51,18 +53,20 @@ async function importFrom(stage: string, limit: number) {
   const entries: IndexEntry[] = JSON.parse(fs.readFileSync(path.join(DB, 'index.json'), 'utf8'));
   // Search popularity counts independent transcriptions, not score-review votes.
   for (const entry of entries) if (entry.provenance?.provider === 'pdmx') entry.popularity = 1;
-  const ids = new Set(entries.map(e => e.id));
+  // A score already in the catalogue, whatever it is called now.
+  const imported = new Set(entries.map(e => e.provenance?.url).filter(Boolean));
   const identity = (e: { artist: string; title: string }) => `${words(e.artist).join(' ')}::${words(e.title).join(' ')}`;
   const identities = new Set(entries.map(identity));
   const additions: { entry: IndexEntry; data: Buffer }[] = [];
   const { validatePattern } = await import(new URL('../../../tools/strudel-runtime.mjs', import.meta.url).href);
   const rejected: { title: string; reason: string }[] = [];
   for (const found of candidates) {
-    const id = `pdmx--${found.scoreId}`;
+    // Named once it is admitted, with the others (see below); until then it is known by its score.
+    const id = `pdmx--${found.scoreId}`, url = `https://musescore.com/score/${found.scoreId}`;
     // Uploaders' credit blocks and misdecoded text become a name the catalogue can show (see metadata.ts).
     const item = { ...found, title: cleanTitle(found.title), artist: cleanArtist(found.artist) };
     if (!item.title || !item.artist) { rejected.push({ title: found.title, reason: `No usable ${item.title ? 'artist' : 'title'}` }); continue; }
-    if (ids.has(id) || identities.has(identity(item))) continue;
+    if (imported.has(url) || identities.has(identity(item))) continue;
     try {
       const data = fs.readFileSync(path.join(stage, item.file));
       const song = songFromMidi(data, { id, title: item.title, artist: item.artist });
@@ -76,13 +80,22 @@ async function importFrom(stage: string, limit: number) {
       const entry: IndexEntry = { id, title: item.title, artist: item.artist, sources: ['midi'], bpm: song.meta.bpm,
         key: song.meta.tonic ? `${song.meta.tonic} ${song.meta.mode ?? ''}`.trim() : undefined,
         popularity: 1, files: { midi: `songs/${id}.mid` },
-        provenance: { provider: 'pdmx', url: `https://musescore.com/score/${item.scoreId}`, license: item.license, rating: item.rating, ratings: item.ratings } };
-      additions.push({ entry, data }); ids.add(id); identities.add(identity(item));
+        provenance: { provider: 'pdmx', url, license: item.license, rating: item.rating, ratings: item.ratings } };
+      additions.push({ entry, data }); imported.add(url); identities.add(identity(item));
     } catch (e) { rejected.push({ title: item.title, reason: (e as Error).message }); }
+  }
+  // Named `artist--title` like every song (`billie-eilish--bad-guy`), the name recorded in catalogue-ids.tsv so that
+  // a rebuild gives the score the same address.
+  const known = readIds(IDS);
+  const keyOf = (e: IndexEntry) => scoreKey(e.artist, e.title, e.provenance!.url.replace(/^.*\//, ''));
+  for (const [entry, id] of assignIds(additions.map(a => a.entry), known, keyOf)) {
+    known.set(keyOf(entry), id);
+    Object.assign(entry, { id, files: { midi: `songs/${id}.mid` } });
   }
   const report = { provider: 'PDMX', record: RECORD, candidates: candidates.length, added: additions.length, rejected, before: entries.length, after: entries.length + additions.length, dryRun: process.argv.includes('--dry-run') };
   fs.writeFileSync(path.join(RAW, 'import-report.json'), JSON.stringify(report, null, 2));
   if (!report.dryRun) {
+    writeIds(IDS, known);
     for (const { entry, data } of additions) {
       const dest = path.join(DB, entry.files.midi!);
       if (fs.existsSync(dest)) { if (!fs.readFileSync(dest).equals(data)) throw Error(`Conflicting existing source: ${entry.id}`); }

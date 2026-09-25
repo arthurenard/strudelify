@@ -52,6 +52,11 @@ export function slug(s: string): string {
 
 /** The key a song is recorded under: its artist and title exactly as the sources spell them. */
 export const idKey = (artist: string, title: string) => `${artist}\t${title}`;
+/**
+ * The key an imported score is recorded under: its artist and title, and its score, since a score may share its
+ * artist and title with a transcription already in the catalogue (a second Sweet Child O' Mine).
+ */
+export const scoreKey = (artist: string, title: string, score: string) => idKey(artist, `${title} [score ${score}]`);
 
 /** `catalogue-ids.tsv`: one `id<TAB>artist<TAB>title` line per song, sorted by id. */
 export function readIds(file: string): Map<string, string> {
@@ -78,12 +83,12 @@ export function writeIds(file: string, ids: Map<string, string>): void {
  * by any recorded id, so a retired id is never reused. New songs are named in a fixed order (by
  * name, then artist and title), whatever order the sources were read in.
  */
-export function assignIds<T extends { artist: string; title: string }>(songs: T[], known: Map<string, string>): Map<T, string> {
+export function assignIds<T extends { artist: string; title: string }>(songs: T[], known: Map<string, string>, keyOf = (song: T) => idKey(song.artist, song.title)): Map<T, string> {
   const out = new Map<T, string>();
   const taken = new Set(known.values());
   const fresh: { song: T; base: string }[] = [];
   for (const song of songs) {
-    const id = known.get(idKey(song.artist, song.title));
+    const id = known.get(keyOf(song));
     if (id) out.set(song, id);
     else fresh.push({ song, base: `${slug(song.artist)}--${slug(song.title)}` });
   }

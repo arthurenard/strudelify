@@ -15,9 +15,9 @@ describe('the cover catalogue file', () => {
     expect(covers.get('nobody--x')).toMatchObject({ kind: 'track', source: 'deezer' }); // a retried miss replaced
     expect(coverInfo(readCovers(COVERS_HEADER + coverLine('a--b', {})).get('a--b'))).toBeNull(); // a miss shows no cover
   });
-  it("files an artist's songs together and spreads score arrangements, whose ids name no artist", () => {
+  it("files an artist's songs together", () => {
     expect(coverShard('the-beatles--let-it-be')).toBe(coverShard('the-beatles--hey-jude'));
-    expect(new Set(['pdmx--1', 'pdmx--2', 'pdmx--3', 'pdmx--4'].map(coverShard)).size).toBeGreaterThan(1);
+    expect(new Set(['the-beatles--let-it-be', 'queen--one-vision', 'abba--sos', 'nirvana--lithium'].map(coverShard)).size).toBeGreaterThan(1);
     const shards = coverShards(readCovers(COVERS_HEADER + coverLine('the-beatles--let-it-be', beatles) + coverLine('nobody--x', {})));
     expect(shards.size).toBe(COVER_SHARDS); // every file, empty ones included
     expect(shards.get(coverShard('the-beatles--let-it-be'))!['the-beatles--let-it-be']).toEqual(['t', beatles.art, 'Let It Be', 1970, 'itunes', beatles.sourceUrl]);
