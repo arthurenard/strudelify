@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc -b",
     "build:web": "npm run build -w @strudelify/web",
+    "build:site": "npm run build && node packages/data/dist/download.js && node packages/data/dist/build.js && (node packages/data/dist/pdmx.js || echo 'Score import failed: building the site with the base catalogue') && npm run build:web",
     "typecheck": "tsc -b && tsc --noEmit -p packages/web && tsc -p tsconfig.test.json",
     "test": "vitest run && npm run test:python",
     "test:python": "python3 -m unittest discover -s packages/data/scripts -p \"test_*.py\"",

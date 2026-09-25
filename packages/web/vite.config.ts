@@ -179,6 +179,11 @@ function prerenderPlugin(): Plugin {
       for (const letter of LETTERS) write(`artists/${letter}/index.html`, artistsPage(groups, css, site, letter));
       write('robots.txt', robots(site));
       if (site) write('sitemap.xml', sitemap(site, [sitePath(), sitePath('artists/'), ...LETTERS.map((l) => sitePath(`artists/${l}/`)), ...groups.map((g) => sitePath(`artist/${g.slug}/`)), ...entries.map((e) => songPath(e.id))]));
+      // What this build delivered, readable on the site (`db/build.json`): the check that a deployment carries the catalogue.
+      write('db/build.json', `${JSON.stringify({
+        commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null, builtAt: new Date().toISOString(), songs: entries.length,
+        scores: entries.filter((e) => e.provenance?.provider === 'pdmx').length, covers: listed.size, artists: groups.length,
+      }, null, 2)}\n`);
       const icons = path.resolve(import.meta.dirname, 'static');
       for (const file of fs.readdirSync(icons)) fs.copyFileSync(path.join(icons, file), path.join(outDir, file));
       const failed = [...codes.values()].filter((c) => c === null).length;

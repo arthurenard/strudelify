@@ -1,11 +1,11 @@
 # Strudelify
 
-Type a song name, get an editable instrumental loop in [Strudel](https://strudel.cc): a phrase the song keeps coming
-back to, at least 12 seconds long (usually eight bars).
-Choose Full arrangement when you want the complete transcription.
+Type a song name, get its instrumental arrangement as editable [Strudel](https://strudel.cc) code: the whole song,
+written as readable riffs. Choose Main loop for a phrase the song keeps coming back to, at least 12 seconds long
+(usually eight bars).
 No LLM involved: the music is compiled from open, machine-readable transcriptions.
 
-The bundled library contains **13,975 catalogue entries**: 13,507 with MIDI and 468 with chord charts only.
+The bundled library contains **13,929 catalogue entries**: 13,461 with MIDI (3,285 of them score arrangements) and 468 with chord charts only.
 Of the MIDI entries, 271 also have a chord chart. Alternate transcriptions and artist/title spellings remain
 in the catalogue, so this is an entry count, not a verified count of distinct compositions. The website
 uses that wording and derives its count directly from the shipped index. Two MIDI entries currently have
@@ -47,7 +47,9 @@ it, so an interrupted download or an error page is never taken for the data. The
 its inputs before it starts and swaps the new database in only once it is complete; a failed build leaves
 the working database alone. Song ids come from `packages/data/catalogue-ids.tsv`, which records every id
 with the artist and title it names, so a rebuild keeps every shared link (`/song/the-beatles--hey-jude/`); the
-builder adds new songs to it (commit the file). `npm run data:refresh` re-reads each song's tempo and key
+builder and the score importer add new songs to it (commit the file). A score is named like any song
+(`billie-eilish--bad-guy`) and recorded with its score number, since it may share its artist and title with a
+transcription already in the catalogue. `npm run data:refresh` re-reads each song's tempo and key
 from its own source files with the current analysis, without the raw datasets.
 
 The web app imports core's compiled output, so after a change in `packages/core` run `npm run build`
@@ -126,11 +128,11 @@ with the site.
   its own symbol; zoomed out, bars are grouped into harmonic phrases (`F · A♭` over sixteen alternating
   bars) so long songs stay legible. Long songs scroll sideways with an overview strip as the map.
   Everything is keyboard-reachable (Tab to a lane, arrows along it, Enter to jump).
-- **Options**: an instrumental-lead switch and an optional excerpt length. The website renders a
-  **Main loop** by default: a phrase the song repeats, selected automatically (see below); switching
-  style while it plays carries on from the same place in the song.
-  **Full arrangement** retains the whole transcription using reusable riffs; **Source detail** retains
-  unrounded events. Detected vocals are always excluded. Chord charts offer the same loop/full choice,
+- **Options**: an instrumental-lead switch and an optional excerpt length. The website opens a song on its
+  **Full arrangement**, the whole transcription as reusable riffs, with the lead off: the backing to play
+  along with (a song that is its lead alone, such as a solo piano score, keeps it). **Main loop** is a phrase
+  the song repeats, selected automatically (see below); **Source detail** retains unrounded events.
+  Switching style while it plays carries on from the same place in the song. Detected vocals are always excluded. Chord charts offer the same loop/full choice,
   but their accompaniment is generated from chord symbols.
 - **Code**: the generated file in a Strudel editor with a wrap toggle, an always-visible horizontal
   scrollbar for the long note lines, copy, download and "Open in strudel.cc" (the code travels in the
@@ -303,11 +305,13 @@ favourites and no rating below 4.0; rated scores are taken first. Further filter
 scores, no declared licence conflict or paywall, and bounded duration, track and note counts.
 Score ratings are not recording-fidelity scores. The website labels these entries **Score arrangement**.
 
-The first import added 1,592 entries; 48 whose title or artist named nothing usable (a lone symbol, text
-decoded with the wrong character set) were later removed, and uploaders' credit blocks were reduced to the
-composer or performer (`packages/data/src/metadata.ts`). A second import with the thresholds above added
-1,787 more (3,597 candidates; the rest were already in the catalogue or failed a check), 3,331 in all. All source archives and generated database files remain ignored
-by Git; the importer is the reproducible deliverable, and the expanded library is available locally.
+Uploaders' credit blocks are reduced to the composer or performer and a title or artist that names nothing
+usable is rejected (`packages/data/src/metadata.ts`). An import from the base catalogue admits 3,285 scores (3,597
+candidates; the rest duplicate a song already in the catalogue or fail a check). All source archives and generated
+database files remain ignored by Git; the importer is the reproducible deliverable. The website's production build
+runs it after the base build (`npm run build:site`, which `vercel.json` names as Vercel's build command); if the
+import fails the site is built with the base catalogue. Each build writes `db/build.json` with its song, score and
+cover counts and its commit, to check what a deployment carries.
 [Pipeline review](tools/pipeline-review.md) explains the source comparison and checks.
 
 [Klangio](https://api-docs.klang.io/docs/getting-started/basic-job-workflow) is a candidate for future
@@ -334,7 +338,7 @@ phrase inside a title, which beats a bag of words. Popularity only decides betwe
 A leading "The" in a title of three words or more is optional, like a leading parenthetical ("house of the
 rising sun"), and words the title explains do not also count as naming the artist ("like a rolling stone"
 is Bob Dylan's before the Rolling Stones' cover). `index.resolve()` turns a query into one song or an
-"ambiguous" verdict for the CLI. The index builds in about 150 ms for the 13,975 entries and answers in
+"ambiguous" verdict for the CLI. The index builds in about 150 ms for the 13,929 entries and answers in
 about 0.1 ms on average (a few ms for a single letter, which matches thousands of songs).
 
 ## Tools

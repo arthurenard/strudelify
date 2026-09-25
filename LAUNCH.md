@@ -2,7 +2,7 @@
 
 _Updated 23 September 2026: the licence file is added, fonts are served with the site, the production page carries a
 Content Security Policy, and CI runs the typecheck, the tests and a fixture web build. Later that day: a second score
-import brought the catalogue to 13,975 entries, songs moved from `/#id` links to their own addresses, and the build
+import brought the catalogue to 13,929 entries (3,285 scores), songs moved from `/#id` links to their own addresses, and the build
 writes a page per song and per artist for search engines (see the hosting notes). The rights questions below are
 unchanged, and apply to the imported scores as much as to the first ones._
 
@@ -34,7 +34,7 @@ For a Belgian launch, ask SABAM/Unisono or qualified counsel specifically about 
 ## Technical state and known limits
 
 - Live site (checked 25 September 2026): www.arthurenard.me/strudelify/ serves an older build, with `#id` song links and a 10,677-entry database that has no PDMX scores. The database is not in Git, so pushing code does not update it: whatever supplies `packages/data/public/db` to the deployment must be given the 13,975-entry catalogue (and, for the scores, pass the rights review below).
-- Local library: 13,975 entries, including alternate transcriptions. All 14,246 source-file references exist, and every entry compiles and plays through the Strudel runtime in all three modes (`tools/library-check.mjs`, 23 September 2026, after the import).
+- Local library: 13,929 entries, including alternate transcriptions. All 14,200 source-file references exist, and every entry compiles and plays through the Strudel runtime in all three modes (`tools/library-check.mjs`, 23 September 2026, after the import).
 - `npm run check` (typecheck of every package and the tests, the unit/runtime suite, the importer tests) and the production build pass. `npm audit` (development dependencies included) returned zero known advisories on 23 September 2026; this is not a complete security audit.
 - Browser checks: four landing covers and eight Nirvana search covers load at the intended thumbnail sizes; the editor stays unloaded while browsing, then loads on song selection; playback and live note boxes work.
 - Source fidelity remains variable. Main loop is an excerpt the song repeats; Full arrangement is a cleaned transcription on a grid; neither promises the original studio recording. This is suitable for beta expectations, not an “exact music” claim.
@@ -54,6 +54,8 @@ npm run check
 npm run build:web   # for www.arthurenard.me/strudelify/; see below for another address
 npm run preview -w @strudelify/web
 ```
+
+The production site is built by Vercel from `main`: `vercel.json` names `npm run build:site` as the build command, which downloads the datasets, builds the base catalogue, imports the scores (the site is still built, with the base catalogue, if that fails) and builds the site into `packages/web/dist`. Pushing to `main` deploys. `https://www.arthurenard.me/strudelify/db/build.json` says what the live build carries (songs, scores, covers, commit).
 
 Publish **the entire `packages/web/dist` directory**. Vite already includes `db/` and `audio/`; there is no second database copy to upload. The build now fails if the database is absent, empty, or references missing source files.
 

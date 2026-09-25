@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build:site",
+  "outputDirectory": "packages/web/dist",
   "rewrites": [
     { "source": "/strudelify", "destination": "/index.html" },
     { "source": "/strudelify/", "destination": "/index.html" },
