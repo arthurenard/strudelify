@@ -33,6 +33,7 @@ For a Belgian launch, ask SABAM/Unisono or qualified counsel specifically about 
 
 ## Technical state and known limits
 
+- Live site (checked 25 September 2026): www.arthurenard.me/strudelify/ serves an older build, with `#id` song links and a 10,677-entry database that has no PDMX scores. The database is not in Git, so pushing code does not update it: whatever supplies `packages/data/public/db` to the deployment must be given the 13,975-entry catalogue (and, for the scores, pass the rights review below).
 - Local library: 13,975 entries, including alternate transcriptions. All 14,246 source-file references exist, and every entry compiles and plays through the Strudel runtime in all three modes (`tools/library-check.mjs`, 23 September 2026, after the import).
 - `npm run check` (typecheck of every package and the tests, the unit/runtime suite, the importer tests) and the production build pass. `npm audit` (development dependencies included) returned zero known advisories on 23 September 2026; this is not a complete security audit.
 - Browser checks: four landing covers and eight Nirvana search covers load at the intended thumbnail sizes; the editor stays unloaded while browsing, then loads on song selection; playback and live note boxes work.
@@ -50,7 +51,7 @@ npm ci
 # It is gitignored and will NOT arrive in a fresh GitHub checkout.
 # See README.md for the original dataset build workflow; rebuilding is not legal clearance.
 npm run check
-SITE_URL=https://your.domain npm run build:web
+npm run build:web   # for www.arthurenard.me/strudelify/; see below for another address
 npm run preview -w @strudelify/web
 ```
 
@@ -58,6 +59,6 @@ Publish **the entire `packages/web/dist` directory**. Vite already includes `db/
 
 The page carries its Content Security Policy as a meta tag (`CONTENT_SECURITY_POLICY` in `packages/web/vite.config.ts`). Send the same policy as a `Content-Security-Policy` header, with `frame-ancestors 'none'` added (a meta tag cannot carry it), plus `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`.
 
-Serve at the domain root with HTTPS; the current `/db/`, `/audio/` and other absolute paths do not support a repository subpath without code/config changes. Songs have their own addresses (`/song/<id>/`), each a folder with an `index.html`, which every static host serves as is: no rewrite rule is needed. Serve `404.html` for unknown addresses (most hosts do by default). Set `SITE_URL` to the final address when building (Vercel and Netlify supply their own when it is not set) so the pages carry canonical links and the sitemap is written; then submit `https://your.domain/sitemap.xml` in Google Search Console and Bing Webmaster Tools. The artist pages carry their own stricter policy (no script at all); a header policy equal to the app's is compatible with them. Enable gzip/Brotli for JSON and JavaScript. Hashed `/assets/` files can be cached immutably; unversioned HTML, database and sample manifests should revalidate instead of being cached forever. Do not publish raw downloads, `.env`, `node_modules` or repository internals.
+The build is made for `https://www.arthurenard.me/strudelify/`: every address starts with `/strudelify/` (Vite's `base`), the portfolio forwards that folder to this project, and `vercel.json` maps it onto the build's root. For a domain of its own build with `STRUDELIFY_BASE=/ SITE_URL=https://your.domain`; `SITE_URL=` leaves canonical links, Open Graph addresses and the sitemap out. Songs have their own addresses (`/strudelify/song/<id>/`), each a folder with an `index.html`; after deploying, check on a preview deployment that such an address answers 200 with the song's page, not the 404 page, since only a 200 page is indexed. Serve `404.html` for unknown addresses (Vercel does by default). Crawlers read `robots.txt` only at the host's root: add `Sitemap: https://www.arthurenard.me/strudelify/sitemap.xml` to the portfolio's robots.txt, and submit that sitemap in Google Search Console and Bing Webmaster Tools. The artist pages carry their own stricter policy (no script at all); a header policy equal to the app's is compatible with them. Enable gzip/Brotli for JSON and JavaScript. Hashed `/assets/` files can be cached immutably; unversioned HTML, database and sample manifests should revalidate instead of being cached forever. Do not publish raw downloads, `.env`, `node_modules` or repository internals.
 
 On the final HTTPS domain, test a fresh browser session and a phone: search, covers, direct song links, first playback, seek/pause, code highlighting, download, and opening code in Strudel. Repeat with an unavailable artwork provider. The current checks were local, not against your future hosting provider.

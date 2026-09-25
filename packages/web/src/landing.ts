@@ -87,8 +87,10 @@ export function moreByArtist<E extends Pick<IndexEntry, 'id' | 'title' | 'popula
 export const browseLabel = (count: number | null) => (count !== null ? `Browse ${count.toLocaleString('en-US')} library ${count === 1 ? 'entry' : 'entries'}` : 'Browse songs');
 export const searchPlaceholder = (count: number | null) => (count !== null ? `Search ${count.toLocaleString('en-US')} library ${count === 1 ? 'entry' : 'entries'}` : 'Search a song or artist');
 
-/** The `<a class="ex" href="/song/id/">` cards of an HTML document, in order (their ids). */
-export const exampleIds = (html: string): string[] => [...html.matchAll(/<a class="ex" href="\/song\/([^"/]+)\/"[^>]*>[\s\S]*?<\/a>/g)].map((m) => decodeURIComponent(m[1]));
+/** An example card, `<a class="ex" href="…/song/<id>/">`: under the site's base path, or Vite's `%BASE_URL%` in the source. */
+const CARD = /<a class="ex" href="[^"]*?song\/([^"/]+)\/"[^>]*>[\s\S]*?<\/a>/g;
+/** The example cards of an HTML document, in order (their ids). */
+export const exampleIds = (html: string): string[] => [...html.matchAll(CARD)].map((m) => decodeURIComponent(m[1]));
 
 /**
  * index.html with the database's facts baked in: the song count in the CTA and the search placeholder, and each
@@ -104,7 +106,7 @@ export function bakeLanding(html: string, entries: readonly IndexEntry[] | null)
   // Artists spelled the way the browser shows them once the index is in.
   setArtistAliases(canonicalArtists(entries));
   const byId = new Map(entries.map((e) => [e.id, e]));
-  out = out.replace(/<a class="ex" href="\/song\/([^"/]+)\/"[^>]*>[\s\S]*?<\/a>/g, (_card, id: string) => {
+  out = out.replace(CARD, (_card, id: string) => {
     const e = byId.get(decodeURIComponent(id));
     return e ? exampleCard(e) : '';
   });

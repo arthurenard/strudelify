@@ -864,11 +864,21 @@ export function prettyKey(key: string | undefined): string {
 export const rowFacts = (e: Pick<IndexEntry, 'year' | 'key' | 'bpm'>) => [e.year ? String(e.year) : '', prettyKey(e.key), e.bpm ? `${e.bpm} bpm` : ''].filter(Boolean).join(' · ');
 
 // ---------- addresses ----------
+/**
+ * The path the site is served under: `/`, or `/strudelify/` when it lives in a folder of another site (Vite's
+ * `base`). main.ts sets it from the build in the browser; the build sets it for the pages it writes.
+ */
+let base = '/';
+export function setBase(path: string): void { base = `/${path.replace(/^\/+|\/+$/g, '')}/`.replace(/^\/\/$/, '/'); }
+/** An address inside the site, from its path relative to the site's root: `sitePath('artists/')` is `/strudelify/artists/`. */
+export const sitePath = (path = ''): string => base + path.replace(/^\/+/, '');
+/** The site's home page: its folder, with or without the trailing slash. */
+export const isHomePath = (path: string): boolean => path === base || `${path}/` === base;
 /** A song page's address (`/song/queen--bohemian-rhapsody/`): a folder, which every static host serves as it is. */
-export const songPath = (id: string): string => `/song/${encodeURIComponent(id)}/`;
+export const songPath = (id: string): string => sitePath(`song/${encodeURIComponent(id)}/`);
 /** The song id an address names (`/song/<id>/`, the trailing slash optional), or null; a malformed escape is taken as typed. */
 export function songIdFromPath(path: string): string | null {
-  const m = /^\/song\/([^/]+)\/?$/.exec(path);
+  const m = path.startsWith(base) ? /^song\/([^/]+)\/?$/.exec(path.slice(base.length)) : null;
   if (!m) return null;
   try { return decodeURIComponent(m[1]); } catch { return m[1]; }
 }
@@ -878,4 +888,4 @@ export function artistSlug(name: string): string {
   return slug || `a-${fnv1a(name).toString(36)}`;
 }
 /** An artist page's address, from the artist as shown (see `displayArtist`). */
-export const artistPath = (name: string): string => `/artist/${artistSlug(name)}/`;
+export const artistPath = (name: string): string => sitePath(`artist/${artistSlug(name)}/`);

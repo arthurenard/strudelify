@@ -79,7 +79,7 @@ browser can be opened or the link is too long for one), `-o <file>`, `--db <dir>
 ## Web app
 
 ```bash
-npm run dev:web        # http://127.0.0.1:5173
+npm run dev:web        # http://127.0.0.1:5173/strudelify/
 npm run build:web
 ```
 
@@ -88,7 +88,7 @@ or as soon as search or a song link needs it, searches as you type in the browse
 source file and compiles it client-side, then loads the result into an embedded Strudel editor. The
 landing page's example cards come from a pool of 200 popular songs baked into `index.html`, so they draw
 without the index. Vite copies the database and local audio into `packages/web/dist`; deploy that whole
-directory at the domain root (about 920 MB and 32,700 files in the current build, see [pages](#pages-for-search-engines)). The database is gitignored, so a fresh
+directory as the site's folder (about 920 MB and 32,700 files in the current build, see [pages](#pages-for-search-engines)). The site is built for `www.arthurenard.me/strudelify/`: every address starts with that folder (Vite's `base`, `STRUDELIFY_BASE` to change it, `/` for a domain of its own), and `vercel.json` maps the folder onto the build. The database is gitignored, so a fresh
 GitHub checkout must restore/build it before the web build (`node tools/fixture-db.mjs` makes a two-song one
 for trying the build). See [launch review and deployment steps](LAUNCH.md).
 
@@ -133,7 +133,7 @@ with the site.
   (flats in flat keys, `maj7` for `^7`).
 - **More by the artist**: under the code, up to eight of the artist's other songs (most transcribed
   first, one per title), and a link to the artist's page.
-- **Addresses**: every song has its own address, `/song/<id>/`, that opens it directly; links in the
+- **Addresses**: every song has its own address, `song/<id>/` in the site's folder, that opens it directly; links in the
   app change it without reloading, and the Back button returns to the previous song. Old `/#<id>` links
   are moved to the new address. `/?q=<text>` opens the search with that text.
 
@@ -152,9 +152,11 @@ in `packages/web/vite.config.ts`, the pages themselves in `packages/web/src/prer
 - `index.html` gains `WebSite` structured data with the search box; `404.html` is served for unknown
   addresses; `sitemap.xml` lists every page and `robots.txt` points to it.
 
-Set the site's address when building, `SITE_URL=https://example.com npm run build:web` (on Vercel
-the production domain, and on Netlify the site's URL, are used when it is not set). Without it the pages
-have no canonical links, Open Graph addresses or sitemap, and the build says so. The icons and the
+Absolute addresses (canonical links, Open Graph, the sitemap) use the published origin,
+`https://www.arthurenard.me`, with the folder above; for another host build with both,
+`STRUDELIFY_BASE=/ SITE_URL=https://example.com npm run build:web` (`SITE_URL=` leaves them out, and the build
+says so). Crawlers read `robots.txt` only at a host's root, so under a folder the portfolio's own robots.txt must
+name `https://www.arthurenard.me/strudelify/sitemap.xml` (or submit the sitemap in Search Console). The icons and the
 link-preview image are in `packages/web/static`, drawn by `node tools/make-icons.mjs`.
 
 ## How the code is generated
@@ -343,7 +345,7 @@ node tools/make-icons.mjs             # redraw the icons and the link-preview im
 node tools/vendor-acoustic-samples.mjs # re-vendor the acoustic drum hits (downloads them; needs flac or macOS)
 ```
 
-`shot.mjs` screenshots the running dev server (`http://127.0.0.1:5173`) with headless system Chrome
+`shot.mjs` screenshots the running dev server (`http://127.0.0.1:5173/strudelify/`, or `STRUDELIFY_URL`) with headless system Chrome
 and prints the page's console errors. `art-check.mjs` runs the web app's exact art resolver from Node
 through `tsx`, so browser and harness execute the same code.
 

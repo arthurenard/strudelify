@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Headless UI check of the running web app (Vite dev server on 127.0.0.1:5173) with the system Chrome:
+ * Headless UI check of the running web app (Vite dev server at 127.0.0.1:5173/strudelify/, or STRUDELIFY_URL) with the system Chrome:
  * no page or console errors, no horizontal scroll at 390/768/1440, the landing page baked with the index's
  * song count, one identity colour per song (landing card = search row), canonical artist names in search
  * rows, chord-lane labels without a trailing ellipsis, the readout agreeing with the highlighted block, and
@@ -10,7 +10,10 @@
  */
 import puppeteer from 'puppeteer-core';
 
-const BASE = process.env.STRUDELIFY_URL ?? 'http://127.0.0.1:5173';
+/** The site's address, its folder included (the app is built for /strudelify/ unless STRUDELIFY_BASE says otherwise). */
+const BASE = (process.env.STRUDELIFY_URL ?? 'http://127.0.0.1:5173/strudelify').replace(/\/+$/, '');
+/** Its folder, for the addresses the app writes: `/strudelify`, or '' at the root. */
+const FOLDER = new URL(BASE).pathname.replace(/\/+$/, '');
 const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 /** Third-party artwork lookups (see packages/web/src/art.ts). */
 const ART_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(itunes\.apple\.com|deezer\.com|musicbrainz\.org|coverartarchive\.org)\//;
@@ -29,7 +32,8 @@ try {
   page.on('pageerror', (e) => errors.push(`pageerror ${e}`));
   page.on('console', (m) => {
     if (m.type() !== 'error' && m.type() !== 'warning') return;
-    if (/^Failed to load resource/.test(m.text()) && isArt(m.location()?.url)) return;
+    // A refused lookup is logged as a failed load, or, when the refusal carries no CORS header, as a blocked fetch naming it.
+    if (/^Failed to load resource/.test(m.text()) ? isArt(m.location()?.url) : /^Access to fetch at '[^']+' .* blocked by CORS/.test(m.text()) && isArt(/'([^']+)'/.exec(m.text())[1])) return;
     errors.push(`console.${m.type()} ${m.text()}`);
   });
   page.on('response', (r) => {
@@ -60,7 +64,7 @@ try {
   // Landing: baked count, tile colour identity.
   await page.setViewport({ width: 1440, height: 900 });
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle0' });
-  const count = await page.evaluate(async () => (await (await fetch('/db/index.json')).json()).length);
+  const count = await page.evaluate(async (base) => (await (await fetch(`${base}/db/index.json`)).json()).length, BASE);
   const raw = await (await fetch(`${BASE}/`)).text();
   check(raw.includes(`Browse ${count.toLocaleString('en-US')} library entries`), `index.html is baked with the entry count (${count})`);
   const cardTile = await page.evaluate(() => document.querySelector('#examples .ex')?.style.getPropertyValue('--tile'));
@@ -95,10 +99,10 @@ try {
   // An old link to /#<id> opens the song at its own address.
   await page.goto(`${BASE}/#james-brown--i-dont-mind`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
   const legacy = await page.evaluate(() => ({ path: location.pathname, hash: location.hash, title: document.getElementById('title')?.textContent }));
-  check(legacy.path === '/song/james-brown--i-dont-mind/' && !legacy.hash && legacy.title === "I Don't Mind", `old /#id link: moved to ${legacy.path}${legacy.hash}`);
+  check(legacy.path === `${FOLDER}/song/james-brown--i-dont-mind/` && !legacy.hash && legacy.title === "I Don't Mind", `old /#id link: moved to ${legacy.path}${legacy.hash}`);
   // A song suggests the artist's other songs, which open inside the app.
   const more = await page.evaluate(() => ({ shown: !document.getElementById('more')?.hidden, cards: document.querySelectorAll('#more-songs .ex').length, artist: document.getElementById('more-artist')?.getAttribute('href') }));
-  check(more.shown && more.cards > 0 && more.artist === '/artist/james-brown/', `more by the artist: ${more.cards} cards, ${more.artist}`);
+  check(more.shown && more.cards > 0 && more.artist === `${FOLDER}/artist/james-brown/`, `more by the artist: ${more.cards} cards, ${more.artist}`);
   // /?q= opens the search with its text.
   await page.goto(`${BASE}/?q=beatles`, { waitUntil: 'networkidle0' }); await sleep(600);
   const q = await page.evaluate(() => ({ value: document.getElementById('q')?.value, rows: document.querySelectorAll('#results [role="option"]').length }));
@@ -106,7 +110,7 @@ try {
   await page.goto(`${BASE}/song/pink-floyd--another-brick-in-the-wall-part-2/`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
   await page.evaluate(() => { document.getElementById('track').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); });
   await throttle(true);
-  await page.evaluate(() => { history.pushState(null, '', '/song/led-zeppelin--stairway-to-heaven/'); dispatchEvent(new PopStateEvent('popstate')); });
+  await page.evaluate((folder) => { history.pushState(null, '', `${folder}/song/led-zeppelin--stairway-to-heaven/`); dispatchEvent(new PopStateEvent('popstate')); }, FOLDER);
   await sleep(150); const h1 = await state(); check(h1.loading && h1.title === 'Stairway To Heaven', 'address change: new title with the skeleton within 150 ms'); noStale(h1, 'address +150 ms');
   await sleep(400); noStale(await state(), 'address +550 ms');
   await page.setViewport({ width: 1200, height: 900 }); await sleep(300); noStale(await state(), 'address, resized while loading');

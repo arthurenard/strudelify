@@ -1,21 +1,22 @@
 /**
  * The site's static pages, as HTML strings, for search engines and link previews (see the prerender plugin in
  * vite.config.ts, which writes them into the build):
- * - a page per song at `/song/<id>/`: the app itself (the built index.html), opened on the song, with its own
+ * - a page per song at `song/<id>/`: the app itself (the built index.html), opened on the song, with its own
  *   title, description, canonical address, Open Graph card and structured data, and the song's Main loop code
  *   as text until the editor loads;
- * - a page per artist at `/artist/<slug>/` and an A–Z index at `/artists/`, plain pages linking to the songs;
+ * - a page per artist at `artist/<slug>/` and an A–Z index at `artists/`, plain pages linking to the songs;
  * - the sitemap and robots.txt.
- * Addresses are absolute when the site's address is known (`site`), as canonical links, Open Graph and the
- * sitemap require; without it those are left out. Keep this module free of DOM access.
+ * Paths are under the site's base path (see `setBase`). Addresses are absolute when the site's origin is known
+ * (`site`, e.g. `https://www.arthurenard.me`), as canonical links, Open Graph and the sitemap require; without it
+ * those are left out. Keep this module free of DOM access.
  */
 import type { IndexEntry } from '@strudelify/core';
-import { esc, pageTitle, displayArtist, prettyKey, titleSize, songPath, artistPath, artistSlug, byPopularity, type ArtistGroup } from './ui.js';
+import { esc, pageTitle, displayArtist, prettyKey, titleSize, songPath, artistPath, artistSlug, sitePath, byPopularity, type ArtistGroup } from './ui.js';
 import { artistSongCard, moreByArtist, LANDING_POOL_ID } from './landing.js';
 
 export const SITE_NAME = 'Strudelify';
-/** The Open Graph image every page shares (1200 x 630, see tools/make-icons.mjs). */
-export const OG_IMAGE = '/og.png';
+/** The Open Graph image every page shares (1200 x 630, see tools/make-icons.mjs), at the site's root. */
+export const OG_IMAGE = 'og.png';
 
 /** The landing pool's `<script>` is only for the home page's cards (see `bakeLanding`). */
 export const LANDING_POOL_SCRIPT = new RegExp(`\\s*<script type="application/json" id="${LANDING_POOL_ID}">[\\s\\S]*?<\\/script>`);
@@ -50,7 +51,7 @@ function metaTags(p: { site: string | null; path: string; title: string; descrip
     `<meta property="og:title" content="${esc(p.title)}" />`,
     `<meta property="og:description" content="${esc(p.description)}" />`,
     url && `<meta property="og:url" content="${esc(url)}" />`,
-    p.site && `<meta property="og:image" content="${esc(p.site + OG_IMAGE)}" />`,
+    p.site && `<meta property="og:image" content="${esc(p.site + sitePath(OG_IMAGE))}" />`,
     p.site && '<meta property="og:image:width" content="1200" /><meta property="og:image:height" content="630" />',
     `<meta name="twitter:card" content="${p.site ? 'summary_large_image' : 'summary'}" />`,
   ].filter(Boolean).join('\n    ');
@@ -64,12 +65,16 @@ const crumbs = (site: string, items: [string, string][]) => ({
 });
 
 /** The icons a page links: search results and home screens take files, not the data: URL the dev page uses. */
-const ICONS = '<link rel="icon" href="/favicon.svg" type="image/svg+xml" />\n    <link rel="icon" href="/favicon-96.png" sizes="96x96" type="image/png" />\n    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />';
+const icons = () => [
+  `<link rel="icon" href="${sitePath('favicon.svg')}" type="image/svg+xml" />`,
+  `<link rel="icon" href="${sitePath('favicon-96.png')}" sizes="96x96" type="image/png" />`,
+  `<link rel="apple-touch-icon" href="${sitePath('apple-touch-icon.png')}" />`,
+].join('\n    ');
 
 /** The shell's `<head>`: its title and description replaced, the given tags added, the favicon files linked. */
 function withHead(shell: string, title: string, tags: string): string {
   return shell
-    .replace(/<link rel="icon" href="data:[^"]*" \/>/, ICONS)
+    .replace(/<link rel="icon" href="data:[^"]*" \/>/, icons())
     .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`)
     .replace(/\s*<meta name="description" content="[^"]*" \/>/, '')
     .replace('</head>', `    ${tags}\n  </head>`);
@@ -79,11 +84,12 @@ function withHead(shell: string, title: string, tags: string): string {
 export function homePage(shell: string, site: string | null): string {
   const description = 'Type a song name, get Strudel live-coding code that plays it: an instrumental loop and the full arrangement, compiled from open transcriptions. No AI.';
   const title = `${SITE_NAME}: play any song as Strudel live-coding code`;
-  const tags = [metaTags({ site, path: '/', title, description, type: 'website' }), site && jsonLd({
+  const home = sitePath();
+  const tags = [metaTags({ site, path: home, title, description, type: 'website' }), site && jsonLd({
     '@context': 'https://schema.org',
     '@graph': [
-      { '@type': 'WebSite', name: SITE_NAME, url: `${site}/`, potentialAction: { '@type': 'SearchAction', target: `${site}/?q={search_term_string}`, 'query-input': 'required name=search_term_string' } },
-      { '@type': 'WebApplication', name: SITE_NAME, url: `${site}/`, applicationCategory: 'MultimediaApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' } },
+      { '@type': 'WebSite', name: SITE_NAME, url: `${site}${home}`, potentialAction: { '@type': 'SearchAction', target: `${site}${home}?q={search_term_string}`, 'query-input': 'required name=search_term_string' } },
+      { '@type': 'WebApplication', name: SITE_NAME, url: `${site}${home}`, applicationCategory: 'MultimediaApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' } },
     ],
   })].filter(Boolean).join('\n    ');
   return withHead(shell, title, tags);
@@ -103,7 +109,7 @@ export function songPage(shell: string, e: IndexEntry, group: readonly IndexEntr
     '@graph': [
       { '@type': 'MusicComposition', name: e.title, url: `${site}${path}`, ...(key ? { musicalKey: key } : {}), ...(e.year ? { dateCreated: String(e.year) } : {}),
         recordedAs: { '@type': 'MusicRecording', name: e.title, byArtist: { '@type': 'MusicGroup', name: artist, url: `${site}${artistPath(artist)}` } } },
-      crumbs(site, [['Home', '/'], ['Artists', '/artists/'], [artist, artistPath(artist)], [e.title, path]]),
+      crumbs(site, [['Home', sitePath()], ['Artists', sitePath('artists/')], [artist, artistPath(artist)], [e.title, path]]),
     ],
   });
   const chips = [key && ['Key', key], e.bpm && ['Tempo', `${Math.round(e.bpm)} bpm`]].filter((c): c is [string, string] => !!c)
@@ -173,34 +179,34 @@ function plainPage(p: { css: string; site: string | null; path: string; title: s
     <title>${esc(p.title)}</title>
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0a0c10" />
-    ${ICONS}
+    ${icons()}
     <link rel="stylesheet" href="${esc(p.css)}" />
     ${metaTags({ site: p.site, path: p.path, title: p.title, description: p.description, type: 'website' })}
     ${p.site && p.data ? jsonLd(p.data) : ''}
   </head>
   <body>
     <header class="top">
-      <a class="brand" href="/" aria-label="${SITE_NAME} home">
+      <a class="brand" href="${sitePath()}" aria-label="${SITE_NAME} home">
         <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="currentColor" opacity=".12"/><path d="M18 44V22l9 6v16zM29 44V16l9 6v22zM40 44V26l9 6v12z" fill="currentColor"/></svg>
         <span class="brand-name">${SITE_NAME}</span>
       </a>
-      <form class="plain-search" action="/" method="get" role="search"><input name="q" type="search" aria-label="Search songs and artists" placeholder="Search a song or artist" /></form>
+      <form class="plain-search" action="${sitePath()}" method="get" role="search"><input name="q" type="search" aria-label="Search songs and artists" placeholder="Search a song or artist" /></form>
     </header>
     <main id="main" class="main plain">
 ${p.body}
     </main>
-    <footer class="foot"><div class="foot-inner"><span class="foot-brand">${SITE_NAME}</span><span class="foot-links"><a href="/">Home</a> · <a href="/artists/">All artists</a> · Player: <a href="https://strudel.cc" rel="noopener">Strudel</a> (AGPL-3.0)</span></div></footer>
+    <footer class="foot"><div class="foot-inner"><span class="foot-brand">${SITE_NAME}</span><span class="foot-links"><a href="${sitePath()}">Home</a> · <a href="${sitePath('artists/')}">All artists</a> · Player: <a href="https://strudel.cc" rel="noopener">Strudel</a> (AGPL-3.0)</span></div></footer>
   </body>
 </html>
 `;
 }
 
-const letterNav = (current?: string) => `<nav class="letters" aria-label="Artists by letter">${LETTERS.map((l) => (l === current ? `<span aria-current="page">${letterLabel(l)}</span>` : `<a href="/artists/${l}/">${letterLabel(l)}</a>`)).join('')}</nav>`;
+const letterNav = (current?: string) => `<nav class="letters" aria-label="Artists by letter">${LETTERS.map((l) => (l === current ? `<span aria-current="page">${letterLabel(l)}</span>` : `<a href="${sitePath(`artists/${l}/`)}">${letterLabel(l)}</a>`)).join('')}</nav>`;
 const count = (n: number, word: string) => `${n.toLocaleString('en-US')} ${word}${n === 1 ? '' : 's'}`;
 
 /** An artist's page: every song of the artist in the catalogue, as the landing page's cards. */
 export function artistPage(g: ArtistGroup & { slug: string }, css: string, site: string | null): string {
-  const path = `/artist/${g.slug}/`;
+  const path = sitePath(`artist/${g.slug}/`);
   const songs = g.entries.length;
   return plainPage({
     css, site, path,
@@ -208,10 +214,10 @@ export function artistPage(g: ArtistGroup & { slug: string }, css: string, site:
     description: `Play ${count(songs, 'song')} by ${g.name} as Strudel live-coding code: instrumental loops and full arrangements to edit and open in strudel.cc.`,
     data: site && { '@context': 'https://schema.org', '@graph': [
       { '@type': 'MusicGroup', name: g.name, url: `${site}${path}`, track: g.entries.slice(0, 50).map((e) => ({ '@type': 'MusicRecording', name: e.title, url: `${site}${songPath(e.id)}` })) },
-      crumbs(site, [['Home', '/'], ['Artists', '/artists/'], [g.name, path]]),
+      crumbs(site, [['Home', sitePath()], ['Artists', sitePath('artists/')], [g.name, path]]),
     ] },
     body: `      <section class="plain-page">
-        <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/artists/">Artists</a> › <span aria-current="page">${esc(g.name)}</span></nav>
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="${sitePath()}">Home</a> › <a href="${sitePath('artists/')}">Artists</a> › <span aria-current="page">${esc(g.name)}</span></nav>
         <h1>${esc(g.name)}</h1>
         <p class="lede">${count(songs, 'song')} to play as Strudel live-coding code. Open one to hear its loop, edit it, or take it to strudel.cc.</p>
         <div class="examples">${g.entries.map(artistSongCard).join('')}</div>
@@ -222,7 +228,7 @@ export function artistPage(g: ArtistGroup & { slug: string }, css: string, site:
 /** An A–Z page of artists (`letter`), or the index of letters with the artists who have the most songs (none). */
 export function artistsPage(all: (ArtistGroup & { slug: string })[], css: string, site: string | null, letter?: string): string {
   const listed = letter ? all.filter((g) => letterOf(g.name) === letter) : [...all].sort((a, b) => b.entries.length - a.entries.length).slice(0, 60);
-  const path = letter ? `/artists/${letter}/` : '/artists/';
+  const path = sitePath(letter ? `artists/${letter}/` : 'artists/');
   const heading = letter ? `Artists: ${letterLabel(letter)}` : 'Artists';
   const songs = all.reduce((n, g) => n + g.entries.length, 0);
   return plainPage({
@@ -230,22 +236,26 @@ export function artistsPage(all: (ArtistGroup & { slug: string })[], css: string
     title: `${heading} · ${SITE_NAME}`,
     description: letter ? `Artists under ${letterLabel(letter)} whose songs play as Strudel live-coding code on ${SITE_NAME}.`
       : `${count(all.length, 'artist')} and ${count(songs, 'song')} to play as Strudel live-coding code, A to Z.`,
-    data: site && crumbs(site, letter ? [['Home', '/'], ['Artists', '/artists/'], [letterLabel(letter), path]] : [['Home', '/'], ['Artists', path]]),
+    data: site && crumbs(site, letter ? [['Home', sitePath()], ['Artists', sitePath('artists/')], [letterLabel(letter), path]] : [['Home', sitePath()], ['Artists', path]]),
     body: `      <section class="plain-page">
-        <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › ${letter ? `<a href="/artists/">Artists</a> › <span aria-current="page">${letterLabel(letter)}</span>` : '<span aria-current="page">Artists</span>'}</nav>
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="${sitePath()}">Home</a> › ${letter ? `<a href="${sitePath('artists/')}">Artists</a> › <span aria-current="page">${letterLabel(letter)}</span>` : '<span aria-current="page">Artists</span>'}</nav>
         <h1>${esc(heading)}</h1>
         <p class="lede">${letter ? count(listed.length, 'artist') : `${count(all.length, 'artist')}, ${count(songs, 'song')}. The artists with the most songs:`}</p>
         ${letterNav(letter)}
-        <ul class="artist-list">${listed.map((g) => `<li><a href="/artist/${g.slug}/">${esc(g.name)}</a> <span class="n">${g.entries.length}</span></li>`).join('')}</ul>
+        <ul class="artist-list">${listed.map((g) => `<li><a href="${sitePath(`artist/${g.slug}/`)}">${esc(g.name)}</a> <span class="n">${g.entries.length}</span></li>`).join('')}</ul>
       </section>`,
   });
 }
 
 // ---------- sitemap ----------
 
-/** The sitemap: the home page, the artist index and pages, and every song page. */
+/** The sitemap: the home page, the artist index and pages, and every song page (paths under the site's base). */
 export function sitemap(site: string, paths: readonly string[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${paths.map((p) => `  <url><loc>${esc(site + p)}</loc></url>`).join('\n')}\n</urlset>\n`;
 }
-export const robots = (site: string | null) => `User-agent: *\nAllow: /\n${site ? `Sitemap: ${site}/sitemap.xml\n` : ''}`;
+/**
+ * robots.txt, which crawlers only read at the root of a host: under a base path it is a copy for the host's own
+ * robots.txt, whose Sitemap line must name this sitemap (see LAUNCH.md).
+ */
+export const robots = (site: string | null) => `User-agent: *\nAllow: /\n${site ? `Sitemap: ${site}${sitePath('sitemap.xml')}\n` : ''}`;
 

@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import fs from 'node:fs';
 import type { IndexEntry } from '@strudelify/core';
-import { bakeLanding } from '../src/landing.js';
-import { songPath, songIdFromPath, artistSlug, artistPath, setArtistAliases, canonicalArtists } from '../src/ui.js';
+import { bakeLanding, exampleIds } from '../src/landing.js';
+import { songPath, songIdFromPath, artistSlug, artistPath, setArtistAliases, canonicalArtists, setBase, sitePath, isHomePath } from '../src/ui.js';
 import { songPage, homePage, notFoundPage, artists, artistPage, artistsPage, letterOf, sitemap, robots, songTitle, songDescription, compact, LANDING_POOL_SCRIPT } from '../src/prerender.js';
 
 const entry = (id: string, title: string, artist: string, extra: Partial<IndexEntry> = {}): IndexEntry => ({ id, title, artist, sources: ['midi'], files: { midi: `songs/${id}.mid` }, ...extra });
@@ -117,5 +117,40 @@ describe('home, 404 and artist pages', () => {
     expect(xml).toContain(`<loc>${site}/song/a&amp;b/</loc>`);
     expect(robots(site)).toBe(`User-agent: *\nAllow: /\nSitemap: ${site}/sitemap.xml\n`);
     expect(robots(null)).not.toContain('Sitemap');
+  });
+});
+
+describe('a site in a folder of another site', () => {
+  afterEach(() => setBase('/'));
+  it('puts every address under the folder and reads songs back only from inside it', () => {
+    setBase('/strudelify/');
+    expect([songPath('queen--bohemian-rhapsody'), artistPath('Queen'), sitePath(), sitePath('artists/b/')])
+      .toEqual(['/strudelify/song/queen--bohemian-rhapsody/', '/strudelify/artist/queen/', '/strudelify/', '/strudelify/artists/b/']);
+    expect(songIdFromPath('/strudelify/song/queen--bohemian-rhapsody')).toBe('queen--bohemian-rhapsody');
+    expect(songIdFromPath('/song/queen--bohemian-rhapsody/')).toBeNull();
+    expect([isHomePath('/strudelify/'), isHomePath('/strudelify'), isHomePath('/')]).toEqual([true, true, false]);
+    setBase('strudelify'); // however it is written
+    expect(sitePath()).toBe('/strudelify/');
+  });
+  it('links pages, icons, the search and the sitemap inside the folder', () => {
+    setBase('/strudelify/');
+    const page = songPage(shell, entries[0], entries.slice(0, 3), {}, 'https://www.arthurenard.me');
+    expect(page).toContain('<link rel="canonical" href="https://www.arthurenard.me/strudelify/song/dire-straits--sultans-of-swing/" />');
+    expect(page).toContain('<meta property="og:image" content="https://www.arthurenard.me/strudelify/og.png" />');
+    expect(page).toContain('<link rel="icon" href="/strudelify/favicon.svg" type="image/svg+xml" />');
+    expect(page).toContain('href="/strudelify/artist/dire-straits/"');
+    expect(page).toContain('href="/strudelify/song/dire-straits--money-for-nothing/"');
+    const [straits] = artists(entries);
+    const plain = artistPage(straits, '/strudelify/assets/index.css', 'https://www.arthurenard.me');
+    expect(plain).toContain('<form class="plain-search" action="/strudelify/"');
+    expect(plain).toContain('<a href="/strudelify/artists/">Artists</a>');
+    expect(plain).not.toMatch(/href="\/(?!strudelify\/)/); // no link leaves the folder
+    const [ld] = ldOf(homePage(shell, 'https://www.arthurenard.me'));
+    expect(ld['@graph'][0].potentialAction.target).toBe('https://www.arthurenard.me/strudelify/?q={search_term_string}');
+    expect(robots('https://www.arthurenard.me')).toContain('Sitemap: https://www.arthurenard.me/strudelify/sitemap.xml');
+  });
+  it('finds the example cards however their address is written', () => {
+    const cards = ['%BASE_URL%song/a/', '/strudelify/song/b/', '/song/c/'].map((href) => `<a class="ex" href="${href}">x</a>`).join('');
+    expect(exampleIds(cards)).toEqual(['a', 'b', 'c']);
   });
 });

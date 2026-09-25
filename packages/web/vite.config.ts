@@ -5,10 +5,20 @@ import os from 'node:os';
 import { Worker } from 'node:worker_threads';
 import type { IndexEntry } from '@strudelify/core';
 import { bakeLanding } from './src/landing.js';
-import { songPath, setArtistAliases, canonicalArtists } from './src/ui.js';
+import { songPath, sitePath, setBase, setArtistAliases, canonicalArtists } from './src/ui.js';
 import { homePage, songPage, notFoundPage, artists, artistPage, artistsPage, sitemap, robots, compact, LETTERS } from './src/prerender.js';
 
 const DB = path.resolve(import.meta.dirname, '..', 'data', 'public', 'db');
+
+/**
+ * Where the site is published: www.arthurenard.me/strudelify/ (the portfolio forwards that folder here, see
+ * vercel.json). STRUDELIFY_BASE moves it to another folder (`/` for a domain of its own) and SITE_URL names
+ * another origin; SITE_URL= (empty) leaves the absolute addresses out.
+ */
+const PUBLISHED = { origin: 'https://www.arthurenard.me', base: '/strudelify/' };
+const BASE = process.env.STRUDELIFY_BASE ?? PUBLISHED.base;
+// Every address the app and its pages make starts at the base, in the build as in the browser (see main.ts).
+setBase(BASE);
 
 /**
  * Bake the database's facts into index.html (song count, fallback example cards' years and tile colours).
@@ -63,17 +73,18 @@ function securityPlugin(): Plugin {
 }
 
 /**
- * The site's address for canonical links, Open Graph and the sitemap: SITE_URL, or the production address the
- * host provides (Vercel's project domain, Netlify's site URL). Unknown, those are left out of the pages.
+ * The site's origin for canonical links, Open Graph and the sitemap (the pages' paths carry the base): SITE_URL,
+ * or where the site is published when it is built for that folder. Unknown, those are left out of the pages.
  */
 function siteUrl(): string | null {
-  const env = process.env;
-  const url = env.SITE_URL
-    || (env.VERCEL_PROJECT_PRODUCTION_URL && `https://${env.VERCEL_PROJECT_PRODUCTION_URL}`)
-    || (env.NETLIFY === 'true' && env.URL);
+  const url = process.env.SITE_URL ?? (BASE === PUBLISHED.base ? PUBLISHED.origin : '');
   if (!url) return null;
   if (!/^https?:\/\/[^/]+/.test(url)) throw new Error(`SITE_URL must be an address like https://example.com, not "${url}"`);
-  return url.replace(/\/+$/, '');
+  const { origin, pathname } = new URL(url);
+  if (pathname !== '/' && pathname.replace(/\/?$/, '/') !== sitePath()) {
+    throw new Error(`SITE_URL names the folder ${pathname}, but the site is built for ${sitePath()}: set STRUDELIFY_BASE to match`);
+  }
+  return origin;
 }
 
 /** Every song's Main loop code, compiled in worker threads (a song whose code fails maps to null). */
@@ -122,7 +133,7 @@ function prerenderPlugin(): Plugin {
       write('artists/index.html', artistsPage(groups, css, site));
       for (const letter of LETTERS) write(`artists/${letter}/index.html`, artistsPage(groups, css, site, letter));
       write('robots.txt', robots(site));
-      if (site) write('sitemap.xml', sitemap(site, ['/', '/artists/', ...LETTERS.map((l) => `/artists/${l}/`), ...groups.map((g) => `/artist/${g.slug}/`), ...entries.map((e) => songPath(e.id))]));
+      if (site) write('sitemap.xml', sitemap(site, [sitePath(), sitePath('artists/'), ...LETTERS.map((l) => sitePath(`artists/${l}/`)), ...groups.map((g) => sitePath(`artist/${g.slug}/`)), ...entries.map((e) => songPath(e.id))]));
       const icons = path.resolve(import.meta.dirname, 'static');
       for (const file of fs.readdirSync(icons)) fs.copyFileSync(path.join(icons, file), path.join(outDir, file));
       const failed = [...codes.values()].filter((c) => c === null).length;
@@ -133,8 +144,7 @@ function prerenderPlugin(): Plugin {
 }
 
 export default defineConfig({
-  // Served under arthurenard.me/strudelify/ (the portfolio forwards that path here); override with STRUDELIFY_BASE.
-  base: process.env.STRUDELIFY_BASE ?? '/strudelify/',
+  base: BASE,
   // The song database is built into packages/data/public/db and served as static files.
   publicDir: path.resolve(import.meta.dirname, '..', 'data', 'public'),
   plugins: [landingPlugin(), securityPlugin(), prerenderPlugin(), {

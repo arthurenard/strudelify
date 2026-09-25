@@ -11,7 +11,10 @@ import { exampleCard, browseLabel, searchPlaceholder, pickLandingExamples, LANDI
 import { choose, showSection, prefetchArt } from './song.js';
 import { play, stop, seek, currentBar, rewind } from './player.js';
 import { bindTimeline } from './timeline.js';
-import { displayArtist, tidyHits, idWords, songPath, songIdFromPath } from './ui.js';
+import { displayArtist, tidyHits, idWords, songPath, songIdFromPath, isHomePath, setBase } from './ui.js';
+
+// The site may live in a folder of another site (arthurenard.me/strudelify/): every address the app makes starts there.
+setBase(import.meta.env.BASE_URL);
 
 bindTimeline({ seek, currentBar, toggle: () => { if (state.started) void stop(); else void play(); } });
 onChoose(choose);
@@ -131,7 +134,7 @@ async function leaveSong() {
  */
 function routedId(): string | null {
   const id = songIdFromPath(location.pathname);
-  if (id || location.pathname !== '/' || location.hash.length < 2 || location.hash === '#main') return id;
+  if (id || !isHomePath(location.pathname) || location.hash.length < 2 || location.hash === '#main') return id;
   let legacy = location.hash.slice(1);
   try { legacy = decodeURIComponent(legacy); } catch { /* taken as typed */ }
   history.replaceState(null, '', songPath(legacy));
@@ -141,7 +144,7 @@ async function route() {
   const id = routedId();
   if (!id) {
     // Another address is a page of its own (an artist's songs): the app leaves it as it is.
-    if (location.pathname !== '/') return;
+    if (!isHomePath(location.pathname)) return;
     if (state.current || state.loadingId || !el.notFound.hidden) {
       await leaveSong();
       showSection('empty');
@@ -172,7 +175,7 @@ document.addEventListener('click', (e) => {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
   if (!a || a.target || a.hasAttribute('download') || a.origin !== location.origin) return;
-  if (a.pathname !== '/' && !songIdFromPath(a.pathname)) return;
+  if (!isHomePath(a.pathname) && !songIdFromPath(a.pathname)) return;
   e.preventDefault();
   if (a.pathname + a.search !== location.pathname + location.search) history.pushState(null, '', a.pathname + a.search);
   route().catch(() => { /* the banner shows the error */ });

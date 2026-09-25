@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Headless screenshot of the running web app (Vite dev server on 127.0.0.1:5173) using the system Chrome.
+ * Headless screenshot of the running web app (Vite dev server at 127.0.0.1:5173/strudelify/, or STRUDELIFY_URL) using the system Chrome.
  *   node tools/shot.mjs <url-or-song-id> <out.png> [--mobile] [--full] [--wait <ms>] [--click <selector>] [--width N --height N]
  * Examples:
  *   node tools/shot.mjs nirvana--smells-like-teen-spirit shots/nirvana.png
- *   node tools/shot.mjs "http://127.0.0.1:5173/" shots/home.png --mobile
+ *   node tools/shot.mjs "http://127.0.0.1:5173/strudelify/" shots/home.png --mobile
  * Also prints console errors from the page to stderr.
  */
 import puppeteer from 'puppeteer-core';
@@ -17,7 +17,7 @@ const out = args[1];
 if (!target || !out) { console.error('usage: shot.mjs <url-or-song-id> <out.png> [--mobile] [--full] [--wait ms] [--click sel]'); process.exit(2); }
 const flag = (n) => args.includes(n);
 const val = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
-const url = target.startsWith('http') ? target : `${process.env.STRUDELIFY_URL ?? 'http://127.0.0.1:5173'}/song/${target.replace(/^#/, '')}/`;
+const url = target.startsWith('http') ? target : `${(process.env.STRUDELIFY_URL ?? 'http://127.0.0.1:5173/strudelify').replace(/\/+$/, '')}/song/${target.replace(/^#/, '')}/`;
 const mobile = flag('--mobile');
 const width = Number(val('--width', mobile ? 390 : 1440));
 const height = Number(val('--height', mobile ? 844 : 900));
