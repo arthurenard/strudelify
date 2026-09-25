@@ -79,7 +79,7 @@ browser can be opened or the link is too long for one), `-o <file>`, `--db <dir>
 ## Web app
 
 ```bash
-npm run dev:web        # http://127.0.0.1:5173/strudelify/
+npm run dev:web        # http://127.0.0.1:5173/strudelify/ (the site's folder; 127.0.0.1:5173 is sent there)
 npm run build:web
 ```
 

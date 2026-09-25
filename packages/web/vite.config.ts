@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Connect, type Plugin } from 'vite';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -63,6 +63,26 @@ export const CONTENT_SECURITY_POLICY = [
   "base-uri 'self'",
   "form-action 'none'",
 ].join('; ');
+
+/**
+ * The site lives in a folder (BASE), so the dev and preview servers answer only inside it: an address outside it
+ * that names no file (`/`, an old `/song/<id>/` link) is sent into the folder, and 127.0.0.1:5173 opens the app.
+ */
+function folderPlugin(): Plugin {
+  const intoFolder: Connect.NextHandleFunction = (req, res, next) => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    const last = url.pathname.slice(url.pathname.lastIndexOf('/') + 1);
+    if (BASE === '/' || url.pathname.startsWith(BASE) || last.includes('.') || (req.method !== 'GET' && req.method !== 'HEAD')) return next();
+    res.statusCode = 302;
+    res.setHeader('Location', (`${url.pathname}/` === BASE ? BASE : sitePath(url.pathname.slice(1))) + url.search);
+    res.end();
+  };
+  return {
+    name: 'strudelify-folder',
+    configureServer: (server) => { server.middlewares.use(intoFolder); },
+    configurePreviewServer: (server) => { server.middlewares.use(intoFolder); },
+  };
+}
 
 function securityPlugin(): Plugin {
   return {
@@ -147,7 +167,7 @@ export default defineConfig({
   base: BASE,
   // The song database is built into packages/data/public/db and served as static files.
   publicDir: path.resolve(import.meta.dirname, '..', 'data', 'public'),
-  plugins: [landingPlugin(), securityPlugin(), prerenderPlugin(), {
+  plugins: [folderPlugin(), landingPlugin(), securityPlugin(), prerenderPlugin(), {
     name: 'strudelify-database-check',
     apply: 'build',
     buildStart() {
