@@ -26,7 +26,7 @@ export function getIndex({ quiet = false } = {}): Promise<SongIndex> {
   if (indexPromise) return indexPromise;
   if (!quiet) setStatus('Loading…');
   indexPromise = (async () => {
-    const res = await fetch('/db/index.json');
+    const res = await fetch(`${import.meta.env.BASE_URL}db/index.json`);
     if (!res.ok) throw new Error(`index.json: HTTP ${res.status}`);
     const entries: IndexEntry[] = await res.json();
     const idx = createIndex(entries);

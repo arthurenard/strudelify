@@ -133,6 +133,8 @@ function prerenderPlugin(): Plugin {
 }
 
 export default defineConfig({
+  // Served under arthurenard.me/strudelify/ (the portfolio forwards that path here); override with STRUDELIFY_BASE.
+  base: process.env.STRUDELIFY_BASE ?? '/strudelify/',
   // The song database is built into packages/data/public/db and served as static files.
   publicDir: path.resolve(import.meta.dirname, '..', 'data', 'public'),
   plugins: [landingPlugin(), securityPlugin(), prerenderPlugin(), {

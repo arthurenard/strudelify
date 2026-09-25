@@ -31,7 +31,7 @@ function setTitle(text: string) {
 }
 
 const readFile = async (p: string) => {
-  const res = await fetch(`/db/${p}`);
+  const res = await fetch(`${import.meta.env.BASE_URL}db/${p}`);
   if (!res.ok) throw new Error(`${p}: HTTP ${res.status}`);
   return new Uint8Array(await res.arrayBuffer());
 };

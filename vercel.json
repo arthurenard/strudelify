@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/strudelify", "destination": "/index.html" },
+    { "source": "/strudelify/", "destination": "/index.html" },
+    { "source": "/strudelify/:path+", "destination": "/:path+" }
+  ]
+}
