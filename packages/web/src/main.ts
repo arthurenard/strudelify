@@ -11,6 +11,7 @@ import { exampleCard, browseLabel, searchPlaceholder, pickLandingExamples, LANDI
 import { choose, showSection, prefetchArt } from './song.js';
 import { play, stop, seek, currentBar, rewind } from './player.js';
 import { bindTimeline } from './timeline.js';
+import './catalogue.js'; // covers resolved ahead of time, asked before any provider (paths are made when used)
 import { displayArtist, tidyHits, idWords, songPath, songIdFromPath, isHomePath, setBase } from './ui.js';
 
 // The site may live in a folder of another site (arthurenard.me/strudelify/): every address the app makes starts there.
@@ -98,9 +99,9 @@ function hydrateExamples(pool: readonly CardEntry[]) {
       img.src = thumbnailUrl(info.art, 160);
     };
     const artist = e.display ?? displayArtist(e.artist);
-    const cached = peekArt(e.id);
+    const cached = e.cover ? null : peekArt(e.id); // a baked card already shows its cover
     if (cached) renderCover(cached);
-    else jobs.push(async () => renderCover(await lookupThumbnail(e.id, artist, e.title, e.year)));
+    else if (!e.cover) jobs.push(async () => renderCover(await lookupThumbnail(e.id, artist, e.title, e.year)));
     // Pointing at a card warms its art (so the song opens with its cover and tint in place) and the index.
     for (const ev of ['pointerenter', 'focus'] as const) a.addEventListener(ev, () => { prefetchArt({ ...e, display: artist }); void getIndex().catch(() => {}); });
   }

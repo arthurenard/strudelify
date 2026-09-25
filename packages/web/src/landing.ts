@@ -8,6 +8,16 @@ import { normaliseText, type IndexEntry } from '@strudelify/core';
 import { esc, displayArtist, byPopularity, canonicalArtists, setArtistAliases, songPath, rowFacts } from './ui.js';
 import { songTint, initial } from './tint.js';
 import { SPOTIFY_POPULAR_IDS } from './popular-ids.js';
+import { thumbnailUrl } from './art/sources.js';
+import type { Cover } from './covers.js';
+
+/** Song id → its cover, as the catalogue has it (see covers.ts). */
+export type Covers = ReadonlyMap<string, Cover>;
+/** A card's cover: the release's, from the catalogue (an artist portrait is not a song's cover). */
+export const cardCover = (covers: Covers | null | undefined, id: string): string | undefined => {
+  const c = covers?.get(id);
+  return c?.kind === 'track' ? c.art : undefined;
+};
 
 export const LANDING_EXAMPLE_COUNT = 4;
 export const LANDING_EXAMPLE_POOL = 200;
@@ -35,31 +45,38 @@ export function pickLandingExamples<E extends Pick<IndexEntry, 'id' | 'title' | 
 
 /**
  * What a landing card needs of a song, for every song the cards may show (see `pickLandingExamples`), baked into
- * index.html so the landing page can draw its cards without the 2.8 MB index. The artist is already the display
+ * index.html so the landing page can draw its cards (and their covers) without the 3.4 MB index. The artist is already the display
  * spelling (see `displayArtist`), which needs the whole index to decide.
  */
 export interface LandingEntry extends Pick<IndexEntry, 'id' | 'title' | 'artist' | 'year' | 'sources'> {
   /** The artist as shown (`artist` stays as the index spells it: the tile colour is derived from it). */
   display: string;
+  /** Its cover from the catalogue, so the card draws it at once. */
+  cover?: string;
 }
 export const LANDING_POOL_ID = 'landing-pool';
-export function landingPool(entries: readonly IndexEntry[]): LandingEntry[] {
-  return pickLandingExamples(entries, LANDING_EXAMPLE_POOL, () => 0).map((e) => ({ id: e.id, title: e.title, artist: e.artist, display: displayArtist(e.artist), ...(e.year ? { year: e.year } : {}), sources: e.sources }));
+export function landingPool(entries: readonly IndexEntry[], covers?: Covers | null): LandingEntry[] {
+  return pickLandingExamples(entries, LANDING_EXAMPLE_POOL, () => 0).map((e) => {
+    const cover = cardCover(covers, e.id);
+    return { id: e.id, title: e.title, artist: e.artist, display: displayArtist(e.artist), ...(e.year ? { year: e.year } : {}), sources: e.sources, ...(cover ? { cover } : {}) };
+  });
 }
 /** The pool as the `<script type="application/json">` index.html carries: `<` escaped, so no title can end the element. */
 export const landingPoolScript = (pool: readonly LandingEntry[]) =>
   `<script type="application/json" id="${LANDING_POOL_ID}">${JSON.stringify(pool).replace(/</g, '\\u003c')}</script>`;
 
-/** A song as a card shows it: an index entry, or a landing-pool entry that carries its display artist. */
-export type CardEntry = Pick<IndexEntry, 'id' | 'title' | 'artist' | 'year'> & { display?: string };
+/** A song as a card shows it: an index entry, or a landing-pool entry that carries its display artist (and its cover). */
+export type CardEntry = Pick<IndexEntry, 'id' | 'title' | 'artist' | 'year'> & { display?: string; cover?: string };
 const cardArtist = (e: CardEntry) => e.display ?? displayArtist(e.artist);
 
 /** Card subtitle: artist and year, the two things a listener knows a song by (the dataset is not one of them). */
 export const cardSubtitle = (e: CardEntry) => [cardArtist(e), e.year].filter(Boolean).join(' · ');
 
+/** A card's tile: its cover, or the title's initial on the song's colour. */
+export const coverImg = (art: string) => `<img src="${esc(thumbnailUrl(art, 160))}" alt="" width="44" height="44" loading="lazy" decoding="async" />`;
 function card(e: CardEntry, subtitle: string): string {
   return `<a class="ex" href="${songPath(e.id)}" style="--tile:${songTint(e)}" title="${esc(`${e.title} — ${cardArtist(e)}`)}">` +
-    `<span class="ex-tile" aria-hidden="true">${esc(initial(e.title))}</span>` +
+    `<span class="ex-tile" aria-hidden="true">${e.cover ? coverImg(e.cover) : esc(initial(e.title))}</span>` +
     `<span class="ex-text"><span class="ex-t">${esc(e.title)}</span><span class="ex-a">${esc(subtitle)}</span></span></a>`;
 }
 /** Example-card HTML shared by the landing page, the not-found page and the baked index.html. */
@@ -97,7 +114,7 @@ export const exampleIds = (html: string): string[] => [...html.matchAll(CARD)].m
  * example card rendered from its index entry (a card whose id is not in the index is dropped, as the browser would
  * hide it). Without entries the markup is left alone: the browser fills it in once the index loads.
  */
-export function bakeLanding(html: string, entries: readonly IndexEntry[] | null): string {
+export function bakeLanding(html: string, entries: readonly IndexEntry[] | null, covers?: Covers | null): string {
   const count = entries?.length ?? null;
   let out = html
     .replace(/(<span id="cta-label">)[^<]*(<\/span>)/, `$1${esc(browseLabel(count))}$2`)
@@ -108,7 +125,7 @@ export function bakeLanding(html: string, entries: readonly IndexEntry[] | null)
   const byId = new Map(entries.map((e) => [e.id, e]));
   out = out.replace(CARD, (_card, id: string) => {
     const e = byId.get(decodeURIComponent(id));
-    return e ? exampleCard(e) : '';
+    return e ? exampleCard({ ...e, cover: cardCover(covers, e.id) }) : '';
   });
-  return out.replace('</body>', `  ${landingPoolScript(landingPool(entries))}\n  </body>`);
+  return out.replace('</body>', `  ${landingPoolScript(landingPool(entries, covers))}\n  </body>`);
 }

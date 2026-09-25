@@ -17,6 +17,7 @@ import {
   partList, deriveForm, leadName, pageTitle, ALL_BARS, songPath, artistPath, artistSlug,
 } from './ui.js';
 import { artistSongCard, moreByArtist } from './landing.js';
+import { catalogue, knownCover } from './catalogue.js';
 
 export function showSection(which: 'song' | 'empty' | 'notfound') {
   el.song.hidden = which !== 'song';
@@ -146,15 +147,19 @@ function showSkeleton(entry: IndexEntry) {
   el.chips.innerHTML = '<span class="chip skel">·</span>'.repeat(4);
   clearTimeline();
   clearCode();
-  el.art.hidden = true;
-  el.art.removeAttribute('src');
-  el.artFallback.hidden = true;
   el.artFallback.textContent = initial(entry.title);
   el.artFallback.style.setProperty('--tile', songTint(entry));
-  el.song.classList.add('art-pending');
   clearTimeout(tileTimer);
   clearTimeout(tintTimer);
-  tileTimer = window.setTimeout(showTile, TILE_AFTER_MS);
+  // A song page arrives with its cover drawn (see prerender.ts): it stays; any other cover makes way for this song's.
+  if (el.art.dataset.song !== entry.id || el.art.hidden) {
+    el.art.hidden = true;
+    el.art.removeAttribute('src');
+    delete el.art.dataset.song;
+    el.artFallback.hidden = true;
+    el.song.classList.add('art-pending');
+    tileTimer = window.setTimeout(showTile, TILE_AFTER_MS);
+  }
   if (!tint) tintTimer = window.setTimeout(() => applyTint(songTint(entry)), TINT_AFTER_MS);
 }
 
@@ -185,9 +190,13 @@ async function tintFor(entry: { title: string; artist: string }, art: string | u
 }
 const hasCover = (info: { art?: string; kind?: string }) => !!info.art && info.kind !== 'placeholder';
 
+/** The song whose page is showing: the one being opened, and still it once it has loaded. */
+const showing = (entry: IndexEntry) => state.loadingId === entry.id;
+
+/** The hero's cover, drawn as soon as it is found, while the song and the editor are still loading. */
 async function renderArt(entry: IndexEntry) {
   const info = await lookupArt(entry.id, displayArtist(entry.artist), entry.title, { year: entry.year });
-  if (state.current?.entry.id !== entry.id) return;
+  if (!showing(entry)) return;
   clearTimeout(tintTimer);
   el.album.textContent = albumLine(info, entry);
   if (!hasCover(info)) {
@@ -198,17 +207,20 @@ async function renderArt(entry: IndexEntry) {
     return;
   }
   el.art.alt = `${entry.title} cover art`;
-  el.art.onload = () => {
-    if (state.current?.entry.id !== entry.id) return;
-    clearTimeout(tileTimer);
-    el.song.classList.remove('art-pending');
-    el.art.hidden = false;
-    el.artFallback.hidden = true;
-  };
-  el.art.onerror = () => { if (state.current?.entry.id === entry.id) showTile(); };
-  el.art.src = info.art!;
+  if (el.art.dataset.song !== entry.id || el.art.getAttribute('src') !== info.art) {
+    el.art.onload = () => {
+      if (!showing(entry)) return;
+      clearTimeout(tileTimer);
+      el.song.classList.remove('art-pending');
+      el.art.hidden = false;
+      el.artFallback.hidden = true;
+    };
+    el.art.onerror = () => { if (showing(entry)) showTile(); };
+    el.art.dataset.song = entry.id;
+    el.art.src = info.art!;
+  }
   const tint = await tintFor(entry, info.art);
-  if (state.current?.entry.id !== entry.id) return;
+  if (!showing(entry)) return;
   applyTint(tint);
   rememberTint(entry.id, tint);
 }
@@ -240,7 +252,10 @@ function renderMore(entry: IndexEntry, artist: string) {
   el.more.hidden = !songs.length;
   el.moreArtist.textContent = artist;
   el.moreArtist.href = artistPath(artist);
-  el.moreSongs.innerHTML = songs.map(artistSongCard).join('');
+  const draw = () => { el.moreSongs.innerHTML = songs.map((e) => artistSongCard({ ...e, cover: knownCover(e.id) })).join(''); };
+  draw();
+  // Their covers are in the artist's catalogue file, which the hero's cover has usually just read.
+  if (songs.some((e) => !knownCover(e.id))) void Promise.all(songs.map((e) => catalogue.get(e.id))).then(() => { if (showing(entry)) draw(); });
 }
 
 // ---------- open ----------
@@ -261,8 +276,8 @@ export async function choose(entry: IndexEntry) {
   showSkeleton(entry); // synchronously, before the (async) hard stop: the page shows the new song at once
   const artist = displayArtist(entry.artist);
   renderMore(entry, artist);
-  // Resolve artwork alongside the MIDI and editor downloads, not after compilation.
-  void lookupArt(entry.id, artist, entry.title, { year: entry.year });
+  // The cover is drawn as soon as it is found, alongside the MIDI and editor downloads.
+  void renderArt(entry);
   document.title = pageTitle(entry.title, artist);
   const path = songPath(entry.id);
   if (location.pathname !== path) history.pushState(null, '', path);
@@ -283,7 +298,6 @@ export async function choose(entry: IndexEntry) {
     // then plays, instead of being dropped on <body>.
     const focused = document.activeElement;
     if (!focused || focused === document.body || focused === el.q || !(focused as HTMLElement).offsetParent) el.play.focus({ preventScroll: true });
-    renderArt(entry);
   } catch (e) {
     if (state.loadingId !== entry.id) return;
     // Nothing is loading any more: picking the song again (a result, a card, Back) tries again.

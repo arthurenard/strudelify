@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import type { IndexEntry } from '@strudelify/core';
 import { bakeLanding, exampleIds } from '../src/landing.js';
 import { songPath, songIdFromPath, artistSlug, artistPath, setArtistAliases, canonicalArtists, setBase, sitePath, isHomePath } from '../src/ui.js';
+import { readCovers, coverLine, COVERS_HEADER } from '../src/covers.js';
 import { songPage, homePage, notFoundPage, artists, artistPage, artistsPage, letterOf, sitemap, robots, songTitle, songDescription, compact, LANDING_POOL_SCRIPT } from '../src/prerender.js';
 
 const entry = (id: string, title: string, artist: string, extra: Partial<IndexEntry> = {}): IndexEntry => ({ id, title, artist, sources: ['midi'], files: { midi: `songs/${id}.mid` }, ...extra });
@@ -152,5 +153,32 @@ describe('a site in a folder of another site', () => {
   it('finds the example cards however their address is written', () => {
     const cards = ['%BASE_URL%song/a/', '/strudelify/song/b/', '/song/c/'].map((href) => `<a class="ex" href="${href}">x</a>`).join('');
     expect(exampleIds(cards)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('covers in the pages', () => {
+  const art = 'https://is1-ssl.mzstatic.com/image/thumb/Music/v4/aa/600x600cc.jpg';
+  const covers = readCovers(COVERS_HEADER
+    + coverLine('dire-straits--sultans-of-swing', { art, kind: 'track', source: 'itunes', album: 'Dire Straits', year: 1978 })
+    + coverLine('dire-straits--money-for-nothing', { art: art.replace('aa', 'bb'), kind: 'track', source: 'itunes', album: 'Brothers in Arms' }));
+  it("draws a song's cover and its album before any script runs, as the app would", () => {
+    const page = songPage(shell, entries[0], entries.slice(0, 3), {}, site, covers);
+    expect(page).toContain(`<img id="art" alt="Sultans of Swing cover art" src="${art}" data-song="dire-straits--sultans-of-swing" decoding="async" />`);
+    expect(page).toContain('<div id="art-fallback" class="art-fallback" aria-hidden="true" hidden></div>');
+    expect(page).toContain('<p class="eyebrow" id="album">1978 · Dire Straits</p>');
+    expect(page).toContain('<span class="ex-tile" aria-hidden="true"><img src="https://is1-ssl.mzstatic.com/image/thumb/Music/v4/bb/160x160cc.jpg"');
+    // Without a cover the page keeps the tile and shows the year alone, as the app does while it looks.
+    const plain = songPage(shell, entries[3], [], {}, site, covers);
+    expect(plain).toContain('<img id="art" alt="" hidden decoding="async" />');
+  });
+  it('puts covers on artist pages, which may load them', () => {
+    const page = artistPage(artists(entries)[0], '/assets/index.css', site, covers);
+    expect(page).toContain('<img src="https://is1-ssl.mzstatic.com/image/thumb/Music/v4/aa/160x160cc.jpg"');
+    expect(page).toContain("img-src 'self' data: https:");
+  });
+  it('bakes the landing cards with their covers', () => {
+    const baked = bakeLanding(fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8'), entries, covers);
+    const pool = JSON.parse(/<script type="application\/json" id="landing-pool">([\s\S]*?)<\/script>/.exec(baked)![1]);
+    expect(pool.find((e: { id: string }) => e.id === 'dire-straits--sultans-of-swing').cover).toBe(art);
   });
 });

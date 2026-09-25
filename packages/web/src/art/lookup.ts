@@ -85,9 +85,14 @@ function defaultAdapter(): ArtAdapter {
   return browserAdapter;
 }
 
+/** Covers resolved ahead of time (see ../covers.ts): asked before any provider, and never rate-limited. */
+export interface ArtCatalogue { peek(id: string): ArtInfo | null; get(id: string): Promise<ArtInfo | null> }
+let catalogue: ArtCatalogue | null = null;
+export function useCatalogue(c: ArtCatalogue | null): void { catalogue = c; }
+
 const memo = new Map<string, ArtInfo>();
 /** Read synchronously so cached covers never wait behind unrelated network lookups. */
-export const peekArt = (id: string): ArtInfo | null => memo.get(id) ?? readCache(id);
+export const peekArt = (id: string): ArtInfo | null => memo.get(id) ?? catalogue?.peek(id) ?? readCache(id);
 const inFlight = new Map<string, { job: Promise<ArtInfo>; ctrl: AbortController; thumbnail: boolean }>();
 let latest: AbortController | null = null;
 
@@ -138,6 +143,14 @@ export async function lookupArt(id: string, artist: string, title: string, opts:
   const entry = { ctrl, thumbnail: !!opts.noArtistFallback, job: Promise.resolve<ArtInfo>({}) };
   entry.job = (async (): Promise<ArtInfo> => {
     try {
+      const known = await catalogue?.get(id).catch(() => null);
+      if (known?.art) {
+        memo.set(id, known);
+        return known;
+      }
+      // Resolved ahead of time with every source and a far longer budget: asking again would find nothing either.
+      if (known?.kind === 'placeholder') return placeholderArt(title, artist);
+      if (ctrl.signal.aborted) return {};
       const info = await resolveArt({ artist, title, year: opts.year }, opts.adapter ?? defaultAdapter(), {
         signal: ctrl.signal, budget: opts.budget, noArtistFallback: opts.noArtistFallback,
       });

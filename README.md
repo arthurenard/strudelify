@@ -101,9 +101,16 @@ with the site.
   direct title hits when the query also reads as a title). Near-duplicate transcriptions collapse into
   one row; matched words are highlighted.
 - **Hero**: title, artist, year and album, chips for key, tempo, metre, number of parts and the
-  sources. Cover art is looked up through a chain of keyless public services (iTunes Search, Deezer as
-  JSONP, MusicBrainz with the Cover Art Archive, then a Deezer artist portrait; see
-  `tools/art-check.md` for the ranking rules). The hero is tinted with the dominant colour of the
+  sources. Every song's cover is resolved ahead of time into a **cover catalogue**
+  (`packages/data/covers.tsv`, made by `node tools/resolve-covers.mjs`) with the app's own chain of keyless
+  public services (iTunes Search, Deezer, MusicBrainz with the Cover Art Archive, then a Deezer artist
+  portrait; see `tools/art-check.md` for the ranking rules). The build bakes the covers into the landing
+  cards, each song page's hero and the artist pages, and splits the catalogue into 256 small files by artist
+  (`db/covers/<n>.json`), so a search for one artist or a song's "More by" reads one file: a cover shows
+  in a fraction of a second, with no request to those services, whose rate limits (iTunes allows about 20
+  lookups a minute) a page of search results used to overrun. A song the catalogue does not know yet is
+  looked up in the browser through the same chain; the hero draws its cover as soon as it is found, while
+  the song and the editor load. The hero is tinted with the dominant colour of the
   cover, read from its pixels once it has loaded; without a cover a letter tile in a colour derived
   from the title stands in. Hits and tints are cached in localStorage (at most 1,000 songs each, oldest first
   out); external requests also include Strudel's remote samples/soundfonts once a song opens. Hovering a search result or an
@@ -336,6 +343,7 @@ about 0.1 ms on average (a few ms for a single letter, which matches thousands o
 node tools/search-check.mjs            # search battery (top-1/top-3), held-out sets, keystroke walks, resolve verdicts, timings; exits 1 on regression
 node tools/search-check.mjs -q "text"  # top 10 with scores for one query
 node tools/art-check.mjs --n 40 --random 10   # cover-art coverage and time-to-art on a database sample (network); see tools/art-check.md
+node tools/resolve-covers.mjs          # the cover catalogue: every song not in packages/data/covers.tsv yet, most popular first (network; resumable, ~2.5 h for the catalogue)
 node tools/shot.mjs nirvana--smells-like-teen-spirit out.png [--mobile] [--full] [--wait ms] [--click "<css>"]
 node tools/ui-check.mjs                # headless UI check against the dev server (or STRUDELIFY_URL): errors, horizontal scroll at 390/768/1440, baked landing, canonical artists, lane labels, song addresses, old /#id links, More by, ?q=, no stale song while the next loads; exits 1 on failure
 node tools/library-check.mjs --timing=patterns --loop --workers=4 # every source file, compilation, runtime and loop boundary

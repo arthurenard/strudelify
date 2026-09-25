@@ -38,5 +38,5 @@ export { MAX_ALBUM_ROUTES, MAX_ALBUM_ROUTE_LOOKUPS, MAX_DEEZER_ALBUM_LOOKUPS, de
 export type { AlbumRow, DeezerAlbumCache, DeezerAlbumDetails, ResolveContext } from './art/sources.js';
 export { placeholderArt } from './art/placeholder.js';
 export { HOSTS, resolveArt } from './art/resolve.js';
-export { LOW_CONFIDENCE_SCORE, lookupArt, lookupThumbnail, peekArt, readCache, writeCache } from './art/lookup.js';
-export type { LookupOptions } from './art/lookup.js';
+export { LOW_CONFIDENCE_SCORE, lookupArt, lookupThumbnail, peekArt, readCache, useCatalogue, writeCache } from './art/lookup.js';
+export type { ArtCatalogue, LookupOptions } from './art/lookup.js';

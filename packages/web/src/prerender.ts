@@ -11,8 +11,9 @@
  * those are left out. Keep this module free of DOM access.
  */
 import type { IndexEntry } from '@strudelify/core';
-import { esc, pageTitle, displayArtist, prettyKey, titleSize, songPath, artistPath, artistSlug, sitePath, byPopularity, type ArtistGroup } from './ui.js';
-import { artistSongCard, moreByArtist, LANDING_POOL_ID } from './landing.js';
+import { esc, pageTitle, displayArtist, prettyKey, titleSize, songPath, artistPath, artistSlug, sitePath, byPopularity, albumLine, type ArtistGroup } from './ui.js';
+import { artistSongCard, moreByArtist, cardCover, LANDING_POOL_ID, type Covers } from './landing.js';
+import { coverInfo } from './covers.js';
 
 export const SITE_NAME = 'Strudelify';
 /** The Open Graph image every page shares (1200 x 630, see tools/make-icons.mjs), at the site's root. */
@@ -23,6 +24,8 @@ export const LANDING_POOL_SCRIPT = new RegExp(`\\s*<script type="application/jso
 
 /** What a song page shows beyond its index entry: the Main loop's code. */
 export interface SongFacts { code?: string }
+/** An artist's songs as cards, each with its cover from the catalogue. */
+const songCards = (songs: readonly IndexEntry[], covers?: Covers | null) => songs.map((e) => artistSongCard({ ...e, cover: cardCover(covers, e.id) })).join('');
 
 /** A song's key in the display spelling ("B♭ major"), or undefined when the index has none. */
 const keyOf = (e: Pick<IndexEntry, 'key'>): string | undefined => prettyKey(e.key) || undefined;
@@ -100,7 +103,7 @@ export function homePage(shell: string, site: string | null): string {
  * instead), the song section shows the title, artist, key and tempo, the Main loop's code as text and the
  * artist's other songs, and the head names the page. The app takes over when it loads.
  */
-export function songPage(shell: string, e: IndexEntry, group: readonly IndexEntry[], facts: SongFacts, site: string | null): string {
+export function songPage(shell: string, e: IndexEntry, group: readonly IndexEntry[], facts: SongFacts, site: string | null, covers?: Covers | null): string {
   const artist = displayArtist(e.artist);
   const title = songTitle(e, artist), description = songDescription(e, artist), path = songPath(e.id);
   const key = keyOf(e);
@@ -115,14 +118,21 @@ export function songPage(shell: string, e: IndexEntry, group: readonly IndexEntr
   const chips = [key && ['Key', key], e.bpm && ['Tempo', `${Math.round(e.bpm)} bpm`]].filter((c): c is [string, string] => !!c)
     .map(([k, v]) => `<span class="chip"><span class="k">${k}</span>${esc(v)}</span>`).join('');
   const more = moreByArtist(e, group);
+  // The cover the app would find (see covers.ts), drawn before any script runs; the app keeps it.
+  const cover = coverInfo(covers?.get(e.id));
   let html = withHead(shell, title, [metaTags({ site, path, title, description, type: 'music.song' }), data].filter(Boolean).join('\n    '))
     .replace(LANDING_POOL_SCRIPT, '')
     .replace('<section id="song" class="song" hidden aria-label="Song">', '<section id="song" class="song" aria-label="Song">')
     .replace('<section id="empty" class="empty" aria-label="Introduction">', '<section id="empty" class="empty" hidden aria-label="Introduction">')
-    .replace('<p class="eyebrow" id="album"></p>', `<p class="eyebrow" id="album">${esc([e.year, artist].filter(Boolean).join(' · '))}</p>`)
+    .replace('<p class="eyebrow" id="album"></p>', `<p class="eyebrow" id="album">${esc(albumLine(cover ?? {}, e))}</p>`)
     .replace('<h1 id="title" class="title"></h1>', `<h1 id="title" class="title ${titleSize(e.title)}">${esc(e.title)}</h1>`)
     .replace('<p class="artist" id="artist"></p>', `<p class="artist" id="artist"><a href="${artistPath(artist)}">${esc(artist)}</a></p>`)
     .replace('<div class="chips" id="chips"></div>', `<div class="chips" id="chips">${chips}</div>`);
+  if (cover?.art) {
+    html = html
+      .replace('<img id="art" alt="" hidden decoding="async" />', `<img id="art" alt="${esc(`${e.title} cover art`)}" src="${esc(cover.art)}" data-song="${esc(e.id)}" decoding="async" />`)
+      .replace('<div id="art-fallback" class="art-fallback" aria-hidden="true"></div>', '<div id="art-fallback" class="art-fallback" aria-hidden="true" hidden></div>');
+  }
   if (facts.code) {
     html = html
       .replace('<span id="code-lines" class="code-lines"></span>', `<span id="code-lines" class="code-lines">${facts.code.split('\n').length} lines</span>`)
@@ -132,7 +142,7 @@ export function songPage(shell: string, e: IndexEntry, group: readonly IndexEntr
     html = html.replace(/<section class="more" id="more" aria-labelledby="more-title" hidden>[\s\S]*?<\/section>/, [
       '<section class="more" id="more" aria-labelledby="more-title">',
       `          <h2 class="more-title" id="more-title">More by <a id="more-artist" href="${artistPath(artist)}">${esc(artist)}</a></h2>`,
-      `          <div class="examples" id="more-songs">${more.map(artistSongCard).join('')}</div>`,
+      `          <div class="examples" id="more-songs">${songCards(more, covers)}</div>`,
       '        </section>',
     ].join('\n'));
   }
@@ -174,7 +184,7 @@ function plainPage(p: { css: string; site: string | null; path: string; title: s
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>${esc(p.title)}</title>
     <meta name="color-scheme" content="dark" />
@@ -205,7 +215,7 @@ const letterNav = (current?: string) => `<nav class="letters" aria-label="Artist
 const count = (n: number, word: string) => `${n.toLocaleString('en-US')} ${word}${n === 1 ? '' : 's'}`;
 
 /** An artist's page: every song of the artist in the catalogue, as the landing page's cards. */
-export function artistPage(g: ArtistGroup & { slug: string }, css: string, site: string | null): string {
+export function artistPage(g: ArtistGroup & { slug: string }, css: string, site: string | null, covers?: Covers | null): string {
   const path = sitePath(`artist/${g.slug}/`);
   const songs = g.entries.length;
   return plainPage({
@@ -220,7 +230,7 @@ export function artistPage(g: ArtistGroup & { slug: string }, css: string, site:
         <nav class="crumbs" aria-label="Breadcrumb"><a href="${sitePath()}">Home</a> › <a href="${sitePath('artists/')}">Artists</a> › <span aria-current="page">${esc(g.name)}</span></nav>
         <h1>${esc(g.name)}</h1>
         <p class="lede">${count(songs, 'song')} to play as Strudel live-coding code. Open one to hear its loop, edit it, or take it to strudel.cc.</p>
-        <div class="examples">${g.entries.map(artistSongCard).join('')}</div>
+        <div class="examples">${songCards(g.entries, covers)}</div>
       </section>`,
   });
 }

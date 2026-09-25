@@ -7,6 +7,7 @@ import type { IndexEntry } from '@strudelify/core';
 import { bakeLanding } from './src/landing.js';
 import { songPath, sitePath, setBase, setArtistAliases, canonicalArtists } from './src/ui.js';
 import { homePage, songPage, notFoundPage, artists, artistPage, artistsPage, sitemap, robots, compact, LETTERS } from './src/prerender.js';
+import { readCovers, coverShards, COVER_SHARDS, type Cover } from './src/covers.js';
 
 const DB = path.resolve(import.meta.dirname, '..', 'data', 'public', 'db');
 
@@ -19,6 +20,17 @@ const PUBLISHED = { origin: 'https://www.arthurenard.me', base: '/strudelify/' }
 const BASE = process.env.STRUDELIFY_BASE ?? PUBLISHED.base;
 // Every address the app and its pages make starts at the base, in the build as in the browser (see main.ts).
 setBase(BASE);
+
+/**
+ * The cover catalogue (packages/data/covers.tsv, see tools/resolve-covers.mjs and src/covers.ts), read when first
+ * needed; without it the app looks every cover up in the browser.
+ */
+const COVERS = path.resolve(import.meta.dirname, '..', 'data', 'covers.tsv');
+let covers: Map<string, Cover> | null = null;
+const readCatalogue = (fresh = false): Map<string, Cover> => {
+  if (!covers || fresh) covers = fs.existsSync(COVERS) ? readCovers(fs.readFileSync(COVERS, 'utf8')) : new Map();
+  return covers;
+};
 
 /**
  * Bake the database's facts into index.html (song count, fallback example cards' years and tile colours).
@@ -35,7 +47,7 @@ function landingPlugin(): Plugin {
         read = true;
         try { entries = JSON.parse(fs.readFileSync(path.join(DB, 'index.json'), 'utf8')); } catch { entries = null; }
       }
-      return bakeLanding(html, entries);
+      return bakeLanding(html, entries, readCatalogue());
     },
   };
 }
@@ -77,9 +89,17 @@ function folderPlugin(): Plugin {
     res.setHeader('Location', (`${url.pathname}/` === BASE ? BASE : sitePath(url.pathname.slice(1))) + url.search);
     res.end();
   };
+  // The catalogue's files, which the build writes, made from covers.tsv as it is now (the batch may be running).
+  const coverFile: Connect.NextHandleFunction = (req, res, next) => {
+    const m = new RegExp(`^${sitePath('db/covers/')}(\\d+)\\.json$`).exec(new URL(req.url ?? '/', 'http://localhost').pathname);
+    const n = m ? Number(m[1]) : -1;
+    if (n < 0 || n >= COVER_SHARDS) return next();
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(coverShards(readCatalogue(true)).get(n)));
+  };
   return {
     name: 'strudelify-folder',
-    configureServer: (server) => { server.middlewares.use(intoFolder); },
+    configureServer: (server) => { server.middlewares.use(intoFolder); server.middlewares.use(coverFile); },
     configurePreviewServer: (server) => { server.middlewares.use(intoFolder); },
   };
 }
@@ -148,8 +168,12 @@ function prerenderPlugin(): Plugin {
       const codes = await compileLoops(entries);
       const groups = artists(entries);
       const songsOf = new Map(groups.flatMap((g) => g.entries.map((e) => [e.id, g.entries] as const)));
-      for (const e of entries) write(`song/${e.id}/index.html`, compact(songPage(shell, e, songsOf.get(e.id) ?? [], { code: codes.get(e.id) ?? undefined }, site)));
-      for (const g of groups) write(`artist/${g.slug}/index.html`, compact(artistPage(g, css, site)));
+      const known = readCatalogue(true);
+      for (const e of entries) write(`song/${e.id}/index.html`, compact(songPage(shell, e, songsOf.get(e.id) ?? [], { code: codes.get(e.id) ?? undefined }, site, known)));
+      for (const g of groups) write(`artist/${g.slug}/index.html`, compact(artistPage(g, css, site, known)));
+      // Only the songs of this database: a catalogue made for a larger one carries no others.
+      const listed = new Map([...known].filter(([id]) => songsOf.has(id)));
+      if (listed.size) for (const [n, rows] of coverShards(listed)) write(`db/covers/${n}.json`, JSON.stringify(rows));
       write('artists/index.html', artistsPage(groups, css, site));
       for (const letter of LETTERS) write(`artists/${letter}/index.html`, artistsPage(groups, css, site, letter));
       write('robots.txt', robots(site));
@@ -157,7 +181,7 @@ function prerenderPlugin(): Plugin {
       const icons = path.resolve(import.meta.dirname, 'static');
       for (const file of fs.readdirSync(icons)) fs.copyFileSync(path.join(icons, file), path.join(outDir, file));
       const failed = [...codes.values()].filter((c) => c === null).length;
-      this.info?.(`prerendered ${entries.length} song and ${groups.length} artist pages in ${((Date.now() - started) / 1000).toFixed(1)} s${failed ? ` (${failed} without code)` : ''}`);
+      this.info?.(`prerendered ${entries.length} song and ${groups.length} artist pages in ${((Date.now() - started) / 1000).toFixed(1)} s${failed ? ` (${failed} without code)` : ''}; covers for ${listed.size} of ${entries.length} songs`);
       if (!site) console.warn('[strudelify-prerender] SITE_URL is not set: pages have no canonical links, Open Graph addresses or sitemap.');
     },
   };
