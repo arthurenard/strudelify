@@ -33,7 +33,7 @@ For a Belgian launch, ask SABAM/Unisono or qualified counsel specifically about 
 
 ## Technical state and known limits
 
-- Live site (checked 25 September 2026): www.arthurenard.me/strudelify/ serves an older build, with `#id` song links and a 10,677-entry database that has no PDMX scores. The database is not in Git, so pushing code does not update it: whatever supplies `packages/data/public/db` to the deployment must be given the 13,975-entry catalogue (and, for the scores, pass the rights review below).
+- Live site (25 September 2026, `db/build.json`): 13,962 entries, 3,285 of them scores, built by Vercel from `main` with the score import; covers from the catalogue. Its base catalogue is built fresh from the datasets, so it differs slightly from an older local database (a few dozen transcriptions chosen differently); ids are pinned in `catalogue-ids.tsv` either way. `STRUDELIFY_URL=https://www.arthurenard.me/strudelify node tools/ui-check.mjs` runs the browser checks against it.
 - Local library: 13,929 entries, including alternate transcriptions. All 14,200 source-file references exist, and every entry compiles and plays through the Strudel runtime in all three modes (`tools/library-check.mjs`, 23 September 2026, after the import).
 - `npm run check` (typecheck of every package and the tests, the unit/runtime suite, the importer tests) and the production build pass. `npm audit` (development dependencies included) returned zero known advisories on 23 September 2026; this is not a complete security audit.
 - Browser checks: four landing covers and eight Nirvana search covers load at the intended thumbnail sizes; the editor stays unloaded while browsing, then loads on song selection; playback and live note boxes work.

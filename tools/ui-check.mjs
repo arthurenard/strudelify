@@ -84,7 +84,7 @@ try {
   // Songs at three widths: no horizontal scroll, labels, readout vs lane.
   for (const [w, h] of [[1440, 900], [768, 1024], [390, 844]]) {
     await page.setViewport({ width: w, height: h, isMobile: w < 768, hasTouch: w < 768 });
-    for (const id of ['pink-floyd--another-brick-in-the-wall-part-2', 'james-brown--i-dont-mind', 'steve-miller-band--the-joker']) {
+    for (const id of ['pink-floyd--another-brick-in-the-wall', 'james-brown--i-dont-mind', 'steve-miller-band--the-joker']) {
       await page.goto(`${BASE}/song/${id}/`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
       const s = await state();
       check(s.scrollW === s.innerW, `${w}px ${id}: no horizontal scroll (${s.scrollW}/${s.innerW})`);
@@ -107,7 +107,7 @@ try {
   await page.goto(`${BASE}/?q=beatles`, { waitUntil: 'networkidle0' }); await sleep(600);
   const q = await page.evaluate(() => ({ value: document.getElementById('q')?.value, rows: document.querySelectorAll('#results [role="option"]').length }));
   check(q.value === 'beatles' && q.rows > 0, `/?q=beatles: ${q.rows} results`);
-  await page.goto(`${BASE}/song/pink-floyd--another-brick-in-the-wall-part-2/`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
+  await page.goto(`${BASE}/song/pink-floyd--another-brick-in-the-wall/`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
   await page.evaluate(() => { document.getElementById('track').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); });
   await throttle(true);
   await page.evaluate((folder) => { history.pushState(null, '', `${folder}/song/led-zeppelin--stairway-to-heaven/`); dispatchEvent(new PopStateEvent('popstate')); }, FOLDER);
