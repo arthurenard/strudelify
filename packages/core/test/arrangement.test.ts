@@ -106,7 +106,7 @@ for (const file of ['smells-like-teen-spirit.mid','love-me-do.mid']) it(`plays e
     const es=onsets(pattern,0,bars);
     for(const pitch of [46,49,51]) expect(es.some((e:any)=>e.value.s===ACOUSTIC_DRUMS[pitch].sample&&e.value.n===ACOUSTIC_DRUMS[pitch].index)).toBe(true);
   }
-});
+}, 30_000); // a whole song through the Strudel runtime: about 2.5 s here, several times that on a CI runner
 
 it('treats swallowed Strudel query errors as failures rather than valid silence',()=>{
   expect(()=>queryPattern(evaluatePattern("mini('<a>').pickRestart({b:note('c')})"),0,1)).toThrow('Strudel query failed');
