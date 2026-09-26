@@ -146,3 +146,32 @@ describe('editable patterns', () => {
     expect(barRange(s, 1)!.nBars).toBe(1);
   });
 });
+
+describe("a performer's timing", () => {
+  // Four bars of four quarter notes at 120 bpm (a sixteenth is 125 ms), one note of bar 3 played late by `late` beats.
+  const bars = (late: number) => song(part(Array.from({ length: 16 }, (_, i) => n(60 + (i % 4) * 2, i + (i === 9 ? late : 0), 0.5))));
+  it('writes a bar that plays its riff a hair late as the riff, and a real push as its own bar', () => {
+    // 65 ms late rounds to the next sixteenth, but stays within the rounding plus 10 ms of the riff's beat.
+    const wobble = full(bars(0.13));
+    expect(partOf(wobble, 'piano')).toContain('note("c4 ~ d4 ~ e4 ~ f#4 ~")');
+    expect(played(wobble, 4).filter(([, at]) => at === 9)).toEqual([['d4', 9, 0.5]]);
+    // 100 ms late is heard: that bar keeps its own timing.
+    const push = full(bars(0.2));
+    expect(partOf(push, 'piano')).toMatch(/<\[c4 ~ d4 ~ e4 ~ f#4 ~\]!2 \[.+\] \[c4 ~ d4 ~ e4 ~ f#4 ~\]>/);
+    expect(played(push, 4).some(([note, at]) => note === 'd4' && at === 9.25)).toBe(true);
+  });
+  it('shifts the grid for a transcription that plays off the beat throughout, and keeps its parts together', () => {
+    // Drums and bass both play about 38 ms early (-0.077 and -0.062 beats at 120 bpm): without the shift the drums
+    // would round a sixteenth early and the bass onto the beat.
+    const early = (at: number, by: number) => Math.max(0, at - by);
+    const s = song(
+      { name: 'Drums', program: -1, role: 'drums', notes: Array.from({ length: 16 }, (_, i) => n(42, early(i * 0.5, 0.077), 0.1)) },
+      part(Array.from({ length: 8 }, (_, i) => n(43, early(i, 0.062), 0.4)), 33, 'bass', 'Bass'),
+    );
+    const code = full(s);
+    expect(code).toMatch(/plays \d+ ms ahead of the beat; the grid follows it/);
+    const hits = played(code, 1);
+    // The hi-hat's first beats and the bass notes land together, on the beat.
+    for (const at of [1, 2, 3]) expect(hits.filter(([, t]) => Math.abs(t - at) < 1e-9).map(([s]) => s).sort()).toEqual(['g2', 'hh']);
+  });
+});

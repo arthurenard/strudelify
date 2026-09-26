@@ -17,6 +17,8 @@
  *   are written.
  * - Each part has one level (`gain`, velocity included); notes at a second, softer level (a loop's
  *   ghost notes) are a separate `_soft` part.
+ * - A bar that plays the same notes as a riff the part plays more often, only a hair apart, is written as
+ *   that riff (see `settle`): a performer's wobble is not a new riff.
  */
 import type { Song, Track, NoteEvent } from './types.js';
 import { barLength, partName } from './midi.js';
@@ -38,6 +40,18 @@ export const MAX_RIFF_BARS = 8;
 export const MAX_VOICES = 5;
 /** Grid of a song prepared without one (steps per bar). */
 const DEFAULT_GRID = 48;
+/**
+ * How far past the grid's own rounding (half a step) a note may move when its bar is written as a more
+ * frequent riff (see `settle`): its onset 10 ms, below what a listener notices in a playing band, and its
+ * length 25 ms or 15% of it, whichever is more, since a note's end is heard far less sharply than its attack,
+ * but never more than 80 ms, which a long held chord would show.
+ */
+export const SETTLE_ONSET_MS = 10;
+export const SETTLE_LENGTH_MS = 25;
+export const SETTLE_LENGTH_SHARE = 0.15;
+export const SETTLE_LENGTH_MAX_MS = 80;
+/** The most (ms) a note's length may move past the grid's rounding when its bar is written as a riff. */
+export const settleLengthMs = (playedMs: number) => Math.min(SETTLE_LENGTH_MAX_MS, Math.max(SETTLE_LENGTH_MS, SETTLE_LENGTH_SHARE * playedMs));
 
 /** One part as the code shows it: its hits on the grid, and how it sounds. */
 interface Layer {
@@ -49,8 +63,8 @@ interface Layer {
   /** `.s(...)`, `.gain(...)`, `.pan(...)`. */
   tail: string;
 }
-/** A note or drum hit: start and length in grid steps from the first bar, and its mini-notation token. */
-interface Hit { at: number; length: number; token: string; pitch: number }
+/** A note or drum hit: start and length in grid steps from the first bar, its mini-notation token, and where it was played (steps, unrounded). */
+interface Hit { at: number; length: number; token: string; pitch: number; played?: { at: number; length: number } }
 /** A span of whole bars and its voices' mini-notation, each as one line of tokens per bar they start in (no voice: a rest). */
 interface Unit { bars: number; voices: string[][] }
 interface Frame {
@@ -69,6 +83,7 @@ export function compilePatterns(song: Song, opts: Required<CompileOptions>): str
   if (!range) return ['silence'];
   const grid = song.meta.grid ?? DEFAULT_GRID;
   const step = barLength(song.meta) / grid;
+  const msPerStep = step * 60000 / song.meta.bpm;
   const flats = spellsFlats(song.meta);
   const frame: Frame = { grid, bars: range.nBars, tolerance: Math.max(1, Math.floor(OVERLAP_BEATS / step + 1e-9)), seen: { chords: false, voices: false, long: false }, flats };
   const name = uniqueNames();
@@ -83,7 +98,7 @@ export function compilePatterns(song: Song, opts: Required<CompileOptions>): str
     levels(t.notes).forEach((notes, i) => layers.push({
       name: name(i ? `${base}_soft` : base, patch),
       comment: i ? `${comment} · soft notes` : comment,
-      hits: hits(notes, step, frame, (n) => noteName(n.pitch, flats)),
+      hits: settle(hits(notes, step, frame, (n) => noteName(n.pitch, flats)), frame, msPerStep, false),
       tail: `${sound}${mix(notes[0].velocity, t)}`,
     }));
   }
@@ -101,7 +116,7 @@ export function compilePatterns(song: Song, opts: Required<CompileOptions>): str
         name: name(i ? `${voice.name}_soft` : voice.name),
         comment: `drums · ${voice.name.replace(/_/g, ' ')}${i ? ' · soft notes' : ''}`,
         drum: voice.token,
-        hits: hits(ns, step, frame, () => 'x'),
+        hits: settle(hits(ns, step, frame, () => 'x'), frame, msPerStep, true),
         tail: mix(ns[0].velocity, t, voice.trim),
       }));
     }
@@ -115,7 +130,7 @@ export function compilePatterns(song: Song, opts: Required<CompileOptions>): str
   if (!parts.length) return ['// No separate instrumental parts remain with these options.', 'silence'];
   const code = parts.map((p) => partCode(p.layer, p.units, frame.flats));
   const lines = [`// ${legend(frame.seen)}`];
-  if (code.some((c) => c.some((line) => line.includes('.pickRestart(')))) lines.push('// A part\'s distinct bars are riffs (A, B, C...) played in order: edit a riff to change every repeat.');
+  if (code.some((c) => c.some((line) => line.includes('.pickRestart(')))) lines.push('// A part\'s distinct bars are riffs (A, B, C...) played in order, A@4 for four bars: edit a riff to change every repeat.');
   lines.push('');
   for (const c of code) lines.push(...c, '');
   const names = parts.map((p) => p.layer.name);
@@ -178,7 +193,62 @@ function hits(notes: NoteEvent[], step: number, f: Frame, token: (n: NoteEvent) 
   for (const n of notes) {
     const at = Math.max(0, Math.round(n.start / step));
     if (at >= end) continue;
-    out.push({ at, length: Math.min(end - at, Math.max(1, Math.round(n.duration / step))), token: token(n), pitch: n.pitch });
+    const played = n.played && { at: n.played.start / step, length: n.played.duration / step };
+    out.push({ at, length: Math.min(end - at, Math.max(1, Math.round(n.duration / step))), token: token(n), pitch: n.pitch, ...(played ? { played } : {}) });
+  }
+  return out.sort((a, b) => a.at - b.at || a.pitch - b.pitch);
+}
+
+/**
+ * Bars that play the same notes a hair apart are one riff played by a human, not two: a note played 2.45
+ * steps into the bar rounds to 2 in one bar and to 3 in the next. A bar is written as the version of it (the
+ * same notes, in the same order) that the part plays most often, when every note of the bar then stays
+ * within the grid's rounding plus `SETTLE_ONSET_MS` of where it was played, and its length within the
+ * rounding plus `settleLengthMs` (a drum hit's length is not written). A real difference, a note pushed
+ * further or held longer, keeps its own bar, as does a note the grid could not place in its bar.
+ */
+function settle(all: Hit[], f: Frame, msPerStep: number, drum: boolean): Hit[] {
+  if (!all.length || all.some((h) => !h.played)) return all;
+  const onset = 0.5 + SETTLE_ONSET_MS / msPerStep;
+  const lengthLimit = (played: number) => 0.5 + settleLengthMs(played * msPerStep) / msPerStep;
+  const bars = new Map<number, Hit[]>();
+  for (const h of all) { const b = Math.floor(h.at / f.grid); (bars.get(b) ?? bars.set(b, []).get(b)!).push(h); }
+  // A bar's notes in the order they were played, a chord's notes (struck within half a step) from the lowest.
+  const ordered = (hs: Hit[]) => {
+    const byTime = [...hs].sort((a, b) => a.played!.at - b.played!.at);
+    const out: Hit[] = [];
+    for (let i = 0; i < byTime.length;) {
+      let j = i + 1;
+      while (j < byTime.length && byTime[j].played!.at - byTime[j - 1].played!.at < 0.5) j++;
+      out.push(...byTime.slice(i, j).sort((a, b) => a.pitch - b.pitch));
+      i = j;
+    }
+    return out;
+  };
+  // Bars grouped by what they play; each group's written versions, the most frequent first.
+  const groups = new Map<string, { bar: number; hits: Hit[]; version: string }[]>();
+  for (const [bar, hs] of bars) {
+    const notes = ordered(hs);
+    const shape = drum ? String(notes.length) : notes.map((h) => h.pitch).join(' ');
+    const version = notes.map((h) => `${h.at - bar * f.grid}:${drum ? 0 : h.length}`).join(' ');
+    (groups.get(shape) ?? groups.set(shape, []).get(shape)!).push({ bar, hits: notes, version });
+  }
+  const out: Hit[] = [];
+  for (const members of groups.values()) {
+    const counts = new Map<string, number>();
+    for (const m of members) counts.set(m.version, (counts.get(m.version) ?? 0) + 1);
+    const versions = [...counts].sort((a, b) => b[1] - a[1]).map(([v]) => members.find((m) => m.version === v)!);
+    for (const m of members) {
+      const base = m.bar * f.grid;
+      const fits = (v: typeof m) => v.hits.every((h, i) => {
+        const p = m.hits[i].played!, at = h.at - v.bar * f.grid;
+        return Math.abs(base + at - p.at) <= onset && Math.floor((base + at) / f.grid) === m.bar
+          && (drum || Math.abs(h.length - p.length) <= lengthLimit(p.length));
+      });
+      const as = versions.find((v) => v.version === m.version || fits(v))!;
+      if (as.version === m.version) { out.push(...m.hits); continue; }
+      out.push(...as.hits.map((h, i) => ({ ...m.hits[i], at: base + h.at - as.bar * f.grid, length: drum ? m.hits[i].length : h.length })));
+    }
   }
   return out.sort((a, b) => a.at - b.at || a.pitch - b.pitch);
 }

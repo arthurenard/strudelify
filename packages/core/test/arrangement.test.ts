@@ -4,7 +4,7 @@ import { compile, timeline, barRange } from '../src/strudel.js';
 import { prepareArrangement } from '../src/arrangement.js';
 import { loadSong } from '../src/load.js';
 import { gmName, percName, drumName } from '../src/gm.js';
-import { OVERLAP_BEATS } from '../src/patterns.js';
+import { OVERLAP_BEATS, SETTLE_ONSET_MS, settleLengthMs } from '../src/patterns.js';
 import { ACOUSTIC_DRUMS } from '../src/acoustic-drums.js';
 import type { Song } from '../src/types.js';
 // @ts-expect-error Shared Node-only runtime harness.
@@ -75,27 +75,47 @@ for (const file of ['smells-like-teen-spirit.mid','love-me-do.mid']) it(`plays e
   const song=await loadSong({...entry,title:file,artist:'Test',sources:['midi'],files:{midi:file}},async()=>fs.readFileSync(new URL(`../../data/curated/${file}`,import.meta.url)));
   const prepared=prepareArrangement(song), code=compile(song,options), pattern=evaluatePattern(code), bars=timeline(song,options).bars;
   expect(bars).toBe(barRange(song,10000)!.nBars);
-  const length=prepared.meta.beatsPerBar*4/prepared.meta.beatUnit;
+  const length=prepared.meta.beatsPerBar*4/prepared.meta.beatUnit, step=length/prepared.meta.grid!, beatMs=60000/prepared.meta.bpm;
   // A note may lose or gain up to OVERLAP_BEATS, and no more than a third of itself, where it overlaps the next one.
   const close=(got:number,want:number)=>got===want||(Math.abs(got-want)<=OVERLAP_BEATS/length+1e-9&&Math.abs(got-want)*3<=want+1e-9);
-  let exact=0,all=0;
+  // A bar written as its riff (patterns.ts, settle) may move a note by a step, never further from where it was played than
+  // the grid's rounding plus the settle margins.
+  const nearPlayed=(beats:number,played:number,margin:number)=>Math.abs(beats-played)<=step/2+margin+1e-9;
+  let exactOnsets=0,exactLengths=0,all=0;
+  // Written notes paired with the prepared ones of the same sound and pitch, in order.
+  const pairs=<T extends {key:string;at:number}>(actual:T[],expected:T[],bar:number)=>{
+    const group=(xs:T[])=>{ const m=new Map<string,T[]>(); for (const x of xs) (m.get(x.key)??m.set(x.key,[]).get(x.key)!).push(x); for (const g of m.values()) g.sort((a,b)=>a.at-b.at); return m; };
+    const [a,e]=[group(actual),group(expected)];
+    expect([...a].map(([k,g])=>`${k}×${g.length}`).sort(),`bar ${bar+1}`).toEqual([...e].map(([k,g])=>`${k}×${g.length}`).sort());
+    return [...a].flatMap(([k,g])=>g.map((x,i)=>[x,e.get(k)![i]] as [T,T]));
+  };
   for (let b=0;b<bars;b++) {
     const es=onsets(pattern,b,b+1);
-    const key=(x:[string,number,string,number])=>x.slice(0,3).join('|');
-    const actual=es.filter((e:any)=>e.value.note!==undefined).map((e:any)=>[e.value.s,midi(e.value.note),Number(e.whole.begin).toFixed(6),Number(e.duration)] as [string,number,string,number]).sort((x:any,y:any)=>key(x).localeCompare(key(y)));
-    const expected=prepared.tracks.filter(t=>t.role!=='drums').flatMap(t=>t.notes.filter(n=>n.start/length>=b&&n.start/length<b+1).map(n=>[gmName(t.program),n.pitch,(n.start/length).toFixed(6),Math.min(n.duration/length,bars-n.start/length)] as [string,number,string,number])).sort((x,y)=>key(x).localeCompare(key(y)));
-    expect(actual.map(key),`bar ${b+1}`).toEqual(expected.map(key));
-    actual.forEach((a:[string,number,string,number],i:number)=>{ all++; if(Math.abs(a[3]-expected[i][3])<1e-9) exact++; expect(close(a[3],expected[i][3]),`${key(a)} lasts ${a[3]}, not ${expected[i][3]}`).toBe(true); });
-    const drums = prepared.tracks.filter(t=>t.role==='drums').flatMap(t=>t.notes.filter(n=>n.start/length>=b&&n.start/length<b+1).map(n=>{
-      const acoustic = ACOUSTIC_DRUMS[n.pitch], perc = percName(n.pitch);
-      return JSON.stringify([acoustic?.sample ?? perc?.sample ?? drumName(n.pitch), acoustic?.index ?? Number(perc?.token.split(':')[1] ?? 0), (n.start/length).toFixed(6)]);
-    }));
-    const playedDrums = es.filter((e:any)=>e.value.note===undefined).map((e:any)=>JSON.stringify([e.value.s, Number(e.value.n ?? 0), Number(e.whole.begin).toFixed(6)])).sort();
-    expect(playedDrums,`drums at bar ${b+1}`).toEqual([...new Set(drums)].sort());
+    const inBar=(n:{start:number})=>n.start/length>=b&&n.start/length<b+1;
+    const actual=es.filter((e:any)=>e.value.note!==undefined).map((e:any)=>({key:`${e.value.s}|${midi(e.value.note)}`,at:Number(e.whole.begin)*length,length:Number(e.duration)*length}));
+    const expected=prepared.tracks.filter(t=>t.role!=='drums').flatMap(t=>t.notes.filter(inBar).map(n=>({key:`${gmName(t.program)}|${n.pitch}`,at:n.start,length:Math.min(n.duration,bars*length-n.start),played:n.played!})));
+    for (const [a,e] of pairs(actual,expected,b) as [typeof actual[0],typeof expected[0]][]) {
+      all++;
+      if (Math.abs(a.at-e.at)<1e-9) exactOnsets++;
+      else expect(Math.abs(a.at-e.at)<=step+1e-9&&nearPlayed(a.at,e.played.start,SETTLE_ONSET_MS/beatMs),`${e.key} at ${a.at}, rounded to ${e.at}, played at ${e.played.start}`).toBe(true);
+      if (Math.abs(a.length-e.length)<1e-9) exactLengths++;
+      // Either rule, or both: a riff's length (settle), then the trim where the note runs into the next one.
+      else expect(close(a.length/length,e.length/length)||nearPlayed(a.length,e.played.duration,settleLengthMs(e.played.duration*beatMs)/beatMs+OVERLAP_BEATS),`${e.key} at ${a.at} lasts ${a.length}, not ${e.length}`).toBe(true);
+    }
+    const drumKey=(pitch:number)=>{ const acoustic=ACOUSTIC_DRUMS[pitch], perc=percName(pitch); return `${acoustic?.sample ?? perc?.sample ?? drumName(pitch)}:${acoustic?.index ?? Number(perc?.token.split(':')[1] ?? 0)}`; };
+    // Two keys that play the same sample at one step are one hit.
+    const expectedDrums=[...new Map(prepared.tracks.filter(t=>t.role==='drums').flatMap(t=>t.notes.filter(inBar).map(n=>({key:drumKey(n.pitch),at:n.start,played:n.played!}))).map(d=>[`${d.key}@${d.at}`,d])).values()];
+    const playedDrums=es.filter((e:any)=>e.value.note===undefined).map((e:any)=>({key:`${e.value.s}:${Number(e.value.n ?? 0)}`,at:Number(e.whole.begin)*length}));
+    for (const [a,e] of pairs(playedDrums,expectedDrums,b) as [typeof playedDrums[0],typeof expectedDrums[0]][]) {
+      if (Math.abs(a.at-e.at)>1e-9) expect(Math.abs(a.at-e.at)<=step+1e-9&&nearPlayed(a.at,e.played.start,SETTLE_ONSET_MS/beatMs),`${e.key} hit at ${a.at}, rounded to ${e.at}`).toBe(true);
+    }
     expect(es.every((e:any)=>['gain','velocity','duration','pan'].every(k=>e.value[k]===undefined||Number.isFinite(e.value[k])))).toBe(true);
   }
   expect(snapshot(pattern,bars,bars+8)).toEqual(snapshot(pattern,0,8));
-  expect(exact/all).toBeGreaterThan(0.97);
+  // A riff absorbs a performer's wobble: nearly every onset keeps its own rounding (99.9% and 100% here), lengths less
+  // often (82.6% of Love Me Do's strummed notes, their ends evened out within settleLengthMs).
+  expect(exactOnsets/all).toBeGreaterThan(0.99);
+  expect(exactLengths/all).toBeGreaterThan(0.75);
   if(file.startsWith('smells')) {
     expect(bars).toBe(131);
     expect(code.length).toBeLessThan(8500);

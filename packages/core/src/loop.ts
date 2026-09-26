@@ -13,8 +13,9 @@
  */
 import type { Song, SongMeta, Track, NoteEvent } from './types.js';
 import { barLength, barStart, cyclesPerMinute, detectSectionsFromMidi } from './midi.js';
+import { fitGrid } from './grid.js';
 import { barRange, EARLY_BEATS, type CompileOptions } from './strudel.js';
-import { partLevels } from './arrangement.js';
+import { partLevels, shiftNote } from './arrangement.js';
 
 export interface LoopSelection { song: Song; firstBar: number; bars: number; repeats: number; omittedTracks: number }
 
@@ -71,7 +72,7 @@ export function selectLoop(source: Song, opts: CompileOptions = {}): LoopSelecti
   for (const t of selected.filter(t => t.role === 'drums')) t.notes = t.notes.filter(n => drumVoices.includes(n.pitch));
 
   // A compact loop is a musical sketch: one shared rhythmic grid and stable channel controls.
-  const grid = loopGrid(selected.flatMap(t => t.notes.map(n => n.start)), length, source.meta.bpm);
+  const { grid, shift } = loopGrid(selected.flatMap(t => t.notes.map(n => n.start)), length, source.meta.bpm);
   const step = length / grid, span = bars * grid;
   let ghosts = false;
   for (const track of selected) {
@@ -81,7 +82,7 @@ export function selectLoop(source: Song, opts: CompileOptions = {}): LoopSelecti
     ghosts ||= soft;
     const attacks = new Map<string, NoteEvent>();
     for (const note of track.notes) {
-      const cell = Math.max(0, Math.round(note.start / step));
+      const cell = Math.max(0, Math.round((note.start - shift) / step));
       // A note struck a hair before the loop's end and still sounding there is the next downbeat's, played early:
       // the loop's own start has it (held in from before the window).
       if (cell >= span || (bars * length - note.start <= EARLY_BEATS && note.start + note.duration >= bars * length - 1e-6)) continue;
@@ -89,7 +90,7 @@ export function selectLoop(source: Song, opts: CompileOptions = {}): LoopSelecti
       const velocity = level(note);
       const key = `${cell}:${note.pitch}`;
       const prior = attacks.get(key);
-      if (!prior || prior.velocity < velocity) attacks.set(key, { pitch: note.pitch, start: cell * step, duration, velocity });
+      if (!prior || prior.velocity < velocity) attacks.set(key, { pitch: note.pitch, start: cell * step, duration, velocity, played: { start: note.start - shift, duration: note.duration } });
     }
     track.notes = [...attacks.values()].sort((a, b) => a.start - b.start || a.pitch - b.pitch);
   }
@@ -102,6 +103,7 @@ export function selectLoop(source: Song, opts: CompileOptions = {}): LoopSelecti
     ...(source.meta.remarks ?? []).filter(r => r.startsWith('Transcription provider:')),
     ...(regrouped ? [`Source metre ${originalMeter} regrouped on a 4/4 editing grid for this short excerpt.`] : []),
     `Notes on a ${grid}-step grid, each part at one level${ghosts ? '; ghost notes are separate "_soft" parts' : ''}.`,
+    ...shiftNote(shift, source.meta.bpm),
     ...(omittedTracks ? [`${plural(omittedTracks, 'quieter instrumental part')} left out of the loop.`] : []),
     ...(omittedDrums ? [`${plural(omittedDrums, 'rarer percussion sound')} left out of the loop.`] : []),
   ] }, tracks: kept, sections: [] };
@@ -128,10 +130,11 @@ const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.len
 
 /**
  * The coarsest musical grid (steps per bar) that places `GRID_SHARE` of the onsets within
- * `GRID_TOLERANCE` seconds, so a slightly loose performance still reads on sixteenths or triplets.
+ * `GRID_TOLERANCE` seconds, so a slightly loose performance still reads on sixteenths or triplets, and
+ * the shift (beats) that keeps a transcription playing off the beat on it (see grid.ts).
  */
-export function loopGrid(onsets: number[], length: number, bpm: number): number {
-  return [8, 12, 16, 24, 32, 48].find(g => onsets.filter(at => Math.abs(Math.round(at / length * g) / g * length - at) * 60 / bpm <= GRID_TOLERANCE).length >= onsets.length * GRID_SHARE) ?? 48;
+export function loopGrid(onsets: number[], length: number, bpm: number): { grid: number; shift: number } {
+  return fitGrid(onsets, length, bpm, [8, 12, 16, 24, 32, 48], 48, GRID_SHARE, GRID_TOLERANCE);
 }
 
 // ---------- choosing the window ----------

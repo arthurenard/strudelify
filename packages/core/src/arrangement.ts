@@ -2,6 +2,7 @@
 import type { Song, Track, NoteEvent } from './types.js';
 import { barLength, barStart, detectSectionsFromMidi } from './midi.js';
 import { drumName, percName } from './gm.js';
+import { fitGrid } from './grid.js';
 import { barRange } from './strudel.js';
 
 /** A note played this much softer than its part's typical velocity is a ghost note. */
@@ -40,6 +41,12 @@ export function partLevels(t: Track): Levels {
   return { level: (n) => levels.get(sound(n.pitch))!.level(n.velocity), ghosts: [...levels.values()].some((d) => d.ghosts) };
 }
 
+/** A remark when the grid follows a transcription that plays off the beat throughout (see grid.ts), from 10 ms. */
+export function shiftNote(shift: number, bpm: number): string[] {
+  const ms = Math.round(Math.abs(shift) * 60000 / bpm);
+  return ms >= 10 ? [`The whole transcription plays ${ms} ms ${shift < 0 ? 'ahead of' : 'behind'} the beat; the grid follows it, so its parts stay together.`] : [];
+}
+
 export function prepareArrangement(source: Song): Song {
   const range = barRange(source, Number.MAX_SAFE_INTEGER);
   if (!range || !source.tracks.length) return source;
@@ -48,10 +55,10 @@ export function prepareArrangement(source: Song): Song {
   const instrumental = source.tracks.filter(t => !t.vocal);
   if (!instrumental.length) return source;
   const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? .8;
-  const attacks = instrumental.flatMap(t => t.notes.map(n => (n.start - origin) / length));
-  // Prefer a shared musical grid; source-detail mode retains microtiming and expressive controls.
-  const grid = [16, 24, 32, 48].find(g => attacks.filter(at => Math.abs(Math.round(at * g) / g - at) * length * 60 / source.meta.bpm <= .035).length >= attacks.length * .9) ?? 32;
-  const step = length / grid;
+  // One musical grid for all the parts, started where the band plays (see grid.ts); source-detail mode retains
+  // microtiming and expressive controls.
+  const { grid, shift } = fitGrid(instrumental.flatMap(t => t.notes.map(n => n.start - origin)), length, source.meta.bpm, [16, 24, 32, 48], 32, .9, .035);
+  const zero = origin + shift, step = length / grid;
   let ghosts = false;
   const tracks: Track[] = instrumental.map(t => {
     const { level, ghosts: soft } = partLevels(t);
@@ -62,11 +69,11 @@ export function prepareArrangement(source: Song): Song {
     const groups = new Map<string, NoteEvent>();
     for (const n of t.notes) {
       if (n.duration <= 0 || n.velocity <= 0 || (n.volume ?? t.volume ?? .8) <= 0) continue;
-      const start = Math.min(end - step, Math.max(0, Math.round((n.start - origin) / step) * step));
+      const start = Math.min(end - step, Math.max(0, Math.round((n.start - zero) / step) * step));
       const duration = Math.min(end - start, Math.max(step, Math.round(n.duration / step) * step));
       const key = `${start}:${n.pitch}`, previous = groups.get(key), velocity = level(n);
       if (previous) { previous.duration = Math.max(previous.duration, duration); previous.velocity = Math.max(previous.velocity, velocity); }
-      else groups.set(key, { pitch: n.pitch, start, duration, velocity });
+      else groups.set(key, { pitch: n.pitch, start, duration, velocity, played: { start: n.start - zero, duration: n.duration } });
     }
     const notes = [...groups.values()].sort((a, b) => a.start - b.start || a.pitch - b.pitch);
     // A repeated attack replaces an overlapping release of that same pitch.
@@ -102,6 +109,7 @@ export function prepareArrangement(source: Song): Song {
     ...(source.meta.remarks ?? []),
     `Full arrangement: all ${range.totalBars} bars on a ${grid}-step grid, each part at one level${ghosts ? '; ghost notes are separate "_soft" parts' : ''}. Source detail keeps the original performance.`,
     ...(omitted.length ? [`Guitar parts that double another keep only their own notes (fills, solos): ${omitted.join(', ')}.`] : []),
+    ...(shiftNote(shift, source.meta.bpm)),
   ] }, tracks: kept, sections: [] };
   song.sections = detectSectionsFromMidi(song);
   return song;

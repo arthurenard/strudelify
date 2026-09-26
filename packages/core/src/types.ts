@@ -70,6 +70,11 @@ export interface NoteEvent {
   volume?: number;
   /** CC 10 at the note onset (0–1), when present. */
   pan?: number;
+  /**
+   * Where the note was played (start and duration, same units) when a Full arrangement or a loop has rounded
+   * it to the grid: the pattern writer tells a performer's wobble from a written rhythm by it.
+   */
+  played?: { start: number; duration: number };
 }
 
 export type TrackRole = 'melody' | 'bass' | 'chords' | 'drums' | 'other';
