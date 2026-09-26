@@ -30,15 +30,18 @@ try {
   // refused lookup is noted, not failed.
   const artRefused = new Set();
   const isArt = (url) => ART_HOSTS.test(url ?? '');
+  // Vercel serves its analytics script only on a deployment: a local build asks for it in vain.
+  const isLocalAnalytics = (url) => /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/_vercel\/insights\//.test(url ?? '');
   page.on('pageerror', (e) => errors.push(`pageerror ${e}`));
   page.on('console', (m) => {
     if (m.type() !== 'error' && m.type() !== 'warning') return;
+    if (isLocalAnalytics(m.location()?.url)) return;
     // A refused lookup is logged as a failed load, or, when the refusal carries no CORS header, as a blocked fetch naming it.
     if (/^Failed to load resource/.test(m.text()) ? isArt(m.location()?.url) : /^Access to fetch at '[^']+' .* blocked by CORS/.test(m.text()) && isArt(/'([^']+)'/.exec(m.text())[1])) return;
     errors.push(`console.${m.type()} ${m.text()}`);
   });
   page.on('response', (r) => {
-    if (r.status() < 400) return;
+    if (r.status() < 400 || isLocalAnalytics(r.url())) return;
     if (isArt(r.url()) && [403, 429, 503].includes(r.status())) artRefused.add(new URL(r.url()).host);
     else errors.push(`HTTP ${r.status()} ${r.url()}`);
   });
@@ -71,8 +74,13 @@ try {
   check(raw.includes(`Browse ${count.toLocaleString('en-US')} library entries`), `index.html is baked with the entry count (${count})`);
   const cardTile = await page.evaluate(() => document.querySelector('#examples .ex')?.style.getPropertyValue('--tile'));
   const cardTitle = await page.evaluate(() => document.querySelector('#examples .ex .ex-t')?.textContent);
+  // Its artist too: several arrangements can share a title (four scores are called "dance monkey").
+  const cardArtist = await page.evaluate(() => document.querySelector('#examples .ex')?.title.split(' — ').slice(1).join(' — '));
   await page.click('#q'); await page.type('#q', cardTitle); await sleep(400);
-  const rowTile = await page.evaluate((t) => Array.from(document.querySelectorAll('#results .opt')).find((r) => r.querySelector('.t').textContent === t)?.querySelector('.opt-tile').style.getPropertyValue('--tile'), cardTitle);
+  const rowTile = await page.evaluate((t, a) => {
+    const same = Array.from(document.querySelectorAll('#results .opt')).filter((r) => r.querySelector('.t').textContent === t);
+    return (same.find((r) => r.querySelector('.a').textContent === a) ?? same[0])?.querySelector('.opt-tile').style.getPropertyValue('--tile');
+  }, cardTitle, cardArtist);
   check(!!cardTile && cardTile === rowTile, `one identity colour for "${cardTitle}" (card ${cardTile}, row ${rowTile})`);
   // Search rows: canonical artists.
   const rows = async (q) => { await page.evaluate(() => { document.getElementById('q').value = ''; }); await page.type('#q', q); await sleep(400); return page.evaluate(() => ({ rows: Array.from(document.querySelectorAll('#results .opt')).map((r) => `${r.querySelector('.t').textContent} / ${r.querySelector('.a').textContent}`), groups: Array.from(document.querySelectorAll('#results .group b')).map((g) => g.textContent) })); };
