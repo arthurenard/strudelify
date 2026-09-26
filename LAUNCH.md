@@ -3,8 +3,10 @@
 _Updated 23 September 2026: the licence file is added, fonts are served with the site, the production page carries a
 Content Security Policy, and CI runs the typecheck, the tests and a fixture web build. Later that day: a second score
 import brought the catalogue to 13,929 entries (3,285 scores), songs moved from `/#id` links to their own addresses, and the build
-writes a page per song and per artist for search engines (see the hosting notes). The rights questions below are
-unchanged, and apply to the imported scores as much as to the first ones._
+writes a page per song and per artist for search engines (see the hosting notes). On 26 September 2026 the catalogue
+became one entry per song (LMD's match scores choose which of a song's transcriptions plays; a merged song's old
+address sends visitors on) and the code writer began reading a performer's small timing wobbles as the riff they
+play. The rights questions below are unchanged, and apply to the imported scores as much as to the first ones._
 
 The app is a working local beta. The full music catalogue is **not cleared for public publication** by this review. Passing software tests does not establish music or artwork rights, and transcription quality is not uniformly verified against recordings. No website was deployed during this review.
 
@@ -34,12 +36,12 @@ For a Belgian launch, ask SABAM/Unisono or qualified counsel specifically about 
 ## Technical state and known limits
 
 - Live site (25 September 2026, `db/build.json`): 13,962 entries, 3,285 of them scores, built by Vercel from `main` with the score import; covers from the catalogue. Its base catalogue is built fresh from the datasets, so it differs slightly from an older local database (a few dozen transcriptions chosen differently); ids are pinned in `catalogue-ids.tsv` either way. `STRUDELIFY_URL=https://www.arthurenard.me/strudelify node tools/ui-check.mjs` runs the browser checks against it.
-- Local library: 13,929 entries, including alternate transcriptions. All 14,200 source-file references exist, and every entry compiles and plays through the Strudel runtime in all three modes (`tools/library-check.mjs`, 23 September 2026, after the import).
+- Local library: 13,613 entries, one per song as far as artist and title tell (312 songs held more than once merged on 26 September 2026; `db/moved.json` keeps their 316 old addresses). All 13,916 source-file references exist, no file is left unplayed, and every entry compiles and plays through the Strudel runtime in all three modes (`tools/library-check.mjs`, 26 September 2026).
 - `npm run check` (typecheck of every package and the tests, the unit/runtime suite, the importer tests) and the production build pass. `npm audit` (development dependencies included) returned zero known advisories on 23 September 2026; this is not a complete security audit.
 - Browser checks: four landing covers and eight Nirvana search covers load at the intended thumbnail sizes; the editor stays unloaded while browsing, then loads on song selection; playback and live note boxes work.
 - Source fidelity remains variable. Main loop is an excerpt the song repeats; Full arrangement is a cleaned transcription on a grid; neither promises the original studio recording. This is suitable for beta expectations, not an “exact music” claim.
 - Covers come from a pre-resolved catalogue (`packages/data/covers.tsv`, 25 September 2026): the site ships the image addresses the art chain chose, so visitors no longer query iTunes, Deezer or MusicBrainz for a catalogued song (images still load from those providers' CDNs). This stores provider artwork addresses in the repository: the artwork rights question above is unchanged, and the catalogue should be refreshed (`node tools/resolve-covers.mjs --retry-misses`, and for new songs) rather than kept forever. Deezer JSONP executes third-party script; a production API boundary would reduce that dependency.
-- The database index is about 3.4 MB uncompressed (520 KB gzipped); the landing page no longer waits for it. The complete output is about 920 MB in about 32,700 files: 580 MB of song sources, 310 MB of prerendered song pages (about 24 KB each, 7 KB gzipped), the artist pages and local samples. Configure compression and caching at the host and verify its total-size/file-count limits (some hosts cap a site at 20,000 files).
+- The database index is about 3.5 MB uncompressed (540 KB gzipped); the landing page no longer waits for it. The complete output is about 1.06 GB in about 32,600 files: 560 MB of song sources, 460 MB of prerendered song pages (about 33 KB each, 8 KB gzipped, with up to 200 lines of the song's code), the artist pages and local samples. Configure compression and caching at the host and verify its total-size/file-count limits (some hosts cap a site at 20,000 files).
 
 ## Deploy it yourself, after rights are resolved
 
@@ -55,7 +57,7 @@ npm run build:web   # for www.arthurenard.me/strudelify/; see below for another 
 npm run preview -w @strudelify/web
 ```
 
-The production site is built by Vercel from `main`: `vercel.json` names `npm run build:site` as the build command, which downloads the datasets, builds the base catalogue, imports the scores (the site is still built, with the base catalogue, if that fails) and builds the site into `packages/web/dist`. Pushing to `main` deploys. `https://www.arthurenard.me/strudelify/db/build.json` says what the live build carries (songs, scores, covers, commit).
+The production site is built by Vercel from `main`: `vercel.json` names `npm run build:site` as the build command, which downloads the datasets, builds the base catalogue, imports the scores (the site is still built, with the base catalogue, if that fails), merges the songs held more than once (the site is built with every entry if that fails) and builds the site into `packages/web/dist`. Pushing to `main` deploys. `https://www.arthurenard.me/strudelify/db/build.json` says what the live build carries (songs, scores, covers, commit).
 
 Publish **the entire `packages/web/dist` directory**. Vite already includes `db/` and `audio/`; there is no second database copy to upload. The build now fails if the database is absent, empty, or references missing source files.
 

@@ -5,11 +5,13 @@ written as readable riffs. Choose Main loop for a phrase the song keeps coming b
 (usually eight bars).
 No LLM involved: the music is compiled from open, machine-readable transcriptions.
 
-The bundled library contains **13,929 catalogue entries**: 13,461 with MIDI (3,285 of them score arrangements) and 468 with chord charts only.
-Of the MIDI entries, 271 also have a chord chart. Alternate transcriptions and artist/title spellings remain
-in the catalogue, so this is an entry count, not a verified count of distinct compositions. The website
-uses that wording and derives its count directly from the shipped index. Two MIDI entries currently have
-no separately identified instrumental parts; the player explains this and disables playback.
+The bundled library contains **13,613 catalogue entries**: 13,177 with MIDI (3,261 of them score arrangements) and 436 with chord charts only.
+Of the MIDI entries, 303 also have a chord chart. A song held twice (two transcriptions under different spellings, a
+chord chart the builder did not pair with its MIDI) is one entry, playing the transcription that follows the
+recording best (see [One entry per song](#one-entry-per-song)); a song known under two different titles can still
+appear twice, so this is an entry count, not a verified count of distinct compositions. The website uses that
+wording and derives its count directly from the shipped index. Two MIDI entries currently have no separately
+identified instrumental parts; the player explains this and disables playback.
 
 - **Chords and structure** from the [McGill Billboard](https://ddmal.music.mcgill.ca/research/billboard)
   chord annotations (about 740 Billboard hits, 1958 to 1991).
@@ -36,9 +38,10 @@ Requires Node 22 and Python 3 (for the PDMX importer and its tests); the importe
 ```bash
 npm install
 npm run build                         # tsc -b: core, data and cli
-node packages/data/dist/download.js   # ~235 MB of MIDI plus the McGill annotations -> packages/data/raw
+node packages/data/dist/download.js   # ~235 MB of MIDI, the McGill annotations and LMD's match scores -> packages/data/raw
 node packages/data/dist/build.js      # -> packages/data/public/db (index.json + songs/)
 npm run data:expand                   # optional: add quality-filtered PDMX arrangements (~440 MB download)
+node packages/data/dist/dedupe.js     # one entry per song (--dry-run to see what it would merge)
 npm run build:web                     # the website, with the library baked in -> packages/web/dist
 ```
 
@@ -156,6 +159,9 @@ in `packages/web/vite.config.ts`, the pages themselves in `packages/web/src/prer
   with its artist, and breadcrumbs), the song's facts, its Main loop code as plain text until the
   editor loads, and links to the artist's other songs. The loops are compiled in worker threads (about
   40 s for the catalogue).
+- `song/<old id>/index.html`, for a song merged into another (`db/moved.json`, see
+  [One entry per song](#one-entry-per-song)), sends its address on to the kept song (`noindex`, with the kept
+  song as canonical); the app does the same for an address it is given.
 - `artist/<slug>/index.html` lists an artist's songs; `artists/` and `artists/<letter>/` index them A to
   Z. These are plain pages with no script.
 - `index.html` gains `WebSite` structured data with the search box; `404.html` is served for unknown
@@ -196,6 +202,18 @@ unique solos/fills, and combines percussion keys that play the same sample. Thes
 simplifications, not recording fidelity guarantees. **Source detail** retains the unrounded instrumental
 events; it is long by nature (every event keeps its exact timing and dynamics).
 
+**Timing.** Main loop and Full arrangement round every note to the grid, and the grid starts where the band
+plays ([grid.ts](packages/core/src/grid.ts)): when a whole transcription sits a few tens of milliseconds off the
+beat (a file that starts late or early; The Police's Every Breath You Take plays 38 ms ahead of it), the grid moves
+by that common offset, up to 60 ms and only when the notes agree on it, so parts played together land on the same
+step instead of either side of one; a `// note:` says so (302 of the 13,177 MIDI songs, 15 ms at the median).
+Swing, which fits triplets as played, keeps its triplet grid. Then a bar that differs from one of its part's riffs only by a performer's wobble is written as that riff,
+so a riff repeats wherever the part repeats it (`settle` in patterns.ts): a note may take the neighbouring step
+only when it was played within 10 ms of halfway between the two, which leaves it at most 20 ms further from where
+it was played than plain rounding, and a length may differ by half a step plus 25 to 80 ms (15% of the note; the
+end of a note is heard far less precisely than its start). A bar that differs by more is written out, since the
+difference is in the music. The most common version of a riff wins.
+
 Main loop and Full arrangement are written as plain mini-notation ([patterns.ts](packages/core/src/patterns.ts)),
 with no number on any note:
 
@@ -218,9 +236,11 @@ const kick = s("bd").struct("<x ~@2 x!2 ~@3 ...>").gain(0.3)
 - **Held notes:** a note still sounding when the next one starts goes to another voice (`a, b` plays two
   voices at once), and one held over the bar line makes a riff of several bars (`[...]/2`). Only a note that
   overlaps the next one by at most a sixteenth (and a third of its length) is trimmed instead; beyond five
-  voices or eight bars a note is cut where it would need one more. Over 300 random songs (908,348 notes)
-  every note keeps its onset and pitch on the grid; 94.8% keep their exact length, 4.3% move by at most a
-  sixteenth and 0.9% more (mostly pedalled piano and let-ring guitar).
+  voices or eight bars a note is cut where it would need one more. Over 300 songs spread across the catalogue
+  (835,009 notes, read back through Strudel) every note keeps its pitch and 99.9% keep their onset on the grid;
+  the other 0.1% take the step their riff uses (see Timing), at most 20 ms further from where they were played
+  than plain rounding (7 ms at the median). 94.6% keep their exact length, 4.4% move by at most a sixteenth and
+  1.0% more (mostly pedalled piano and let-ring guitar); before riffs absorbed timing wobbles, 95.2%, 3.8% and 1.0%.
 - **Riffs:** a short part is one sequence of bars (`note("<[c3 e3] [g3 b3]!3>")`); a longer one names each
   distinct bar once (A, B, C..., never a note name) and plays them in order with
   [`pickRestart()`](https://strudel.cc/learn/conditional-modifiers/#pickrestart), so editing a riff changes
@@ -233,9 +253,9 @@ const kick = s("bd").struct("<x ~@2 x!2 ~@3 ...>").gain(0.3)
   written without riffs names its chords in its heading comment.
 
 Lines wrap at 120 characters; a riff is never split, so a dense one can run longer (the editor's wrap
-toggle folds it). Across the catalogue a Full arrangement has 161 lines at the median and 12.6% of songs
+toggle folds it). Across the catalogue a Full arrangement has 157 lines at the median and 11.3% of songs
 exceed 300 (long through-composed pieces and dense transcriptions, where every variation is written out);
-a Main loop has 61 at the median, 91 at the 90th percentile and never more than 190.
+a Main loop has 61 at the median, 90 at the 90th percentile and never more than 190.
 
 The core API keeps its source-detail/full-song default for compatibility:
 
@@ -309,8 +329,9 @@ Uploaders' credit blocks are reduced to the composer or performer and a title or
 usable is rejected (`packages/data/src/metadata.ts`). An import from the base catalogue admits 3,285 scores (3,597
 candidates; the rest duplicate a song already in the catalogue or fail a check). All source archives and generated
 database files remain ignored by Git; the importer is the reproducible deliverable. The website's production build
-runs it after the base build (`npm run build:site`, which `vercel.json` names as Vercel's build command); if the
-import fails the site is built with the base catalogue. Each build writes `db/build.json` with its song, score and
+runs it after the base build, then the duplicate step (`npm run build:site`, which `vercel.json` names as Vercel's
+build command); if the import fails the site is built with the base catalogue, and if the duplicate step fails,
+with every entry. Each build writes `db/build.json` with its song, score and
 cover counts and its commit, to check what a deployment carries.
 [Pipeline review](tools/pipeline-review.md) explains the source comparison and checks.
 
@@ -318,6 +339,33 @@ cover counts and its commit, to check what a deployment carries.
 recording-to-MIDI transcription. It needs API access and input audio, and its accuracy must be benchmarked
 before replacing sources. No paid jobs were submitted or audio uploaded. Spotify/metadata APIs do not
 provide the instrumental note events needed by this compiler.
+
+### One entry per song
+
+`packages/data/src/dedupe.ts` finds the songs the catalogue holds more than once: the same artist (its words
+in any order, without "the" and "and") and a title that core's `isDuplicateTitle` calls the same song
+(`Livin' on a Prayer`, `Living on a Prayer`). Each song keeps one transcription, chosen in this order:
+
+1. one with notes over a chord chart alone;
+2. the one [LMD-matched](https://colinraffel.com/projects/lmd/) found closest to a recording: Colin Raffel
+   aligned each Lakh file with the audio of the recordings it could match and scored the alignment
+   (`match_scores.json`, 7 MB, keyed by the file's MD5; our files are the dataset's, byte for byte). A file with
+   a score beats one without; a higher score beats a lower one;
+3. then one with a McGill chord chart, a Lakh transcription over a score arrangement, the builder's structural
+   ranking and popularity.
+
+The song keeps the name and address of its most popular entry (the spelling most transcriptions use) and
+plays the chosen file with its tempo and key; a chord chart and a year carry over from whichever entry has
+them, and the entries' popularity is added up. Each dropped id is recorded in `db/moved.json` with the id it
+moved to (earlier moves are kept, a chain is followed to its end), so a shared link still opens the song, and a
+file no song plays any more moves to `packages/data/duplicates` instead of shipping unplayed.
+
+On the local catalogue the step merged 312 songs held more than once (316 entries dropped), 188 of them
+decided by a match score, and moved 40 chord charts onto the MIDI entry they belong to. Afterwards 3,827 of the
+9,916 Lakh transcriptions played have a match score (median 0.72), and 118 of the 200 songs the landing page
+draws from (112 before the merge). LMD kept only alignments scoring 0.5 or more, so a file without a score was
+either never paired with a recording or did not line up with one well enough; a score measures how closely a file
+follows a recording, not how good an arrangement it is.
 
 ### Both sources
 
@@ -338,7 +386,7 @@ phrase inside a title, which beats a bag of words. Popularity only decides betwe
 A leading "The" in a title of three words or more is optional, like a leading parenthetical ("house of the
 rising sun"), and words the title explains do not also count as naming the artist ("like a rolling stone"
 is Bob Dylan's before the Rolling Stones' cover). `index.resolve()` turns a query into one song or an
-"ambiguous" verdict for the CLI. The index builds in about 150 ms for the 13,929 entries and answers in
+"ambiguous" verdict for the CLI. The index builds in about 150 ms for the 13,613 entries and answers in
 about 0.1 ms on average (a few ms for a single letter, which matches thousands of songs).
 
 ## Tools
