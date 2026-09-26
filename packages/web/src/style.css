@@ -152,7 +152,8 @@ body > canvas#test-canvas { display: none; }
 /* ==========================================================================
    Layout, banner
    ========================================================================== */
-.main { flex: 1; display: flex; flex-direction: column; }
+/* The song's backdrop spans the window (100vw, scrollbar included): clip it to the page, without a scroll container. */
+.main { flex: 1; display: flex; flex-direction: column; overflow-x: clip; }
 .banner {
   width: min(var(--content), 100% - 2 * var(--gutter)); margin: var(--s3) auto 0;
   display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4);

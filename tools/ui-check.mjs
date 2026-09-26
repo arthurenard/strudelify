@@ -21,7 +21,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const failures = [];
 const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if (!ok) failures.push(what); };
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--autoplay-policy=no-user-gesture-required', '--no-sandbox'] });
+// Scrollbars take their room, as on a desktop with a mouse: a page one scrollbar too wide scrolls sideways there.
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, ignoreDefaultArgs: ['--hide-scrollbars'], args: ['--autoplay-policy=no-user-gesture-required', '--no-sandbox'] });
 try {
   const page = await browser.newPage();
   const errors = [];
@@ -57,7 +58,8 @@ try {
     loading: document.getElementById('song').classList.contains('loading'),
     active: document.querySelector('#lane-chords .ch.active')?.dataset.tip ?? '',
     labels: Array.from(document.querySelectorAll('#lane-chords .chl')).map((l) => l.textContent),
-    scrollW: document.documentElement.scrollWidth, innerW: innerWidth,
+    // The width inside a vertical scrollbar (innerWidth includes it, so a 100vw element passed for the page's width).
+    scrollW: document.documentElement.scrollWidth, clientW: document.documentElement.clientWidth,
   }));
   const noStale = (s, when) => check(!s.loading || (s.lanes === 0 && s.bar === '' && s.chord === '' && s.lines === '' && s.moreHidden), `${when}: nothing of the previous song while loading (${JSON.stringify({ lanes: s.lanes, bar: s.bar, chord: s.chord, lines: s.lines })})`);
 
@@ -87,7 +89,7 @@ try {
     for (const id of ['pink-floyd--another-brick-in-the-wall', 'james-brown--i-dont-mind', 'steve-miller-band--the-joker']) {
       await page.goto(`${BASE}/song/${id}/`, { waitUntil: 'networkidle0' }); await waitSong(); await sleep(400);
       const s = await state();
-      check(s.scrollW === s.innerW, `${w}px ${id}: no horizontal scroll (${s.scrollW}/${s.innerW})`);
+      check(s.scrollW === s.clientW, `${w}px ${id}: no horizontal scroll (${s.scrollW}/${s.clientW})`);
       check(!s.labels.some((l) => l.includes('…')), `${w}px ${id}: no ellipsis in lane labels`);
       check(s.active.startsWith(s.chord.replace(/maj7.*|m7.*|7.*|\/.*/, '').replace(/[♯♭]/, (c) => c)), `${w}px ${id}: readout "${s.chord}" agrees with the highlighted block "${s.active}"`);
     }
