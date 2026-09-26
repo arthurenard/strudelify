@@ -2,6 +2,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 packages/data/raw/
+packages/data/duplicates/
 packages/data/public/db/
 packages/web/public/db/
 tools/library-report.json

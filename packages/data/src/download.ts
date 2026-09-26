@@ -1,7 +1,7 @@
 /**
  * Download the open datasets into packages/data/raw.
  *   - McGill Billboard index + SALAMI chord annotations (Dropbox mirrors used by mirdata)
- *   - Lakh MIDI "Clean MIDI subset" (Columbia mirror, served over plain HTTP only)
+ *   - Lakh MIDI "Clean MIDI subset" and LMD-matched's match scores (Columbia mirror, served over plain HTTP only)
  * Usage: node dist/download.js [--skip-midi]
  *
  * Every file is fetched to `<name>.part` and renamed only once it has the pinned size (and the
@@ -35,6 +35,8 @@ const FILES: Source[] = [
   { name: 'billboard-2.0-salami_chords.tar.gz', url: 'https://www.dropbox.com/s/2lvny9ves8kns4o/billboard-2.0-salami_chords.tar.gz?dl=1', bytes: 340_263, extractsTo: 'McGill-Billboard' },
   // The mirror has no HTTPS; the pinned size and the gzip checksum catch a truncated or damaged download.
   { name: 'clean_midi.tar.gz', url: 'http://hog.ee.columbia.edu/craffel/lmd/clean_midi.tar.gz', bytes: 234_283_029, extractsTo: 'clean_midi', midi: true },
+  // LMD-matched's confidence that a MIDI file (by its MD5) follows a recording: which transcription of a song to keep (dedupe.ts).
+  { name: 'match_scores.json', url: 'http://hog.ee.columbia.edu/craffel/lmd/match_scores.json', bytes: 7_237_036, sha256: '267bc606dfa21f0ad0601a4a080972cd4ae8088fe4003b9bb2811b5be060a102', midi: true },
 ];
 
 /** Give up on a download that receives nothing for this long. */

@@ -1,10 +1,10 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import fs from 'node:fs';
 import type { IndexEntry } from '@strudelify/core';
-import { bakeLanding, exampleIds } from '../src/landing.js';
+import { bakeLanding, exampleIds, pickLandingExamples } from '../src/landing.js';
 import { songPath, songIdFromPath, artistSlug, artistPath, setArtistAliases, canonicalArtists, setBase, sitePath, isHomePath } from '../src/ui.js';
 import { readCovers, coverLine, COVERS_HEADER } from '../src/covers.js';
-import { STATIC_CODE_LINES, songPage, homePage, notFoundPage, artists, artistPage, artistsPage, letterOf, sitemap, robots, songTitle, songDescription, compact, LANDING_POOL_SCRIPT } from '../src/prerender.js';
+import { STATIC_CODE_LINES, songPage, movedPage, homePage, notFoundPage, artists, artistPage, artistsPage, letterOf, sitemap, robots, songTitle, songDescription, compact, LANDING_POOL_SCRIPT } from '../src/prerender.js';
 
 const entry = (id: string, title: string, artist: string, extra: Partial<IndexEntry> = {}): IndexEntry => ({ id, title, artist, sources: ['midi'], files: { midi: `songs/${id}.mid` }, ...extra });
 const entries: IndexEntry[] = [
@@ -187,5 +187,20 @@ describe('covers in the pages', () => {
     const baked = bakeLanding(fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8'), entries, covers);
     const pool = JSON.parse(/<script type="application\/json" id="landing-pool">([\s\S]*?)<\/script>/.exec(baked)![1]);
     expect(pool.find((e: { id: string }) => e.id === 'dire-straits--sultans-of-swing').cover).toBe(art);
+  });
+});
+
+describe('songs the catalogue keeps once', () => {
+  it('sends an old address on to the transcription the catalogue kept', () => {
+    const page = movedPage('dire-straits--sultans-of-swing-2', entries[0], site);
+    expect(page).toContain('<meta http-equiv="refresh" content="0; url=/song/dire-straits--sultans-of-swing/" />');
+    expect(page).toContain(`<link rel="canonical" href="${site}/song/dire-straits--sultans-of-swing/" />`);
+    expect(page).toContain('<meta name="robots" content="noindex" />');
+  });
+  it('keeps a popular song on the landing page when its entry moved', () => {
+    // Every Breath You Take is on the popular list; here the catalogue kept it under another id.
+    const kept = entry('the-police--every-breath-you-take-2', 'Every Breath You Take', 'The Police');
+    expect(pickLandingExamples([kept], 1, () => 0)).toEqual([kept]); // not on the list: the popularity fallback
+    expect(pickLandingExamples([kept, entry('x--y', 'Y', 'X', { popularity: 99 })], 1, () => 0, { 'the-police--every-breath-you-take': kept.id })).toEqual([kept]);
   });
 });

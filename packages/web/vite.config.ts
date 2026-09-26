@@ -6,7 +6,7 @@ import { Worker } from 'node:worker_threads';
 import type { IndexEntry } from '@strudelify/core';
 import { bakeLanding } from './src/landing.js';
 import { songPath, sitePath, setBase, setArtistAliases, canonicalArtists } from './src/ui.js';
-import { homePage, songPage, notFoundPage, artists, artistPage, artistsPage, sitemap, robots, compact, LETTERS } from './src/prerender.js';
+import { homePage, songPage, movedPage, notFoundPage, artists, artistPage, artistsPage, sitemap, robots, compact, LETTERS } from './src/prerender.js';
 import { readCovers, coverShards, COVER_SHARDS, type Cover } from './src/covers.js';
 
 const DB = path.resolve(import.meta.dirname, '..', 'data', 'public', 'db');
@@ -26,6 +26,10 @@ setBase(BASE);
  * needed; without it the app looks every cover up in the browser.
  */
 const COVERS = path.resolve(import.meta.dirname, '..', 'data', 'covers.tsv');
+/** Songs whose entry the catalogue replaced by another transcription of them: old id → kept id (the data package's dedupe.ts). */
+const readMoved = (): Record<string, string> => {
+  try { return JSON.parse(fs.readFileSync(path.join(DB, 'moved.json'), 'utf8')); } catch { return {}; }
+};
 let covers: Map<string, Cover> | null = null;
 const readCatalogue = (fresh = false): Map<string, Cover> => {
   if (!covers || fresh) covers = fs.existsSync(COVERS) ? readCovers(fs.readFileSync(COVERS, 'utf8')) : new Map();
@@ -47,7 +51,7 @@ function landingPlugin(): Plugin {
         read = true;
         try { entries = JSON.parse(fs.readFileSync(path.join(DB, 'index.json'), 'utf8')); } catch { entries = null; }
       }
-      return bakeLanding(html, entries, readCatalogue());
+      return bakeLanding(html, entries, readCatalogue(), readMoved());
     },
   };
 }
@@ -172,6 +176,10 @@ function prerenderPlugin(): Plugin {
       const known = readCatalogue(true);
       for (const e of entries) write(`song/${e.id}/index.html`, compact(songPage(shell, e, songsOf.get(e.id) ?? [], { code: codes.get(e.id) ?? undefined }, site, known)));
       for (const g of groups) write(`artist/${g.slug}/index.html`, compact(artistPage(g, css, site, known)));
+      // A replaced transcription's address sends its visitors on to the song's page.
+      const byId = new Map(entries.map((e) => [e.id, e]));
+      const moved = Object.entries(readMoved()).filter(([from, to]) => !byId.has(from) && byId.has(to));
+      for (const [from, to] of moved) write(`song/${from}/index.html`, movedPage(from, byId.get(to)!, site));
       // Only the songs of this database: a catalogue made for a larger one carries no others.
       const listed = new Map([...known].filter(([id]) => songsOf.has(id)));
       if (listed.size) for (const [n, rows] of coverShards(listed)) write(`db/covers/${n}.json`, JSON.stringify(rows));
@@ -182,7 +190,7 @@ function prerenderPlugin(): Plugin {
       // What this build delivered, readable on the site (`db/build.json`): the check that a deployment carries the catalogue.
       write('db/build.json', `${JSON.stringify({
         commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null, builtAt: new Date().toISOString(), songs: entries.length,
-        scores: entries.filter((e) => e.provenance?.provider === 'pdmx').length, covers: listed.size, artists: groups.length,
+        scores: entries.filter((e) => e.provenance?.provider === 'pdmx').length, covers: listed.size, artists: groups.length, moved: moved.length,
       }, null, 2)}\n`);
       const icons = path.resolve(import.meta.dirname, 'static');
       for (const file of fs.readdirSync(icons)) fs.copyFileSync(path.join(icons, file), path.join(outDir, file));

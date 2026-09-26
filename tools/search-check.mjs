@@ -81,7 +81,7 @@ const CASES = [
   ['against all odds', 'collins-phil--against-all-odds'],
   ['yesterday', 'the-beatles--yesterday'],
   ['the joker', 'steve-miller-band--the-joker'],
-  ['what a wonderful world', ['louis-armstrong--what-a-wonderful-world', 'louis-armstrong--wonderful-world']], // the latter is titled "(What a) Wonderful World"
+  ['what a wonderful world', ['louis-armstrong--wonderful-world', 'louis-armstrong--wonderful-world']], // the latter is titled "(What a) Wonderful World"
   ['wonderful world', 'louis-armstrong--wonderful-world'],
   ['killer queen', 'queen--killer-queen'],
   ['tnt', 'ac-dc--tnt'],
@@ -89,14 +89,14 @@ const CASES = [
   ['losing my religion', 'r-e-m--losing-my-religion'],
   ['another brick in the wall part 2', 'pink-floyd--another-brick-in-the-wall-part-2'],
   ['another brick in the wall part ii', 'pink-floyd--another-brick-in-the-wall-part-2'],
-  ['another brick in the wall', ['pink-floyd--another-brick-in-the-wall-part-2', 'pink-floyd--another-brick-in-the-wall']],
+  ['another brick in the wall', ['pink-floyd--another-brick-in-the-wall-part-2', 'pink-floyd--another-brick-in-the-wall-part-2']],
   // punctuation
   ["don't stop me now", 'queen--don-t-stop-me-now'],
   ['dont stop me now', 'queen--don-t-stop-me-now'],
   ["sweet child o' mine", 'guns-n-roses--sweet-child-o-mine'],
   ['sweet child of mine', 'guns-n-roses--sweet-child-o-mine'],
   ["livin' on a prayer", 'bon-jovi--livin-on-a-prayer'],
-  ['living on a prayer', ['bon-jovi--livin-on-a-prayer', 'bon-jovi--living-on-a-prayer']], // both exist, same song
+  ['living on a prayer', ['bon-jovi--livin-on-a-prayer', 'bon-jovi--livin-on-a-prayer']], // both exist, same song
   ["don't stop believin", 'journey--don-t-stop-believin'],
   ["don't stop believing", 'journey--don-t-stop-believin'],
   ['twist & shout', 'the-beatles--twist-and-shout'],
@@ -117,7 +117,7 @@ const CASES = [
   ['smells like teen spirt', 'nirvana--smells-like-teen-spirit'],
   ['nothing else maters', 'metallica--nothing-else-matters'],
   ['master of pupets', 'metallica--master-of-puppets'],
-  ['elenor rigby', ['the-beatles--eleanor-rigby', 'the-beatles--elenor-rigby']], // the data also has a misspelled duplicate
+  ['elenor rigby', ['the-beatles--eleanor-rigby', 'the-beatles--eleanor-rigby']], // the data also has a misspelled duplicate
   ['stairway to heavan', 'led-zeppelin--stairway-to-heaven'],
   ['confortably numb', 'pink-floyd--comfortably-numb'],
   ['sweet home alabma', 'lynyrd-skynyrd--sweet-home-alabama'],
@@ -132,7 +132,7 @@ const CASES = [
   ['sultans', 'dire-straits--sultans-of-swing'],
   ['wonderwal', 'oasis--wonderwall'],
   ['comfortably', 'pink-floyd--comfortably-numb'],
-  ['another brick', ['pink-floyd--another-brick-in-the-wall-part-2', 'pink-floyd--another-brick-in-the-wall']],
+  ['another brick', ['pink-floyd--another-brick-in-the-wall-part-2', 'pink-floyd--another-brick-in-the-wall-part-2']],
   ['sound of silence', 'simon-garfunkel--the-sound-of-silence'],
   ['black magic woman', 'santana--black-magic-woman-gypsy-queen'],
   ['knockin on heavens door guns n roses', 'guns-n-roses--knockin-on-heaven-door'],
@@ -168,12 +168,12 @@ const CASES = [
   ['stevie wonder', { artist: /^(Stevie Wonder|Wonder Stevie)$/ }],
   ['elton john', { artist: /^(Elton John|John Elton)$/ }],
   ['superstition stevie wonder', 'wonder-stevie--superstition'],
-  ['james brown i feel good', ['brown-james--i-got-you', 'james-brown--i-got-you']],
-  ['i got you james brown', ['brown-james--i-got-you', 'james-brown--i-got-you']],
-  ['imagine john lennon', ['lennon-john--imagine', 'john-lennon--imagine']],
-  ['elton john your song', ['john-elton--your-song', 'elton-john--your-song']],
-  ['in the air tonight phil collins', ['collins-phil--in-the-air-tonight', 'phil-collins--in-the-air-tonight']],
-  ['faith george michael', ['michael-george--faith', 'george-michael--faith']],
+  ['james brown i feel good', ['brown-james--i-got-you', 'brown-james--i-got-you']],
+  ['i got you james brown', ['brown-james--i-got-you', 'brown-james--i-got-you']],
+  ['imagine john lennon', ['lennon-john--imagine', 'lennon-john--imagine']],
+  ['elton john your song', ['john-elton--your-song', 'john-elton--your-song']],
+  ['in the air tonight phil collins', ['collins-phil--in-the-air-tonight', 'collins-phil--in-the-air-tonight']],
+  ['faith george michael', ['michael-george--faith', 'michael-george--faith']],
   // title + artist, in every order and with separators
   ['smells like teen spirit nirvana', 'nirvana--smells-like-teen-spirit'],
   ['nirvana smells like teen spirit', 'nirvana--smells-like-teen-spirit'],
@@ -226,7 +226,7 @@ const CASES = [
   ['guns n r', { artist: /^Guns N' Roses$/ }],
   ['dont stop me n', 'queen--don-t-stop-me-now'], // the n is "now", not "and"
   ['hey jude ', 'the-beatles--hey-jude'], // trailing space: the last word is complete
-  ['another brick in the w', ['pink-floyd--another-brick-in-the-wall-part-2', 'pink-floyd--another-brick-in-the-wall']],
+  ['another brick in the w', ['pink-floyd--another-brick-in-the-wall-part-2', 'pink-floyd--another-brick-in-the-wall-part-2']],
   // a title whose last word is half typed is a prefix, not a full match
   ['jungle', 'kool-the-gang--jungle-boogie'], // Jungle Boogie (5 transcriptions) over Jungleland (1)
   ['the wall pink floyd', 'pink-floyd--another-brick-in-the-wall-part-2'],
@@ -245,7 +245,7 @@ const CASES = [
   // duplicate transcriptions of one song share their best score: the most transcribed leads
   ['living on a prayer', 'bon-jovi--livin-on-a-prayer'],
   ['smell like teen spirit', 'nirvana--smells-like-teen-spirit'],
-  ['jhon lennon imagine', ['lennon-john--imagine', 'john-lennon--imagine']],
+  ['jhon lennon imagine', ['lennon-john--imagine', 'lennon-john--imagine']],
   // one word of an artist's name is that artist, above titles containing the word
   ['zeppelin', { artist: /^Led Zeppelin$/ }], // not Nirvana's "Aero Zeppelin"
   ['floyd', { artist: /^Pink Floyd$/ }], // not "Floyd the Barber" / Floyd Cramer
@@ -260,8 +260,8 @@ const CASES = [
   ['gun n roses', { artist: /^Guns N' Roses$/ }], // a dropped letter in a complete word, not Soundgarden's "Gun"
   ['mercury blues', 'alan-jackson--mercury-blues'],
   // a trailing parenthetical is an alternative title
-  ['i feel good', ['brown-james--i-got-you', 'james-brown--i-got-you']], // "I Got You (I Feel Good)", not "I Feel Fine"
-  ['i feel goo', ['brown-james--i-got-you', 'james-brown--i-got-you']],
+  ['i feel good', ['brown-james--i-got-you', 'brown-james--i-got-you']], // "I Got You (I Feel Good)", not "I Feel Fine"
+  ['i feel goo', ['brown-james--i-got-you', 'brown-james--i-got-you']],
   ['who are you', 'the-who--who-are-you'],
   // an exact-word phrase of a song beats a whole title a typo away
   ['country roads', 'john-denver--take-me-home-country-roads'],
@@ -269,7 +269,7 @@ const CASES = [
   ['obladi oblada', 'the-beatles--ob-la-di-ob-la-da'],
   ['obladioblada', 'the-beatles--ob-la-di-ob-la-da'],
   ['teenspirit', 'nirvana--smells-like-teen-spirit'], // not the band Spirit
-  ['ima', ['lennon-john--imagine', 'john-lennon--imagine', 'the-monkees--i-m-a-believer']], // "ima" is a prefix before it is "I'm a"
+  ['ima', ['lennon-john--imagine', 'lennon-john--imagine', 'the-monkees--i-m-a-believer']], // "ima" is a prefix before it is "I'm a"
   // artists by their initials
   ['rhcp', { artist: /^Red Hot Chili Peppers$/ }],
   ['ccr', { artist: /^Creedence Clearwater Revival$/ }],
@@ -377,7 +377,7 @@ const HELDOUT = [
   ['enter sandmen', 'metallica--enter-sandman'],
   ['wish you where here', 'pink-floyd--wish-you-were-here'],
   ['every breathe you take', 'the-police--every-breath-you-take'],
-  ['eleanor rigbi', ['the-beatles--eleanor-rigby', 'the-beatles--elenor-rigby']],
+  ['eleanor rigbi', ['the-beatles--eleanor-rigby', 'the-beatles--eleanor-rigby']],
   ['red red whine', 'ub40--red-red-wine'],
   ['logical song supertramp', 'supertramp--the-logical-song'],
   // title + artist, both orders, with separators
@@ -398,8 +398,8 @@ const HELDOUT = [
   ['aqua barbie girl', 'aqua--barbie-girl'],
   ['here i go again whitesnake', 'whitesnake--here-i-go-again'],
   ['message in a bottle police', 'the-police--message-in-a-bottle'],
-  ['space oddity david bowie', ['david-bowie--space-oddity', 'bowie-david--space-oddity']],
-  ['bowie space oddity', ['david-bowie--space-oddity', 'bowie-david--space-oddity']],
+  ['space oddity david bowie', ['david-bowie--space-oddity', 'david-bowie--space-oddity']],
+  ['bowie space oddity', ['david-bowie--space-oddity', 'david-bowie--space-oddity']],
   ['penny lane beatles', 'the-beatles--penny-lane'],
   ['hotel california eagles', 'eagles--hotel-california'],
   ['eagles - hotel california', 'eagles--hotel-california'],
@@ -697,7 +697,7 @@ const HELDOUT4 = [
   ['oxygene 4', 'jean-michel-jarre--oxygene-part-4'],
   ['chronologie part 2 jarre', 'jean-michel-jarre--chronologie-part-2'],
   ['chronologie 4', 'jean-michel-jarre--chronologie-4'],
-  ['equinoxe part 5', 'jean-michel-jarre--equinoxe-part-5'],
+  ['equinoxe part 5', 'jean-michel-jarre--equinox-part-5'],
   ['calypso part 2 jarre', 'jean-michel-jarre--calypso-part-2'],
   ['magnetic fields part 1', 'jean-michel-jarre--magnetic-fields-part-1'],
   ['shine on you crazy diamond part one', 'pink-floyd--shine-on-you-crazy-diamond-part-one'],
@@ -705,7 +705,7 @@ const HELDOUT4 = [
   ['tubular bells part 1', 'oldfield-mike--tubular-bells-part-1'],
   ['the endless enigma part 2', 'emerson-lake-palmer--the-endless-enigma-part-2'],
   ['look of love part 1', 'abc--look-of-love-part-1'],
-  ['rock and roll part 2', ['gary-glitter--rock-roll-part-2', 'gary-glitter--rock-n-roll-pt-2']],
+  ['rock and roll part 2', ['gary-glitter--rock-n-roll-pt-2', 'gary-glitter--rock-n-roll-pt-2']],
   ["what'd i say", 'ray-charles--what-d-i-say-part-1'],
   ['mambo no 5', 'lou-bega--mambo-no-5-a-little-bit-of'],
   ['mambo number 5', 'lou-bega--mambo-no-5-a-little-bit-of'],
@@ -735,11 +735,11 @@ const HELDOUT4 = [
   ['money for nothing', 'dire-straits--money-for-nothing'],
   ['walk of life', 'dire-straits--walk-of-life'],
   ['brothers in arms', 'dire-straits--brothers-in-arms'],
-  ['space oddity', ['bowie-david--space-oddity', 'david-bowie--space-oddity']],
+  ['space oddity', ['david-bowie--space-oddity', 'david-bowie--space-oddity']],
   ['bowie starman', 'bowie-david--starman'],
   ['life on mars', 'david-bowie--life-on-mars'],
   ['no woman no cry', 'marley-bob--no-woman-no-cry'],
-  ['bob marley jammin', 'bob-marley--jammin'],
+  ['bob marley jammin', 'marley-bob--jammin'],
   ['redemption song', 'bob-marley--redemption-song'],
   ['three little birds', 'bob-marley--three-little-birds'],
   ['every breath you take police', 'the-police--every-breath-you-take'],
@@ -751,9 +751,9 @@ const HELDOUT4 = [
   ['smooth criminal', 'jackson-michael--smooth-criminal'],
   ['beat it', 'jackson-michael--beat-it'],
   ['bad michael jackson', 'jackson-michael--bad'],
-  ['candle in the wind', 'elton-john--candle-in-the-wind'],
-  ['goodbye yellow brick road', ['elton-john--goodbye-yellow-brick-road', 'elton-john--goodby-yellow-brick-road']],
-  ['crocodile rock', 'elton-john--crocodile-rock'],
+  ['candle in the wind', 'john-elton--candle-in-the-wind'],
+  ['goodbye yellow brick road', ['elton-john--goodbye-yellow-brick-road', 'elton-john--goodbye-yellow-brick-road']],
+  ['crocodile rock', 'john-elton--crocodile-rock'],
   ['mamma mia', 'abba--mamma-mia'],
   ['waterloo abba', 'abba--waterloo'],
   ['fernando', 'abba--fernando'],
@@ -793,7 +793,7 @@ const WALKS = [
   ['bill|ie jean', 'jackson-michael--billie-jean'], // "bill": Billy Joel
   ['every breath you take', 'the-police--every-breath-you-take'],
   ['com|fortably numb', 'pink-floyd--comfortably-numb'], // "com": Come Together
-  ['another brick in the wall', ['pink-floyd--another-brick-in-the-wall-part-2', 'pink-floyd--another-brick-in-the-wall']],
+  ['another brick in the wall', ['pink-floyd--another-brick-in-the-wall-part-2', 'pink-floyd--another-brick-in-the-wall-part-2']],
   ['enter sandman', 'metallica--enter-sandman'],
   ['nothing else matters', 'metallica--nothing-else-matters'],
   ['sultans of swing', 'dire-straits--sultans-of-swing'],
@@ -804,7 +804,7 @@ const WALKS = [
   ['killer queen', 'queen--killer-queen'],
   ['dont stop m|e now', 'queen--don-t-stop-me-now'], // "dont stop": the three songs titled Don't Stop
   ['light my fire', 'the-doors--light-my-fire'],
-  ['imagine john lennon', ['lennon-john--imagine', 'john-lennon--imagine']],
+  ['imagine john lennon', ['lennon-john--imagine', 'lennon-john--imagine']],
   ['beatles |hey jude', 'the-beatles--hey-jude'],
   ['led zeppelin |kashmir', 'led-zeppelin--kashmir'],
   ['michael jackson |thriller', 'jackson-michael--thriller'],
@@ -839,7 +839,7 @@ const RESOLVE = [
   ['maiden', 'ambiguous'],
   ['elvis', 'ambiguous'],
   ['country roads', 'ambiguous'], // Take Me Home Country Roads / Country Road
-  ['i feel good', ['brown-james--i-got-you', 'james-brown--i-got-you']],
+  ['i feel good', ['brown-james--i-got-you', 'brown-james--i-got-you']],
   ['in the ghetto elvis', 'elvis-presley--in-the-ghetto'], // not the five songs credited to "Elvis"
   ['xqzv wonderwall', 'ambiguous'], // half the query unexplained
   // words inside a title: nearly the whole query explained, a contiguous phrase, at least
@@ -876,9 +876,9 @@ const RESOLVE = [
   ['oxygene part 1 jean michel jarre', 'jean-michel-jarre--oxygene-part-1'],
   ['oxygene part 4', 'jean-michel-jarre--oxygene-part-4'],
   ['chronologie part 2 jarre', 'jean-michel-jarre--chronologie-part-2'],
-  ['stay for a while amy grant', ['amy-grant--stay-for-a-while', 'amy-grant--stay-for-awhile']], // the same letters spaced differently: one song
+  ['stay for a while amy grant', ['amy-grant--stay-for-awhile', 'amy-grant--stay-for-awhile']], // the same letters spaced differently: one song
   ["i'll do anything for love meat loaf", 'meat-loaf--ill-do-anything-for-love-but-i-wont-do-that'],
-  ['equinoxe part 4', ['jean-michel-jarre--equinoxe-part-4', 'jean-michel-jarre--equinox-part-4']], // the same piece, one spelt without the e
+  ['equinoxe part 4', ['jean-michel-jarre--equinox-part-4', 'jean-michel-jarre--equinox-part-4']], // the same piece, one spelt without the e
   // a digit, a one-letter title word or a trailing space is not "still typing"
   ['pink floyd another brick in the wall part 2', 'pink-floyd--another-brick-in-the-wall-part-2'],
   ['mambo no 5', 'lou-bega--mambo-no-5-a-little-bit-of'],

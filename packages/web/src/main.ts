@@ -12,7 +12,7 @@ import { choose, showSection, prefetchArt } from './song.js';
 import { play, stop, seek, currentBar, rewind } from './player.js';
 import { bindTimeline } from './timeline.js';
 import './catalogue.js'; // covers resolved ahead of time, asked before any provider (paths are made when used)
-import { displayArtist, tidyHits, idWords, songPath, songIdFromPath, isHomePath, setBase } from './ui.js';
+import { displayArtist, tidyHits, idWords, songPath, songIdFromPath, isHomePath, setBase, sitePath } from './ui.js';
 
 // The site may live in a folder of another site (arthurenard.me/strudelify/): every address the app makes starts there.
 setBase(import.meta.env.BASE_URL);
@@ -155,8 +155,9 @@ async function route() {
     return;
   }
   const idx = await getIndex();
-  const entry = entryById(id);
+  const entry = entryById(id) ?? await movedEntry(id);
   if (entry) {
+    if (entry.id !== id) history.replaceState(null, '', songPath(entry.id)); // a replaced transcription's old address
     if (state.current?.entry.id !== entry.id && state.loadingId !== entry.id) choose(entry);
     return;
   }
@@ -168,6 +169,13 @@ async function route() {
   el.nfMatches.innerHTML = near.map(exampleCard).join('');
   showSection('notfound');
   document.title = 'Song not found · Strudelify';
+}
+/** Songs whose entry the catalogue replaced by another transcription of them (db/moved.json), read on first need. */
+let moved: Promise<Record<string, string>> | null = null;
+async function movedEntry(id: string) {
+  moved ??= fetch(sitePath('db/moved.json')).then((r) => (r.ok ? r.json() : {}), () => ({}));
+  const to = (await moved)[id];
+  return to ? entryById(to) : undefined;
 }
 window.addEventListener('popstate', () => { route().catch(() => { /* the banner shows the error */ }); });
 onIndex(() => { route().catch(() => { /* the banner shows the error */ }); });

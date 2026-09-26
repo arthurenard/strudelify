@@ -30,9 +30,11 @@ export function pickLandingExamples<E extends Pick<IndexEntry, 'id' | 'title' | 
   entries: readonly E[],
   count = LANDING_EXAMPLE_COUNT,
   random: () => number = Math.random,
+  moved: Readonly<Record<string, string>> = {},
 ): E[] {
   const byId = new Map(entries.map((e) => [e.id, e]));
-  const preferred = SPOTIFY_POPULAR_IDS.map((id) => byId.get(id)).filter((e): e is E => !!e);
+  // A popular song whose entry the catalogue replaced by another transcription follows it (see `moved`).
+  const preferred = [...new Set(SPOTIFY_POPULAR_IDS.map((id) => byId.get(moved[id] ?? id)))].filter((e): e is E => !!e);
   const pool = (preferred.length >= count ? preferred : byPopularity(entries)).slice(0, LANDING_EXAMPLE_POOL);
   if (pool.length <= count) return pool.slice();
   const shuffled = pool.slice();
@@ -55,8 +57,8 @@ export interface LandingEntry extends Pick<IndexEntry, 'id' | 'title' | 'artist'
   cover?: string;
 }
 export const LANDING_POOL_ID = 'landing-pool';
-export function landingPool(entries: readonly IndexEntry[], covers?: Covers | null): LandingEntry[] {
-  return pickLandingExamples(entries, LANDING_EXAMPLE_POOL, () => 0).map((e) => {
+export function landingPool(entries: readonly IndexEntry[], covers?: Covers | null, moved?: Readonly<Record<string, string>>): LandingEntry[] {
+  return pickLandingExamples(entries, LANDING_EXAMPLE_POOL, () => 0, moved).map((e) => {
     const cover = cardCover(covers, e.id);
     return { id: e.id, title: e.title, artist: e.artist, display: displayArtist(e.artist), ...(e.year ? { year: e.year } : {}), sources: e.sources, ...(cover ? { cover } : {}) };
   });
@@ -114,7 +116,7 @@ export const exampleIds = (html: string): string[] => [...html.matchAll(CARD)].m
  * example card rendered from its index entry (a card whose id is not in the index is dropped, as the browser would
  * hide it). Without entries the markup is left alone: the browser fills it in once the index loads.
  */
-export function bakeLanding(html: string, entries: readonly IndexEntry[] | null, covers?: Covers | null): string {
+export function bakeLanding(html: string, entries: readonly IndexEntry[] | null, covers?: Covers | null, moved?: Readonly<Record<string, string>>): string {
   const count = entries?.length ?? null;
   let out = html
     .replace(/(<span id="cta-label">)[^<]*(<\/span>)/, `$1${esc(browseLabel(count))}$2`)
@@ -127,5 +129,5 @@ export function bakeLanding(html: string, entries: readonly IndexEntry[] | null,
     const e = byId.get(decodeURIComponent(id));
     return e ? exampleCard({ ...e, cover: cardCover(covers, e.id) }) : '';
   });
-  return out.replace('</body>', `  ${landingPoolScript(landingPool(entries, covers))}\n  </body>`);
+  return out.replace('</body>', `  ${landingPoolScript(landingPool(entries, covers, moved))}\n  </body>`);
 }

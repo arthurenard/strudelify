@@ -156,6 +156,28 @@ export function songPage(shell: string, e: IndexEntry, group: readonly IndexEntr
 /** A page without its indentation (a tenth of a song page), the `<pre>` code left as it is. */
 export const compact = (html: string) => html.split(/(<pre[\s\S]*?<\/pre>)/).map((part, i) => (i % 2 ? part : part.replace(/\n\s+/g, '\n'))).join('');
 
+/**
+ * The page at a song's old address when the catalogue kept another transcription of it (see the data package's
+ * dedupe.ts): it sends the visitor on at once, and search engines to the song's page.
+ */
+export function movedPage(from: string, to: IndexEntry, site: string | null): string {
+  const path = songPath(to.id), artist = displayArtist(to.artist);
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>${esc(`${to.title} — ${artist}`)} · ${SITE_NAME}</title>
+    <meta http-equiv="refresh" content="0; url=${esc(path)}" />
+    ${site ? `<link rel="canonical" href="${esc(site + path)}" />` : ''}
+    <meta name="robots" content="noindex" />
+  </head>
+  <body>
+    <p><a href="${esc(path)}">${esc(to.title)} by ${esc(artist)}</a> has moved: this address (${esc(from)}) was another transcription of it.</p>
+  </body>
+</html>
+`;
+}
+
 /** The 404 page: the app, which shows its "not found" view for an unknown song address; not for search engines. */
 export const notFoundPage = (shell: string) => shell.replace('</head>', '    <meta name="robots" content="noindex" />\n  </head>');
 
