@@ -20,12 +20,37 @@ export function setStarted(v: boolean) {
 }
 /** New code is being swapped in while playing (see `refresh`): the scheduler's pause and restart are not the user's. */
 let swapping = false;
+
+/**
+ * A hidden page (another tab, a covered window) has its timers slowed, to about one a second in some browsers.
+ * Strudel's scheduler ticks on a timer every 0.1 s and plans 0.2 s ahead, so it would then find most notes
+ * already past and drop them. The audio thread is never slowed while sound plays: a silent AudioWorklet posts
+ * every 32 blocks of audio (about 90 ms), and while the page is hidden each post prompts the scheduler's clock.
+ * A prompt plans only the notes not planned yet, so one beside the clock's own tick is harmless.
+ */
+const CLOCK = `registerProcessor('strudelify-clock', class extends AudioWorkletProcessor {
+  constructor() { super(); this.blocks = 0; }
+  process() { if (++this.blocks === 32) { this.blocks = 0; this.port.postMessage(0); } return true; }
+});`;
+let clockContext: AudioContext | null = null;
+function keepTime(ctx: AudioContext | undefined) {
+  if (!ctx || clockContext === ctx) return;
+  clockContext = ctx;
+  ctx.audioWorklet.addModule(`data:text/javascript;base64,${btoa(CLOCK)}`).then(() => {
+    const node = new AudioWorkletNode(ctx, 'strudelify-clock', { numberOfInputs: 0, outputChannelCount: [1] });
+    node.port.onmessage = () => {
+      const s = ed()?.repl.scheduler;
+      if (document.visibilityState === 'hidden' && state.started && s?.started && !swapping) s.clock.start();
+    };
+    node.connect(ctx.destination); // silent; a node the speakers do not pull from is not run
+  }).catch(() => { /* no worklet: the page keeps the browser's pace */ });
+}
 editorEl.addEventListener('update', (e) => {
   if (swapping) return;
   const st = (e as CustomEvent).detail as { started?: boolean };
   if (typeof st?.started === 'boolean' && st.started !== state.started) setStarted(st.started);
   // Strudel's own Ctrl+Enter starts the scheduler, but a pause left the AudioContext suspended: wake it, or nothing is heard.
-  if (st?.started) { const ctx = audioContext(); if (ctx?.state === 'suspended') void ctx.resume(); }
+  if (st?.started) { const ctx = audioContext(); if (ctx?.state === 'suspended') void ctx.resume(); keepTime(ctx); }
 });
 
 /** Bar currently shown by the playhead. */
@@ -70,6 +95,7 @@ export async function play(fromBar?: number) {
   try {
     const ctx = audioContext();
     if (ctx?.state === 'suspended') await ctx.resume();
+    keepTime(ctx);
     if (stale()) return;
     if (cur.song.meta.drumKit === 'acoustic') await preloadLocalDrums();
     if (stale()) return;

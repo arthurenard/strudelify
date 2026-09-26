@@ -5,7 +5,11 @@ import { el } from './dom.js';
 import { registerLocalDrums, preloadLocalDrums } from './samples.js';
 export { preloadLocalDrums };
 
-export interface Scheduler { started: boolean; lastEnd: number; num_ticks_since_cps_change: number; now(): number; pause(): void; stop(): void }
+export interface Scheduler {
+  started: boolean; lastEnd: number; num_ticks_since_cps_change: number; now(): number; pause(): void; stop(): void;
+  /** Strudel's clock: `start()` plans the notes due from now to its lookahead that are not planned yet, then ticks on. */
+  clock: { start(): void };
+}
 /** The parts of a Strudel pattern the player queries: the events that start in a span of cycles. */
 export interface Hap { value: Record<string, unknown> | null; hasOnset(): boolean }
 export interface Pattern { queryArc(begin: number, end: number): Hap[] }
