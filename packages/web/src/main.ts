@@ -11,11 +11,15 @@ import { exampleCard, browseLabel, searchPlaceholder, pickLandingExamples, LANDI
 import { choose, showSection, prefetchArt } from './song.js';
 import { play, stop, seek, currentBar, rewind } from './player.js';
 import { bindTimeline } from './timeline.js';
+import { inject as injectAnalytics } from '@vercel/analytics';
 import './catalogue.js'; // covers resolved ahead of time, asked before any provider (paths are made when used)
 import { displayArtist, tidyHits, idWords, songPath, songIdFromPath, isHomePath, setBase, sitePath } from './ui.js';
 
 // The site may live in a folder of another site (arthurenard.me/strudelify/): every address the app makes starts there.
 setBase(import.meta.env.BASE_URL);
+// Vercel Web Analytics: the script is fetched from the page's own origin (/_vercel/insights/), so
+// visits through www.arthurenard.me/strudelify count under the portfolio project.
+injectAnalytics();
 
 bindTimeline({ seek, currentBar, toggle: () => { if (state.started) void stop(); else void play(); } });
 onChoose(choose);
