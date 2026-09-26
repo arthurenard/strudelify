@@ -196,6 +196,7 @@ describe('songs the catalogue keeps once', () => {
     expect(page).toContain('<meta http-equiv="refresh" content="0; url=/song/dire-straits--sultans-of-swing/" />');
     expect(page).toContain(`<link rel="canonical" href="${site}/song/dire-straits--sultans-of-swing/" />`);
     expect(page).toContain('<meta name="robots" content="noindex" />');
+    expect(page).toContain('<link rel="icon" href="/favicon.svg"'); // or the browser asks the host's root for one
   });
   it('keeps a popular song on the landing page when its entry moved', () => {
     // Every Breath You Take is on the popular list; here the catalogue kept it under another id.

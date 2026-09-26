@@ -170,6 +170,7 @@ export function movedPage(from: string, to: IndexEntry, site: string | null): st
     <meta http-equiv="refresh" content="0; url=${esc(path)}" />
     ${site ? `<link rel="canonical" href="${esc(site + path)}" />` : ''}
     <meta name="robots" content="noindex" />
+    ${icons()}
   </head>
   <body>
     <p><a href="${esc(path)}">${esc(to.title)} by ${esc(artist)}</a> has moved: this address (${esc(from)}) was another transcription of it.</p>
