@@ -33,7 +33,14 @@ jobs:
       - run: npm run check
       - run: node --test tools/cloudflare-publish.test.mjs
       - name: Rebuild the complete catalogue and website from source
-        run: npm run build:site
+        # Dataset mirrors sometimes reset a reused connection. Verified downloads
+        # are retained, so a retry resumes rather than discarding successful work.
+        run: |
+          for attempt in 1 2 3; do
+            if npm run build:site; then exit 0; fi
+            if [ "$attempt" = 3 ]; then exit 1; fi
+            sleep "$((attempt * 10))"
+          done
       - name: Refuse a silently reduced catalogue
         run: node -e "const b=require('./packages/web/dist/db/build.json'); if(b.songs<13622 || b.scores<3261) throw new Error('Catalogue shrank; review before deploying'); console.log(b)"
       - run: node tools/cloudflare-publish.mjs
