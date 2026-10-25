@@ -1,0 +1,49 @@
+name: Deploy Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      STRUDELIFY_BASE: /
+      SITE_URL: https://strudelify.pages.dev
+      CLOUDFLARE_ACCOUNT_ID: 3895c336f41117ff296c37229e73cbf2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npm run check
+      - run: node --test tools/cloudflare-publish.test.mjs
+      - name: Rebuild the complete catalogue and website from source
+        run: npm run build:site
+      - name: Refuse a silently reduced catalogue
+        run: node -e "const b=require('./packages/web/dist/db/build.json'); if(b.songs<13622 || b.scores<3261) throw new Error('Catalogue shrank; review before deploying'); console.log(b)"
+      - run: node tools/cloudflare-publish.mjs
+      - name: Deploy catalogue static assets first
+        run: npx --yes wrangler@4.152.0 deploy --config cloudflare/catalogue.wrangler.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Deploy pages, player and local audio static assets
+        run: npx --yes wrangler@4.152.0 pages deploy dist/cloudflare/app --project-name strudelify --branch main --commit-hash "$GITHUB_SHA"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Verify deployed pages, assets, catalogue and commit
+        run: node tools/cloudflare-verify.mjs

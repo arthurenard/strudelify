@@ -189,7 +189,7 @@ function prerenderPlugin(): Plugin {
       if (site) write('sitemap.xml', sitemap(site, [sitePath(), sitePath('artists/'), ...LETTERS.map((l) => sitePath(`artists/${l}/`)), ...groups.map((g) => sitePath(`artist/${g.slug}/`)), ...entries.map((e) => songPath(e.id))]));
       // What this build delivered, readable on the site (`db/build.json`): the check that a deployment carries the catalogue.
       write('db/build.json', `${JSON.stringify({
-        commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null, builtAt: new Date().toISOString(), songs: entries.length,
+        commit: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? null, builtAt: new Date().toISOString(), songs: entries.length,
         scores: entries.filter((e) => e.provenance?.provider === 'pdmx').length, covers: listed.size, artists: groups.length, moved: moved.length,
       }, null, 2)}\n`);
       const icons = path.resolve(import.meta.dirname, 'static');

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/wrangler@4.152.0/config-schema.json",
+  "name": "strudelify",
+  "account_id": "3895c336f41117ff296c37229e73cbf2",
+  "compatibility_date": "2026-10-25",
+  "pages_build_output_dir": "../dist/cloudflare/app"
+}
