@@ -1,10 +1,17 @@
 {
-  "buildCommand": "npm run build:site",
-  "outputDirectory": "packages/web/dist",
-  "rewrites": [
-    { "source": "/strudelify", "destination": "/index.html" },
-    { "source": "/strudelify/", "destination": "/index.html" },
-    { "source": "/strudelify/:path+/", "destination": "/:path+" },
-    { "source": "/strudelify/:path+", "destination": "/:path+" }
+  "buildCommand": "node tools/vercel-redirect-build.mjs",
+  "installCommand": "",
+  "outputDirectory": "dist/vercel-redirect",
+  "routes": [
+    {
+      "src": "^/strudelify(?:/(.*))?$",
+      "dest": "https://strudelify.pages.dev/$1",
+      "status": 308
+    },
+    {
+      "src": "^/(.*)$",
+      "dest": "https://strudelify.pages.dev/$1",
+      "status": 308
+    }
   ]
 }

@@ -3,6 +3,12 @@ name: Deploy Cloudflare
 on:
   push:
     branches: [main]
+    # These only retire the old Vercel host; Cloudflare's bytes do not change.
+    paths-ignore:
+      - vercel.json
+      - tools/vercel-redirect-*
+      - cloudflare/README.md
+      - .github/workflows/cloudflare.yml
   workflow_dispatch:
 
 permissions:

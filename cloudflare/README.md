@@ -1,4 +1,4 @@
-# Cloudflare deployment (no existing-route cutover)
+# Cloudflare deployment
 
 This migrates the already-public beta's hosting, not a declaration that `LAUNCH.md`'s outstanding publication/rights review is resolved. That review is unchanged.
 
@@ -60,13 +60,28 @@ above. `pages.wrangler.json` records settings but is not consumed by that CLI in
 
 ## Domain and cutover gate
 
-No apex DNS, old proxy, Vercel config or existing production route is changed. Initial canonicals and sitemap point to the verified `pages.dev` origin. At inspection, `arthurenard.me` had Namecheap nameservers, was not an accessible Cloudflare zone and `strudelify.arthurenard.me` had no DNS answer.
+The owner-authorised traffic cutover uses `https://strudelify.pages.dev` directly;
+no DNS change is needed. The portfolio's `/strudelify` URLs permanently redirect
+there, stripping the prefix and preserving paths/query values; visible portfolio
+links and its sitemap pointer use Cloudflare directly. `vercel.json` now builds
+only a tiny redirect placeholder (no install, download or dataset build) and
+permanently redirects both root and legacy `/strudelify/` URLs on the old Vercel
+host. The Cloudflare workflow ignores changes that only affect this retirement
+configuration. Redirect requests still count on Vercel; subsequent application
+and catalogue requests go to Cloudflare. Historical usage is not erased.
+
+Canonicals and sitemap use the verified `pages.dev` origin. The custom subdomain
+below is optional, not a migration blocker. At initial inspection,
+`arthurenard.me` had Namecheap nameservers, was not an accessible Cloudflare zone
+and `strudelify.arthurenard.me` had no DNS answer. No apex or other DNS is changed.
 
 To activate that unused subdomain without moving nameservers:
 1. Add `strudelify.arthurenard.me` as this Pages project's custom domain **before** adding the DNS record (Cloudflare warns that CNAME-only setup can fail).
 2. In Namecheap DNS, add only `CNAME strudelify → strudelify.pages.dev` (TTL automatic). Do not alter apex, www or MX records.
 3. Wait for Pages domain validation and HTTPS to become active.
 4. Change workflow `SITE_URL` to `https://strudelify.arthurenard.me`, rebuild/deploy, and verify HTTPS/canonicals/sitemap/search/playback.
-5. Parent/owner reviews and authorises the later old-route redirects; preserve song/artist paths, query strings, moved-song pages and legacy hash navigation. Do not remove Vercel until cutover and verification are complete.
+5. If the canonical origin changes, update the redirects and direct links too;
+   preserve song/artist paths, query strings, moved-song pages and legacy hashes.
+   Do not delete the old sites: their redirects keep existing links working.
 
 References: https://developers.cloudflare.com/workers/platform/limits/ ; https://developers.cloudflare.com/pages/platform/limits/ ; https://developers.cloudflare.com/workers/static-assets/redirects/ ; https://developers.cloudflare.com/pages/configuration/custom-domains/ .
